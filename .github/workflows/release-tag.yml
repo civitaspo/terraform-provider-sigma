@@ -4,36 +4,66 @@ on:
   pull_request:
     types:
       - closed
+  workflow_dispatch:
+    inputs:
+      merge_sha:
+        description: Commit SHA to tag (defaults to main HEAD when empty)
+        required: false
+        type: string
 
 permissions: {}
 
 concurrency:
-  group: release-tag-${{ github.event.pull_request.number }}
+  group: release-tag-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: false
 
 jobs:
   tag:
     name: tag and request release
     if: |
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.head.ref == 'release/next'
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true &&
+       github.event.pull_request.head.ref == 'release/next') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     timeout-minutes: 10
 
     steps:
+      - name: Resolve merge commit
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          INPUT_MERGE_SHA: ${{ inputs.merge_sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            merge_sha=$PR_MERGE_SHA
+          elif [ -n "${INPUT_MERGE_SHA:-}" ]; then
+            merge_sha=$INPUT_MERGE_SHA
+          else
+            merge_sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')
+          fi
+          if ! printf '%s\n' "$merge_sha" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "Invalid merge commit SHA: $merge_sha" >&2
+            exit 1
+          fi
+          echo "merge_sha=$merge_sha" >> "$GITHUB_OUTPUT"
+
       - name: Check out merge commit
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ steps.target.outputs.merge_sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Read release version
         id: release
         env:
-          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          MERGE_SHA: ${{ steps.target.outputs.merge_sha }}
         run: |
           set -euo pipefail
           version=$(cat .release-version)
@@ -47,12 +77,13 @@ jobs:
       - name: Create annotated tag
         env:
           GH_TOKEN: ${{ github.token }}
-          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          MERGE_SHA: ${{ steps.target.outputs.merge_sha }}
           TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -euo pipefail
-          existing_object=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null || true)
-          if [ -n "$existing_object" ]; then
+          # gh api prints the 404 JSON body on stdout even on failure; only treat a
+          # successful HTTP response as an existing tag.
+          if existing_object=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null); then
             existing_commit=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$existing_object" --jq '.object.sha')
             test "$existing_commit" = "$MERGE_SHA"
             echo "Tag $TAG already points to the merge commit."
