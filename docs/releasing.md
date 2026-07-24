@@ -8,7 +8,7 @@ This repository uses a tagpr-equivalent release flow built on CSM actions.
 2. The **Release PR** workflow computes the next version and changelog, then asks `civitaspo/securefix-server` to open or update `release/next`.
 3. A human squash-merges `chore(release): vX.Y.Z`.
 4. The **Release Tag** workflow creates an annotated tag `vX.Y.Z` and requests a server-side release.
-5. The securefix-server **Release Terraform Provider** workflow checks out the tag, runs GoReleaser with the GPG key from the `release` environment, and publishes the GitHub Release.
+5. The securefix-server **Release Terraform Provider** workflow checks out the tag, runs GoReleaser with the GPG key from the `main` environment, and publishes the GitHub Release.
 
 ## Version bump rules (while major is 0)
 
