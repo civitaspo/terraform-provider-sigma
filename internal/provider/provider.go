@@ -96,6 +96,9 @@ func (p *SigmaProvider) DataSources(_ context.Context) []func() datasource.DataS
 		NewWorkspaceDataSource,
 		NewWorkspacesDataSource,
 		NewFilesDataSource,
+		NewConnectionDataSource,
+		NewConnectionsDataSource,
+		NewConnectionPathsDataSource,
 	}
 }
 
@@ -115,6 +118,11 @@ func (p *SigmaProvider) Resources(context.Context) []func() resource.Resource {
 		NewGrantResource,
 		NewWorkbookGrantResource,
 		NewReportGrantResource,
+		NewConnectionResource,
+		NewConnectionGrantResource,
+		NewConnectionPathGrantResource,
+		NewAPIConnectorResource,
+		NewAPICredentialResource,
 	}
 }
 
