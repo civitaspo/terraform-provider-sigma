@@ -21,3 +21,9 @@ func TestAccAccountTypeResource(t *testing.T)                 { requireAcceptanc
 func TestAccUserAttributeResource(t *testing.T)               { requireAcceptance(t) }
 func TestAccUserAttributeTeamAssignmentResource(t *testing.T) { requireAcceptance(t) }
 func TestAccUserAttributeUserAssignmentResource(t *testing.T) { requireAcceptance(t) }
+func TestAccWorkspaceResource(t *testing.T)                   { requireAcceptance(t) }
+func TestAccWorkspaceGrantResource(t *testing.T)              { requireAcceptance(t) }
+func TestAccFileResource(t *testing.T)                        { requireAcceptance(t) }
+func TestAccGrantResource(t *testing.T)                       { requireAcceptance(t) }
+func TestAccWorkbookGrantResource(t *testing.T)               { requireAcceptance(t) }
+func TestAccReportGrantResource(t *testing.T)                 { requireAcceptance(t) }
