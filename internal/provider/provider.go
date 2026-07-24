@@ -99,6 +99,16 @@ func (p *SigmaProvider) DataSources(_ context.Context) []func() datasource.DataS
 		NewConnectionDataSource,
 		NewConnectionsDataSource,
 		NewConnectionPathsDataSource,
+		NewWorkbookDataSource,
+		NewWorkbooksDataSource,
+		NewReportDataSource,
+		NewReportsDataSource,
+		NewDataModelDataSource,
+		NewDataModelsDataSource,
+		NewDatasetDataSource,
+		NewDatasetsDataSource,
+		NewTemplatesDataSource,
+		NewTagsDataSource,
 	}
 }
 
@@ -123,6 +133,11 @@ func (p *SigmaProvider) Resources(context.Context) []func() resource.Resource {
 		NewConnectionPathGrantResource,
 		NewAPIConnectorResource,
 		NewAPICredentialResource,
+		NewTagResource,
+		NewWorkbookScheduleResource,
+		NewReportScheduleResource,
+		NewWorkbookEmbedResource,
+		NewTranslationResource,
 	}
 }
 

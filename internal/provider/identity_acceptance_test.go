@@ -32,3 +32,8 @@ func TestAccConnectionGrantResource(t *testing.T)             { requireAcceptanc
 func TestAccConnectionPathGrantResource(t *testing.T)         { requireAcceptance(t) }
 func TestAccAPIConnectorResource(t *testing.T)                { requireAcceptance(t) }
 func TestAccAPICredentialResource(t *testing.T)               { requireAcceptance(t) }
+func TestAccTagResource(t *testing.T)                         { requireAcceptance(t) }
+func TestAccWorkbookScheduleResource(t *testing.T)            { requireAcceptance(t) }
+func TestAccReportScheduleResource(t *testing.T)              { requireAcceptance(t) }
+func TestAccWorkbookEmbedResource(t *testing.T)               { requireAcceptance(t) }
+func TestAccTranslationResource(t *testing.T)                 { requireAcceptance(t) }
