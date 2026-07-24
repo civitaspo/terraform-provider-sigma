@@ -7,12 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.1.1] - 2026-07-24
-
-### Maintenance
-
-- auto-request approval for SecureFix-authored PRs (#28)
-
 ## [0.1.0] - 2026-07-24
 
 ### Features
@@ -27,7 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- use Securefix server repository name-only variable (#23)
 - scan full history for first release version (#8)
 
 ### Documentation
