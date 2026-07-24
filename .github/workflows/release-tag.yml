@@ -87,9 +87,11 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$SERVER_REPOSITORY"
+          # SECUREFIX_SERVER_REPOSITORY is the repo name only (securefix-action input format).
+          server_full_name="${GITHUB_REPOSITORY_OWNER}/${SERVER_REPOSITORY}"
           label_name="release-tf-provider-${GITHUB_RUN_ID}-${TAG}"
           description="${GITHUB_REPOSITORY}/${GITHUB_RUN_ID}/${TAG}"
-          gh api --method POST "repos/$SERVER_REPOSITORY/labels" \
+          gh api --method POST "repos/${server_full_name}/labels" \
             -f name="$label_name" \
             -f color="1f6feb" \
             -f description="$description"

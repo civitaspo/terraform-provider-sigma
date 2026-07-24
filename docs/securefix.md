@@ -15,7 +15,7 @@ Install both apps on this repository and on `civitaspo/securefix-server`:
 
 - Variable `SECUREFIX_CLIENT_APP_ID`
 - Secret `SECUREFIX_CLIENT_PRIVATE_KEY`
-- Variable `SECUREFIX_SERVER_REPOSITORY` (value: `civitaspo/securefix-server`)
+- Variable `SECUREFIX_SERVER_REPOSITORY` (value: `securefix-server` — repository name only; `securefix-action` expects this format)
 
 Strong secrets (GPG keys, machine-user PAT, server app private key) live only in `civitaspo/securefix-server`.
 
