@@ -33,6 +33,6 @@ The `Approve Request` workflow asks the server to approve pull requests authored
 
 1. The `Release PR` workflow asks Securefix to open or update `release/next` with changelog and version metadata.
 2. After that PR is squash-merged, the `Release Tag` workflow creates an annotated tag and requests a server-side release.
-3. The server `release` environment runs GoReleaser with the provider GPG key and publishes the GitHub Release.
+3. The server `main` environment runs GoReleaser with the provider GPG key and publishes the GitHub Release.
 
 See [releasing.md](releasing.md) once the release pipeline lands.
