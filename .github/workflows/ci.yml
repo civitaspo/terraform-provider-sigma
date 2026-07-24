@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Set up mise
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          version: "2026.5.15"
+          install_args: "--locked"
+          cache: false
+
+      - name: Build
+        if: hashFiles('go.mod') != ''
+        run: go build ./...
+
+      - name: Vet
+        if: hashFiles('go.mod') != ''
+        run: go vet ./...
+
+      - name: Test
+        if: hashFiles('go.mod') != ''
+        run: go test -race -cover ./...
+
+      - name: Skip until Go module exists
+        if: hashFiles('go.mod') == ''
+        run: echo "go.mod not present yet; skipping build/vet/test"
