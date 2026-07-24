@@ -1,0 +1,61 @@
+[tools]
+go = "1.26.5"
+"aqua:golangci/golangci-lint" = "2.12.2"
+"aqua:hashicorp/terraform" = "1.15.8"
+"aqua:goreleaser/goreleaser" = "2.17.0"
+"go:github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs" = "0.25.0"
+"aqua:suzuki-shunsuke/pinact" = "4.1.0"
+"aqua:suzuki-shunsuke/ghalint" = "1.5.6"
+"aqua:suzuki-shunsuke/disable-checkout-persist-credentials" = "1.0.0"
+"aqua:koalaman/shellcheck" = "0.11.0"
+
+[tasks.lint]
+description = "Run local lint checks"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+if [ -f go.mod ]; then
+  golangci-lint run ./...
+  test -z "$(gofmt -l .)"
+  go mod tidy -diff
+fi
+if [ -d scripts ]; then
+  find scripts -type f -name '*.sh' -print0 | xargs -0 -r shellcheck
+fi
+if [ -d .github/workflows ]; then
+  ghalint run
+  pinact run --check
+fi
+"""
+
+[tasks.test]
+description = "Run Go tests"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+if [ ! -f go.mod ]; then
+  echo "go.mod not present yet; skipping tests"
+  exit 0
+fi
+go test -race -cover ./...
+"""
+
+[tasks.docs]
+description = "Generate provider docs with tfplugindocs"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+tfplugindocs generate
+"""
+
+[tasks.build]
+description = "Build all packages"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+if [ ! -f go.mod ]; then
+  echo "go.mod not present yet; skipping build"
+  exit 0
+fi
+go build ./...
+"""
