@@ -49,3 +49,30 @@ jobs:
       - name: Skip until Go module exists
         if: hashFiles('go.mod') == ''
         run: echo "go.mod not present yet; skipping build/vet/test"
+
+  goreleaser-check:
+    name: goreleaser-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up mise
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          version: "2026.5.15"
+          install_args: "--locked"
+          cache: false
+
+      - name: Check GoReleaser configuration
+        run: goreleaser check
+
+      - name: Build release snapshot
+        run: goreleaser build --snapshot --clean --single-target

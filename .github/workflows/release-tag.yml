@@ -1,0 +1,95 @@
+name: Release Tag
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions: {}
+
+concurrency:
+  group: release-tag-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: tag and request release
+    if: |
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.ref == 'release/next'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out merge commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Read release version
+        id: release
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          set -euo pipefail
+          version=$(cat .release-version)
+          if ! printf '%s\n' "$version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+            echo "Invalid release version: $version" >&2
+            exit 1
+          fi
+          test "$(git rev-parse HEAD)" = "$MERGE_SHA"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Create annotated tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          existing_object=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null || true)
+          if [ -n "$existing_object" ]; then
+            existing_commit=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$existing_object" --jq '.object.sha')
+            test "$existing_commit" = "$MERGE_SHA"
+            echo "Tag $TAG already points to the merge commit."
+            exit 0
+          fi
+
+          tag_object=$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/tags" \
+            -f tag="$TAG" \
+            -f message="Release $TAG" \
+            -f object="$MERGE_SHA" \
+            -f type=commit \
+            --jq '.sha')
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/$TAG" \
+            -f sha="$tag_object"
+
+      - name: Create Securefix server token
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ vars.SECUREFIX_CLIENT_APP_ID }}
+          private-key: ${{ secrets.SECUREFIX_CLIENT_PRIVATE_KEY }}
+          owner: civitaspo
+          repositories: securefix-server
+          permission-issues: write
+
+      - name: Request server-side release
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SERVER_REPOSITORY: ${{ vars.SECUREFIX_SERVER_REPOSITORY }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          test -n "$SERVER_REPOSITORY"
+          label_name="release-tf-provider-${GITHUB_RUN_ID}-${TAG}"
+          description="${GITHUB_REPOSITORY}/${GITHUB_RUN_ID}/${TAG}"
+          gh api --method POST "repos/$SERVER_REPOSITORY/labels" \
+            -f name="$label_name" \
+            -f color="1f6feb" \
+            -f description="$description"
