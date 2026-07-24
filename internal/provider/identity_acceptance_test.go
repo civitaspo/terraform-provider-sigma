@@ -37,3 +37,13 @@ func TestAccWorkbookScheduleResource(t *testing.T)            { requireAcceptanc
 func TestAccReportScheduleResource(t *testing.T)              { requireAcceptance(t) }
 func TestAccWorkbookEmbedResource(t *testing.T)               { requireAcceptance(t) }
 func TestAccTranslationResource(t *testing.T)                 { requireAcceptance(t) }
+func TestAccTenantResource(t *testing.T)                      { requireAcceptance(t) }
+func TestAccTenantDeploymentCapabilitiesResource(t *testing.T) {
+	requireAcceptance(t)
+}
+func TestAccDeploymentPolicyResource(t *testing.T) { requireAcceptance(t) }
+func TestAccSourceSwapPolicyResource(t *testing.T) { requireAcceptance(t) }
+func TestAccTenantsDataSource(t *testing.T)        { requireAcceptance(t) }
+func TestAccDeploymentPoliciesDataSource(t *testing.T) {
+	requireAcceptance(t)
+}
