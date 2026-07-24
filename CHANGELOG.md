@@ -7,35 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.1.0] - 2026-07-24
-
-### Features
-
-- beta resources (tenants, deployment policies, source swap policies) (#21)
-- document lifecycle resources and data sources (#18)
-- connection resources (#15)
-- workspace, file, and grant resources (#11)
-- workspace, file, and grant resources (#10)
-- identity and access resources (#9)
-- provider skeleton, Sigma API client, and whoami data source (#3)
-
-### Bug Fixes
-
-- harden Release Tag existing-tag check and allow dispatch (#26)
-- use Securefix server repository name-only variable (#23)
-- scan full history for first release version (#8)
-
-### Documentation
-
-- coverage matrix, contributing guide, and polish (#22)
-- use main environment for securefix-server releases (#17)
+## [0.1.1] - 2026-07-24
 
 ### Maintenance
 
-- release pipeline (release PR, tagging, server-side goreleaser) (#7)
-- add lint, test, and approval workflows (#2)
-- repository foundation (#1)
-- Add initial README for terraform-provider-sigma
+- auto-request approval for SecureFix-authored PRs (#28)
 
 ## [0.1.0] - 2026-07-24
 
