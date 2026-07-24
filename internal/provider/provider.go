@@ -93,6 +93,9 @@ func (p *SigmaProvider) DataSources(_ context.Context) []func() datasource.DataS
 		NewTeamsDataSource,
 		NewAccountTypesDataSource,
 		NewUserAttributesDataSource,
+		NewWorkspaceDataSource,
+		NewWorkspacesDataSource,
+		NewFilesDataSource,
 	}
 }
 
@@ -106,6 +109,12 @@ func (p *SigmaProvider) Resources(context.Context) []func() resource.Resource {
 		NewUserAttributeResource,
 		NewUserAttributeTeamAssignmentResource,
 		NewUserAttributeUserAssignmentResource,
+		NewWorkspaceResource,
+		NewWorkspaceGrantResource,
+		NewFileResource,
+		NewGrantResource,
+		NewWorkbookGrantResource,
+		NewReportGrantResource,
 	}
 }
 
