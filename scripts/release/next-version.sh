@@ -19,18 +19,17 @@ minor=${remainder%%.*}
 patch=${remainder#*.}
 
 if git rev-parse --verify --quiet "$base_tag^{commit}" >/dev/null; then
-  range=$base_tag..HEAD
+  subjects=$(git log "$base_tag"..HEAD --format='%s')
+  bodies=$(git log "$base_tag"..HEAD --format='%B%x00')
 else
-  range=HEAD
+  # No real tag yet: consider the full history reachable from HEAD.
+  subjects=$(git log HEAD --format='%s')
+  bodies=$(git log HEAD --format='%B%x00')
 fi
 
-commits=$(git log "$range" --format='%B%x1e')
-releasable=$(printf '%s\n' "$commits" | awk '
-  BEGIN { RS = "\036" }
+releasable=$(printf '%s\n' "$subjects" | awk '
   {
-    first = $0
-    sub(/\n.*/, "", first)
-    if (first != "" && first !~ /^chore\(release\):/) {
+    if ($0 != "" && $0 !~ /^chore\(release\):/) {
       found = 1
     }
   }
@@ -41,24 +40,29 @@ if [ -z "$releasable" ]; then
   exit 0
 fi
 
-breaking=$(printf '%s\n' "$commits" | awk '
-  BEGIN { RS = "\036" }
+breaking=$(printf '%s\n' "$subjects" | awk '
   {
-    first = $0
-    sub(/\n.*/, "", first)
-    if (first ~ /^[a-z]+(\([^)]*\))?!:/ || $0 ~ /(^|\n)BREAKING CHANGE:/) {
+    if ($0 ~ /^[a-z]+(\([^)]*\))?!:/) {
       found = 1
     }
   }
   END { if (found) print "yes" }
 ')
+if [ -z "$breaking" ]; then
+  breaking=$(printf '%s\0' "$bodies" | awk '
+    BEGIN { RS = "\0" }
+    {
+      if ($0 ~ /(^|\n)BREAKING CHANGE:/) {
+        found = 1
+      }
+    }
+    END { if (found) print "yes" }
+  ')
+fi
 
-feature=$(printf '%s\n' "$commits" | awk '
-  BEGIN { RS = "\036" }
+feature=$(printf '%s\n' "$subjects" | awk '
   {
-    first = $0
-    sub(/\n.*/, "", first)
-    if (first ~ /^feat(\([^)]*\))?:/) {
+    if ($0 ~ /^feat(\([^)]*\))?:/) {
       found = 1
     }
   }

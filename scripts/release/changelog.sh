@@ -11,9 +11,10 @@ if ! printf '%s\n' "$version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|
 fi
 
 if [ -n "$base_tag" ] && git rev-parse --verify --quiet "$base_tag^{commit}" >/dev/null; then
-  range=$base_tag..HEAD
+  subjects=$(git log "$base_tag"..HEAD --format='%s')
 else
-  range=HEAD
+  # No real tag yet: consider the full history reachable from HEAD.
+  subjects=$(git log HEAD --format='%s')
 fi
 
 work_dir=$(mktemp -d)
@@ -23,7 +24,8 @@ for group in features fixes documentation maintenance; do
   : >"$work_dir/$group"
 done
 
-git log "$range" --format='%s' | while IFS= read -r subject; do
+printf '%s\n' "$subjects" | while IFS= read -r subject; do
+  [ -n "$subject" ] || continue
   case "$subject" in
     chore\(release\):*)
       continue
