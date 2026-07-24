@@ -379,7 +379,8 @@ func (r *connectionGrantResource) Read(ctx context.Context, req resource.ReadReq
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
-func (r *connectionGrantResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {}
+func (r *connectionGrantResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {
+}
 func (r *connectionGrantResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state connectionGrantModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
