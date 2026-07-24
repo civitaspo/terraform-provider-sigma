@@ -109,6 +109,8 @@ func (p *SigmaProvider) DataSources(_ context.Context) []func() datasource.DataS
 		NewDatasetsDataSource,
 		NewTemplatesDataSource,
 		NewTagsDataSource,
+		NewTenantsDataSource,
+		NewDeploymentPoliciesDataSource,
 	}
 }
 
@@ -138,6 +140,10 @@ func (p *SigmaProvider) Resources(context.Context) []func() resource.Resource {
 		NewReportScheduleResource,
 		NewWorkbookEmbedResource,
 		NewTranslationResource,
+		NewTenantResource,
+		NewTenantDeploymentCapabilitiesResource,
+		NewDeploymentPolicyResource,
+		NewSourceSwapPolicyResource,
 	}
 }
 
