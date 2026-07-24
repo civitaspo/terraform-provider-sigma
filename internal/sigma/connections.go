@@ -66,7 +66,7 @@ func (c *Client) ListConnections(ctx context.Context) ([]Connection, error) {
 	return ListAll[Connection](ctx, c, "/v2/connections")
 }
 
-type Grant struct {
+type ConnectionGrant struct {
 	GrantID    string  `json:"grantId"`
 	InodeID    string  `json:"inodeId"`
 	MemberID   *string `json:"memberId"`
@@ -85,8 +85,8 @@ func (c *Client) CreateConnectionGrant(ctx context.Context, connectionID, member
 	return c.sendJSON(ctx, http.MethodPost, "/v2/connections/"+url.PathEscape(connectionID)+"/grants", payload, nil)
 }
 
-func (c *Client) ListConnectionGrants(ctx context.Context, connectionID string) ([]Grant, error) {
-	return ListAll[Grant](ctx, c, "/v2/connections/"+url.PathEscape(connectionID)+"/grants")
+func (c *Client) ListConnectionGrants(ctx context.Context, connectionID string) ([]ConnectionGrant, error) {
+	return ListAll[ConnectionGrant](ctx, c, "/v2/connections/"+url.PathEscape(connectionID)+"/grants")
 }
 
 func (c *Client) DeleteConnectionGrant(ctx context.Context, connectionID, grantID string) error {
@@ -104,8 +104,8 @@ func (c *Client) CreateConnectionPathGrant(ctx context.Context, pathID, memberID
 	return c.sendJSON(ctx, http.MethodPost, "/v2/connections/paths/"+url.PathEscape(pathID)+"/grants", payload, nil)
 }
 
-func (c *Client) ListConnectionPathGrants(ctx context.Context, pathID string) ([]Grant, error) {
-	return ListAll[Grant](ctx, c, "/v2/connections/paths/"+url.PathEscape(pathID)+"/grants")
+func (c *Client) ListConnectionPathGrants(ctx context.Context, pathID string) ([]ConnectionGrant, error) {
+	return ListAll[ConnectionGrant](ctx, c, "/v2/connections/paths/"+url.PathEscape(pathID)+"/grants")
 }
 
 func (c *Client) DeleteConnectionPathGrant(ctx context.Context, pathID, grantID string) error {

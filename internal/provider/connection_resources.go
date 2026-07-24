@@ -230,11 +230,11 @@ func (r *connectionResource) ImportState(ctx context.Context, req resource.Impor
 	importPassthrough(ctx, req, resp)
 }
 
-type grantResource struct {
+type connectionGrantResource struct {
 	configuredResource
 	path bool
 }
-type grantResourceModel struct {
+type connectionGrantResourceModel struct {
 	ID               types.String `tfsdk:"id"`
 	ConnectionID     types.String `tfsdk:"connection_id"`
 	ConnectionPathID types.String `tfsdk:"connection_path_id"`
@@ -243,21 +243,21 @@ type grantResourceModel struct {
 	Permission       types.String `tfsdk:"permission"`
 }
 
-func NewConnectionGrantResource() resource.Resource { return &grantResource{} }
+func NewConnectionGrantResource() resource.Resource { return &connectionGrantResource{} }
 func NewConnectionPathGrantResource() resource.Resource {
-	return &grantResource{path: true}
+	return &connectionGrantResource{path: true}
 }
-func (r *grantResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *connectionGrantResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	if r.path {
 		resp.TypeName = req.ProviderTypeName + "_connection_path_grant"
 	} else {
 		resp.TypeName = req.ProviderTypeName + "_connection_grant"
 	}
 }
-func (r *grantResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *connectionGrantResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.configure(req, resp)
 }
-func (r *grantResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *connectionGrantResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	attrs := map[string]schema.Attribute{
 		"id":                 schema.StringAttribute{Computed: true, MarkdownDescription: "Grant ID."},
@@ -276,7 +276,7 @@ func (r *grantResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 	}
 	resp.Schema.Attributes = attrs
 }
-func validateGrant(plan *grantResourceModel) error {
+func validateGrant(plan *connectionGrantResourceModel) error {
 	member, team := plan.MemberID.ValueString(), plan.TeamID.ValueString()
 	if (member == "") == (team == "") {
 		return fmt.Errorf("exactly one of member_id or team_id must be configured")
@@ -286,7 +286,7 @@ func validateGrant(plan *grantResourceModel) error {
 	}
 	return nil
 }
-func findGrant(values []sigma.Grant, memberID, teamID, permission, grantID string) *sigma.Grant {
+func findGrant(values []sigma.ConnectionGrant, memberID, teamID, permission, grantID string) *sigma.ConnectionGrant {
 	for i := range values {
 		value := &values[i]
 		if grantID != "" && value.GrantID == grantID {
@@ -300,14 +300,14 @@ func findGrant(values []sigma.Grant, memberID, teamID, permission, grantID strin
 	}
 	return nil
 }
-func (r *grantResource) list(ctx context.Context, state *grantResourceModel) ([]sigma.Grant, error) {
+func (r *connectionGrantResource) list(ctx context.Context, state *connectionGrantResourceModel) ([]sigma.ConnectionGrant, error) {
 	if r.path {
 		return r.client.ListConnectionPathGrants(ctx, state.ConnectionPathID.ValueString())
 	}
 	return r.client.ListConnectionGrants(ctx, state.ConnectionID.ValueString())
 }
-func (r *grantResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan grantResourceModel
+func (r *connectionGrantResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan connectionGrantResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -344,8 +344,8 @@ func (r *grantResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
-func (r *grantResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state grantResourceModel
+func (r *connectionGrantResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state connectionGrantResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -374,9 +374,10 @@ func (r *grantResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
-func (r *grantResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {}
-func (r *grantResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state grantResourceModel
+func (r *connectionGrantResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {
+}
+func (r *connectionGrantResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state connectionGrantResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -391,7 +392,7 @@ func (r *grantResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		resp.Diagnostics.AddError("Unable to delete Sigma grant", err.Error())
 	}
 }
-func (r *grantResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *connectionGrantResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	parts := strings.SplitN(req.ID, "/", 2)
 	if len(parts) != 2 {
 		resp.Diagnostics.AddError("Invalid import ID", "Use `connectionId/grantId` or `connectionPathId/grantId`.")
