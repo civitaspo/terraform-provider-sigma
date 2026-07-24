@@ -41,7 +41,7 @@ Useful tasks:
 - Securefix applies machine fixes (pinact, gofmt, tidy, docs drift) via `civitaspo/securefix-server`.
 - Approvals for trusted authors are requested through `csm-actions/approve-pr-action`.
 
-See [docs/securefix.md](docs/securefix.md) and [docs/releasing.md](docs/releasing.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/securefix.md](docs/securefix.md), and [docs/releasing.md](docs/releasing.md).
 
 ## Verification
 
