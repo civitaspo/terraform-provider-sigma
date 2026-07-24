@@ -25,6 +25,7 @@ builds:
         goarch: "386"
       - goos: darwin
         goarch: arm
+    binary: "{{ .ProjectName }}_v{{ .Version }}"
 
 archives:
   - formats:
