@@ -19,12 +19,11 @@ minor=${remainder%%.*}
 patch=${remainder#*.}
 
 if git rev-parse --verify --quiet "$base_tag^{commit}" >/dev/null; then
-  range=$base_tag..HEAD
+  commits=$(git log "$base_tag"..HEAD --format='%B%x1e')
 else
-  range=HEAD
+  # No real tag yet: consider the full history reachable from HEAD.
+  commits=$(git log HEAD --format='%B%x1e')
 fi
-
-commits=$(git log "$range" --format='%B%x1e')
 releasable=$(printf '%s\n' "$commits" | awk '
   BEGIN { RS = "\036" }
   {
