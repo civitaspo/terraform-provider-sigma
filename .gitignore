@@ -1,0 +1,46 @@
+# macOS
+.DS_Store
+
+# Local workspaces / scratch
+.work/
+.tmp/
+.vscode/
+.idea/
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.asc
+
+# Go
+/bin/
+/dist/
+/vendor/
+*.exe
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# Provider binary
+/terraform-provider-sigma
+/terraform-provider-sigma_*
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Mise
+# Keep mise.lock tracked; ignore local mise caches only
+.mise/
