@@ -136,6 +136,33 @@ func (client *Client) getJSON(ctx context.Context, path string, target any) erro
 	return nil
 }
 
+func (client *Client) sendJSON(ctx context.Context, method, path string, payload, target any) error {
+	var body []byte
+	var err error
+	if payload != nil {
+		body, err = json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("encode Sigma API request: %w", err)
+		}
+	}
+	response, err := client.do(ctx, method, path, body)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return decodeAPIError(response)
+	}
+	if target == nil || response.StatusCode == http.StatusNoContent {
+		_, _ = io.Copy(io.Discard, response.Body)
+		return nil
+	}
+	if err := json.NewDecoder(response.Body).Decode(target); err != nil && err != io.EOF {
+		return fmt.Errorf("decode Sigma API response: %w", err)
+	}
+	return nil
+}
+
 func isIdempotent(method string) bool {
 	switch method {
 	case http.MethodGet, http.MethodHead, http.MethodPut, http.MethodDelete, http.MethodOptions:

@@ -87,11 +87,26 @@ func (p *SigmaProvider) Configure(ctx context.Context, request provider.Configur
 func (p *SigmaProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewWhoamiDataSource,
+		NewMemberDataSource,
+		NewMembersDataSource,
+		NewTeamDataSource,
+		NewTeamsDataSource,
+		NewAccountTypesDataSource,
+		NewUserAttributesDataSource,
 	}
 }
 
 func (p *SigmaProvider) Resources(context.Context) []func() resource.Resource {
-	return nil
+	return []func() resource.Resource{
+		NewMemberResource,
+		NewTeamResource,
+		NewTeamMemberResource,
+		NewTeamMembersResource,
+		NewAccountTypeResource,
+		NewUserAttributeResource,
+		NewUserAttributeTeamAssignmentResource,
+		NewUserAttributeUserAssignmentResource,
+	}
 }
 
 func configuredValue(value types.String, environment, attribute string, diagnostics *diag.Diagnostics) string {
