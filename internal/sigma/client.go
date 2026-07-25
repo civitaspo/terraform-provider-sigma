@@ -71,6 +71,13 @@ func NewClient(baseURL, clientID, clientSecret string, opts ...Option) (*Client,
 	return client, nil
 }
 
+func (client *Client) invalidateAccessToken() {
+	client.auth.mu.Lock()
+	defer client.auth.mu.Unlock()
+	client.auth.accessToken = ""
+	client.auth.expiresAt = time.Time{}
+}
+
 func (client *Client) do(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
 	retryable := isIdempotent(method)
 	attempts := 1
@@ -78,6 +85,7 @@ func (client *Client) do(ctx context.Context, method, path string, body []byte) 
 		attempts += client.maxRetries
 	}
 
+	unauthorizedRetried := false
 	for attempt := 0; attempt < attempts; attempt++ {
 		token, err := client.accessToken(ctx)
 		if err != nil {
@@ -102,6 +110,16 @@ func (client *Client) do(ctx context.Context, method, path string, body []byte) 
 		response, err := client.httpClient.Do(request)
 		if err != nil {
 			return nil, fmt.Errorf("send Sigma API request: %w", err)
+		}
+		if response.StatusCode == http.StatusUnauthorized && !unauthorizedRetried {
+			unauthorizedRetried = true
+			_, _ = io.Copy(io.Discard, response.Body)
+			_ = response.Body.Close()
+			client.invalidateAccessToken()
+			// Retry once after invalidating the cached token. This does not consume
+			// idempotent retry budget so POST/PATCH also recover from revoked tokens.
+			attempt--
+			continue
 		}
 		if !shouldRetry(response.StatusCode) || attempt == attempts-1 {
 			return response, nil
