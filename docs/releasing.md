@@ -19,6 +19,8 @@ Scripts live under `scripts/release/`.
 - everything else releasable → patch
 - Only `chore(release):` commits since the last tag → nothing to release
 
+The Release PR workflow floors the base version on both the latest `v*` tag and `.release-version` on `main`, so a push that lands after a release merge but before Release Tag finishes cannot re-propose the version that just shipped.
+
 ## Local helpers
 
 ```bash

@@ -44,7 +44,19 @@ jobs:
         id: release
         run: |
           set -euo pipefail
+          # Prefer the newer of the latest git tag and .release-version on main.
+          # After a release merge, Release Tag may still be creating the tag while
+          # a later push already runs this workflow; without the shipped version
+          # floor, git describe falls back to v0.0.0 and re-proposes the same
+          # release (e.g. v0.1.0 again).
           latest_tag=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || printf '%s\n' v0.0.0)
+          if [ -f .release-version ]; then
+            shipped_tag="v$(tr -d '[:space:]' < .release-version)"
+            if printf '%s\n' "$shipped_tag" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+              latest_tag=$(printf '%s\n%s\n' "$latest_tag" "$shipped_tag" | sort -V | tail -n1)
+            fi
+          fi
+          echo "Using base tag: $latest_tag"
           version=$(scripts/release/next-version.sh "$latest_tag")
           if [ -z "$version" ]; then
             echo "No releasable commits found."
