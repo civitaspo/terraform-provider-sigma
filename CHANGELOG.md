@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- refuse SCIM member destroy and harden composite imports (#40)
 - preserve base_url path and harden list/404 handling (#39)
 - avoid attachment wipes and ambiguous tagged grant lookups (#38)
 - invalidate cached token and retry once on 401 (#37)
