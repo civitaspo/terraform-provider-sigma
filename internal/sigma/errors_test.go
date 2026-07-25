@@ -44,3 +44,47 @@ func TestAPIErrorAndIsNotFound(t *testing.T) {
 		t.Errorf("API error = %#v", apiError)
 	}
 }
+
+func TestIsNotFoundRejectsHTMLProxy404(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/auth/token", validTokenHandler)
+	mux.HandleFunc("/v2/whoami", func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusNotFound)
+		_, _ = response.Write([]byte("<!DOCTYPE html><html><body>Not Found</body></html>"))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "client-id", "client-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.Whoami(context.Background())
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if IsNotFound(err) {
+		t.Fatalf("IsNotFound(%v) = true for HTML proxy body", err)
+	}
+}
+
+func TestIsNotFoundRejectsUnknownErrorCode(t *testing.T) {
+	t.Parallel()
+
+	err := &APIError{StatusCode: http.StatusNotFound, Code: "route_not_configured", Message: "no upstream"}
+	if IsNotFound(err) {
+		t.Fatalf("IsNotFound(%v) = true for non-resource code", err)
+	}
+}
+
+func TestIsNotFoundAcceptsBare404Message(t *testing.T) {
+	t.Parallel()
+
+	// Sigma often returns 404 without a code; provider-synthesized lookups do the same.
+	err := &APIError{StatusCode: http.StatusNotFound, Message: "member not found"}
+	if !IsNotFound(err) {
+		t.Fatalf("IsNotFound(%v) = false", err)
+	}
+}

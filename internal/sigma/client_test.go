@@ -237,6 +237,52 @@ func TestClientRetriesOnceAfterUnauthorized(t *testing.T) {
 	}
 }
 
+func TestClientPreservesBaseURLPathPrefix(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/sigma/v2/auth/token", validTokenHandler)
+	mux.HandleFunc("/sigma/v2/whoami", func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/sigma/v2/whoami" {
+			t.Errorf("path = %q, want /sigma/v2/whoami", request.URL.Path)
+		}
+		_ = json.NewEncoder(response).Encode(map[string]string{
+			"userId":         "user-1",
+			"organizationId": "org-1",
+		})
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(server.URL+"/sigma", "client-id", "client-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, err := client.Whoami(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if identity.UserID != "user-1" {
+		t.Errorf("identity = %#v", identity)
+	}
+}
+
+func TestResolveEndpointJoinsBasePath(t *testing.T) {
+	t.Parallel()
+
+	client, err := NewClient("https://proxy.example.com/sigma", "client-id", "client-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	endpoint, err := client.resolveEndpoint("/v2/members?limit=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := endpoint.String(); got != "https://proxy.example.com/sigma/v2/members?limit=1" {
+		t.Errorf("endpoint = %q", got)
+	}
+}
+
 func validTokenHandler(response http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(response).Encode(map[string]any{
 		"access_token": "token",

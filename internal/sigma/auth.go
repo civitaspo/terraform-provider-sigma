@@ -44,7 +44,10 @@ func (client *Client) accessToken(ctx context.Context) (string, error) {
 		"client_id":     {client.clientID},
 		"client_secret": {client.clientSecret},
 	}
-	endpoint := client.baseURL.ResolveReference(&url.URL{Path: "/v2/auth/token"})
+	endpoint, err := client.resolveEndpoint("/v2/auth/token")
+	if err != nil {
+		return "", err
+	}
 	var token tokenResponse
 	for attempt := 0; attempt <= client.maxRetries; attempt++ {
 		if wait := tokenRequestGap - client.now().Sub(client.auth.lastRequest); !client.auth.lastRequest.IsZero() && wait > 0 {

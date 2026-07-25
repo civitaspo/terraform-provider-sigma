@@ -145,7 +145,8 @@ type AccountTypePermission struct {
 func (c *Client) ListAccountTypes(ctx context.Context) ([]AccountType, error) {
 	var all []AccountType
 	p := "/v2/accountTypes"
-	for {
+	seen := map[string]struct{}{}
+	for pageNum := 0; pageNum < maxListPages; pageNum++ {
 		var page struct {
 			Entries []AccountType `json:"entries"`
 			Next    string        `json:"nextPageToken"`
@@ -157,8 +158,13 @@ func (c *Client) ListAccountTypes(ctx context.Context) ([]AccountType, error) {
 		if page.Next == "" {
 			return all, nil
 		}
+		if _, ok := seen[page.Next]; ok {
+			return nil, fmt.Errorf("sigma pagination cycle detected: nextPageToken %q repeated", page.Next)
+		}
+		seen[page.Next] = struct{}{}
 		p = "/v2/accountTypes?pageToken=" + url.QueryEscape(page.Next)
 	}
+	return nil, fmt.Errorf("sigma pagination exceeded %d pages for /v2/accountTypes", maxListPages)
 }
 func (c *Client) CreateAccountType(ctx context.Context, n, d string, p []string) (*AccountType, error) {
 	var v AccountType

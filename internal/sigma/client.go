@@ -92,11 +92,10 @@ func (client *Client) do(ctx context.Context, method, path string, body []byte) 
 			return nil, err
 		}
 
-		reference, err := url.Parse(path)
+		endpoint, err := client.resolveEndpoint(path)
 		if err != nil {
-			return nil, fmt.Errorf("parse Sigma API path: %w", err)
+			return nil, err
 		}
-		endpoint := client.baseURL.ResolveReference(reference)
 		request, err := http.NewRequestWithContext(ctx, method, endpoint.String(), bytes.NewReader(body))
 		if err != nil {
 			return nil, fmt.Errorf("create Sigma API request: %w", err)
@@ -136,22 +135,56 @@ func (client *Client) do(ctx context.Context, method, path string, body []byte) 
 	panic("unreachable")
 }
 
+// resolveEndpoint joins an API path with the configured base URL, preserving any
+// path prefix on base_url (for reverse proxies such as https://proxy.example/sigma).
+func (client *Client) resolveEndpoint(rawURL string) (*url.URL, error) {
+	reference, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse Sigma API path: %w", err)
+	}
+	if reference.IsAbs() {
+		return reference, nil
+	}
+
+	base := *client.baseURL
+	if base.Path == "" {
+		base.Path = "/"
+	} else if !strings.HasSuffix(base.Path, "/") {
+		base.Path += "/"
+	}
+	// Root-absolute paths would replace base.Path; treat them as relative to the prefix.
+	reference.Path = strings.TrimPrefix(reference.Path, "/")
+	return base.ResolveReference(reference), nil
+}
+
 func (client *Client) getJSON(ctx context.Context, path string, target any) error {
-	response, err := client.do(ctx, http.MethodGet, path, nil)
+	body, err := client.getRaw(ctx, path)
 	if err != nil {
 		return err
+	}
+	if err := json.Unmarshal(body, target); err != nil {
+		return fmt.Errorf("decode Sigma API response: %w", err)
+	}
+	return nil
+}
+
+func (client *Client) getRaw(ctx context.Context, path string) ([]byte, error) {
+	response, err := client.do(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
 	}
 	defer func() {
 		_ = response.Body.Close()
 	}()
 
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return decodeAPIError(response)
+		return nil, decodeAPIError(response)
 	}
-	if err := json.NewDecoder(response.Body).Decode(target); err != nil {
-		return fmt.Errorf("decode Sigma API response: %w", err)
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read Sigma API response: %w", err)
 	}
-	return nil
+	return body, nil
 }
 
 func (client *Client) sendJSON(ctx context.Context, method, path string, payload, target any) error {
