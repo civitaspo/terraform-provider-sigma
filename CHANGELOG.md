@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- disable dependency dashboard (#33)
 - update jdx/mise-action action to v4.2.3 (#19)
 - update dependency jdx/mise to v2026.7.13 (#13)
 - update actions/checkout action to v7 (#20)
