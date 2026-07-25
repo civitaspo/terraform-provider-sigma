@@ -44,3 +44,11 @@ jobs:
           app_private_key: ${{ secrets.SECUREFIX_CLIENT_PRIVATE_KEY }}
           server_repository_name: securefix-server
           pull_request_number: ${{ github.event.pull_request.number || github.event.issue.number }}
+          # Client validates before creating the server label. Defaults are only
+          # renovate/dependabot, so trusted human/bot committers must be listed
+          # here as well (must stay in sync with securefix-server approve.yml).
+          allowed_committers: |
+            civitaspo
+            civitaspo-securefix-server[bot]
+            renovate[bot]
+            dependabot[bot]
