@@ -111,6 +111,150 @@ resource "sigma_connection" "test" {
 	}))
 }
 
+func TestConnectionResourceUpdateWithCredentialsVersionBump(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	connection := map[string]any{
+		"connectionId": "connection-1", "name": "warehouse", "type": "postgres",
+		"description": map[string]any{}, "poolSizes": map[string]any{}, "timeoutSecs": float64(30),
+		"friendlyName": true,
+	}
+	var putBodies []map[string]any
+	mock.Mux.HandleFunc("/v2/connections", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method != http.MethodPost {
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+			return
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(connection)
+	})
+	mock.Mux.HandleFunc("/v2/connections/connection-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		switch request.Method {
+		case http.MethodGet:
+			_ = json.NewEncoder(response).Encode(connection)
+		case http.MethodPut:
+			var body map[string]any
+			_ = json.NewDecoder(request.Body).Decode(&body)
+			putBodies = append(putBodies, body)
+			if body["name"] != "warehouse" {
+				t.Errorf("name = %#v", body["name"])
+			}
+			if body["timeoutSecs"] != float64(60) {
+				t.Errorf("timeoutSecs = %#v", body["timeoutSecs"])
+			}
+			details, _ := body["details"].(map[string]any)
+			if details["password"] != "rotated-secret" {
+				t.Errorf("credentials missing from PUT details: %#v", details)
+			}
+			connection["timeoutSecs"] = float64(60)
+			_ = json.NewEncoder(response).Encode(connection)
+		case http.MethodDelete:
+			_ = json.NewEncoder(response).Encode(map[string]any{})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	mock.Mux.HandleFunc("/v2/connections/connection-1/test", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(map[string]string{"read": "SUCCESS", "write": "SUCCESS"})
+	})
+
+	createConfig := connectionProviderConfig(mock) + `
+resource "sigma_connection" "test" {
+  name = "warehouse"
+  details_json = jsonencode({
+    type     = "postgres"
+    host     = "db.example.com"
+    database = "analytics"
+    user     = "sigma"
+  })
+  credentials_wo         = jsonencode({ password = "secret" })
+  credentials_wo_version = 1
+  timeout_secs           = 30
+  use_friendly_names     = true
+}
+`
+	updateConfig := connectionProviderConfig(mock) + `
+resource "sigma_connection" "test" {
+  name = "warehouse"
+  details_json = jsonencode({
+    type     = "postgres"
+    host     = "db.example.com"
+    database = "analytics"
+    user     = "sigma"
+  })
+  credentials_wo         = jsonencode({ password = "rotated-secret" })
+  credentials_wo_version = 2
+  timeout_secs           = 60
+  use_friendly_names     = true
+}
+`
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{
+		{Config: createConfig},
+		{
+			Config: updateConfig,
+			Check:  resource.TestCheckResourceAttr("sigma_connection.test", "timeout_secs", "60"),
+		},
+	}))
+	if len(putBodies) != 1 {
+		t.Fatalf("expected 1 PUT with credentials version bump, got %d", len(putBodies))
+	}
+}
+
+func TestConnectionGrantResourceImportCompositeID(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	mock.Mux.HandleFunc("/v2/connections/connection-1/grants", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		switch request.Method {
+		case http.MethodPost:
+			_ = json.NewEncoder(response).Encode(map[string]any{})
+		case http.MethodGet:
+			_ = json.NewEncoder(response).Encode(map[string]any{
+				"entries": []map[string]any{{
+					"grantId": "grant-1", "inodeId": "connection-1", "memberId": "member-1",
+					"teamId": nil, "permission": "usage",
+				}},
+				"nextPage": nil,
+			})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	mock.Mux.HandleFunc("/v2/connections/connection-1/grants/grant-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method != http.MethodDelete {
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+			return
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(map[string]any{})
+	})
+
+	config := connectionProviderConfig(mock) + `
+resource "sigma_connection_grant" "test" {
+  connection_id = "connection-1"
+  member_id     = "member-1"
+  permission    = "usage"
+}
+`
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{
+		{
+			Config: config,
+			Check:  resource.TestCheckResourceAttr("sigma_connection_grant.test", "id", "grant-1"),
+		},
+		{
+			ResourceName:      "sigma_connection_grant.test",
+			ImportState:       true,
+			ImportStateId:     "connection-1/grant-1",
+			ImportStateVerify: true,
+		},
+	}))
+}
+
 func TestConnectionResourceUpdateWithoutCredentialsVersionFails(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
 	putCalls := 0

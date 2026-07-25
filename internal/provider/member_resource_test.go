@@ -99,3 +99,98 @@ resource "sigma_member" "test" {
 		},
 	})
 }
+
+func TestMemberResourceUpdatePatchOmitsNullFields(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	member := map[string]any{
+		"memberId": "member-1", "organizationId": "org-1", "email": "ada@example.com",
+		"firstName": "Ada", "lastName": "Lovelace", "memberType": "Creator", "userKind": "internal",
+		"isArchived": false, "isInactive": false,
+	}
+	var patchBodies []map[string]any
+	mock.Mux.HandleFunc("/v2/members", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method != http.MethodPost {
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+			return
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(member)
+	})
+	mock.Mux.HandleFunc("/v2/members/member-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		switch request.Method {
+		case http.MethodGet:
+			_ = json.NewEncoder(response).Encode(member)
+		case http.MethodPatch:
+			var payload map[string]any
+			_ = json.NewDecoder(request.Body).Decode(&payload)
+			patchBodies = append(patchBodies, payload)
+			if first, ok := payload["firstName"].(string); ok {
+				member["firstName"] = first
+			}
+			if memberType, ok := payload["memberType"].(string); ok {
+				member["memberType"] = memberType
+			}
+			_ = json.NewEncoder(response).Encode(member)
+		case http.MethodDelete:
+			_ = json.NewEncoder(response).Encode(map[string]any{})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+
+	providerConfig := `
+provider "sigma" {
+  base_url      = "` + mock.URL() + `"
+  client_id     = "` + mock.ClientID + `"
+  client_secret = "` + mock.ClientSecret + `"
+}
+`
+	createConfig := providerConfig + `
+resource "sigma_member" "test" {
+  email      = "ada@example.com"
+  first_name = "Ada"
+  last_name  = "Lovelace"
+}
+`
+	updateConfig := providerConfig + `
+resource "sigma_member" "test" {
+  email       = "ada@example.com"
+  first_name  = "Augusta"
+  last_name   = "Lovelace"
+  member_type = "Explorer"
+  user_kind   = null
+}
+`
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
+			"sigma": providerserver.NewProtocol6WithError(sigmaprovider.New("test")()),
+		},
+		Steps: []resource.TestStep{
+			{Config: createConfig},
+			{
+				Config: updateConfig,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("sigma_member.test", "first_name", "Augusta"),
+					resource.TestCheckResourceAttr("sigma_member.test", "member_type", "Explorer"),
+				),
+			},
+		},
+	})
+
+	if len(patchBodies) != 1 {
+		t.Fatalf("expected 1 PATCH, got %d", len(patchBodies))
+	}
+	payload := patchBodies[0]
+	if payload["firstName"] != "Augusta" || payload["lastName"] != "Lovelace" || payload["email"] != "ada@example.com" {
+		t.Fatalf("PATCH identity fields = %#v", payload)
+	}
+	if payload["memberType"] != "Explorer" {
+		t.Fatalf("memberType = %#v, want Explorer", payload["memberType"])
+	}
+	if _, ok := payload["userKind"]; ok {
+		t.Fatalf("userKind present in PATCH body, want omitted: %#v", payload)
+	}
+}
