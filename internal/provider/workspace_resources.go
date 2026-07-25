@@ -357,7 +357,7 @@ func (r *grantResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 		"member_id":       schema.StringAttribute{Optional: true, PlanModifiers: replace, MarkdownDescription: "Member ID receiving the grant. Exactly one of `member_id` or `team_id` must be set."},
 		"team_id":         schema.StringAttribute{Optional: true, PlanModifiers: replace, MarkdownDescription: "Team ID receiving the grant. Exactly one of `member_id` or `team_id` must be set."},
 		"permission":      schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: grantPermissionDescription(r.kind)},
-		"tag_id":          schema.StringAttribute{Optional: true, PlanModifiers: replace, MarkdownDescription: "Optional version tag ID. Supported by generic, workbook, and report grants."},
+		"tag_id":          schema.StringAttribute{Optional: true, PlanModifiers: replace, MarkdownDescription: "Optional version tag ID. Supported by generic, workbook, and report grants. Changing this forces a new resource. Tagged workbook/report grants are created through the generic grants API so Terraform receives a stable grant ID."},
 		"organization_id": schema.StringAttribute{Computed: true, MarkdownDescription: "Organization ID."},
 		"inode_type":      schema.StringAttribute{Computed: true, MarkdownDescription: "Inode type."},
 		"created_by":      schema.StringAttribute{Computed: true, MarkdownDescription: "ID of the member who created the grant."},
@@ -443,17 +443,27 @@ func (r *grantResource) Create(ctx context.Context, request resource.CreateReque
 		return
 	}
 	grantee := sigma.Grantee{MemberID: plan.MemberID.ValueString(), TeamID: plan.TeamID.ValueString()}
+	tagID := plan.TagID.ValueString()
 	var value *sigma.Grant
 	var err error
 	switch r.kind {
 	case "generic":
 		value, err = r.client.CreateGrant(ctx, sigma.CreateGrantInput{
-			Grantee: grantee, Permission: plan.Permission.ValueString(), InodeID: plan.InodeID.ValueString(), TagID: plan.TagID.ValueString(),
+			Grantee: grantee, Permission: plan.Permission.ValueString(), InodeID: plan.InodeID.ValueString(), TagID: tagID,
 		})
 	case "workspace":
 		err = r.client.CreateWorkspaceGrant(ctx, plan.InodeID.ValueString(), grantee, plan.Permission.ValueString())
 	case "workbooks", "reports":
-		err = r.client.CreateDocumentGrant(ctx, r.kind, plan.InodeID.ValueString(), grantee, plan.Permission.ValueString(), plan.TagID.ValueString())
+		// Prefer the generic grants API when a version tag is set so we receive the
+		// created grant ID. List responses do not reliably include tagId, so
+		// post-create lookups by grantee+permission alone are ambiguous.
+		if tagID != "" {
+			value, err = r.client.CreateGrant(ctx, sigma.CreateGrantInput{
+				Grantee: grantee, Permission: plan.Permission.ValueString(), InodeID: plan.InodeID.ValueString(), TagID: tagID,
+			})
+		} else {
+			err = r.client.CreateDocumentGrant(ctx, r.kind, plan.InodeID.ValueString(), grantee, plan.Permission.ValueString(), tagID)
+		}
 	}
 	if err != nil {
 		response.Diagnostics.AddError("Unable to create Sigma grant", err.Error())
@@ -528,20 +538,52 @@ func (r *grantResource) findGrant(ctx context.Context, model *grantModel, grantI
 	if err != nil {
 		return nil, err
 	}
-	for i := range values {
-		if grantID != "" && values[i].GrantID == grantID {
-			return &values[i], nil
+	if grantID != "" {
+		for i := range values {
+			if values[i].GrantID == grantID {
+				return &values[i], nil
+			}
 		}
-		if grantID == "" && grantMatches(&values[i], model) {
-			return &values[i], nil
+		return nil, &sigma.APIError{StatusCode: 404, Message: "grant not found"}
+	}
+	var matches []sigma.Grant
+	for i := range values {
+		if grantMatches(&values[i], model) {
+			matches = append(matches, values[i])
 		}
 	}
-	return nil, &sigma.APIError{StatusCode: 404, Message: "grant not found"}
+	switch len(matches) {
+	case 1:
+		return &matches[0], nil
+	case 0:
+		return nil, &sigma.APIError{StatusCode: 404, Message: "grant not found"}
+	default:
+		return nil, fmt.Errorf("multiple grants matched inode/grantee/permission; set a unique permission or import by grant ID (tag-scoped grants may not be distinguishable in list responses)")
+	}
 }
 
 func grantMatches(value *sigma.Grant, model *grantModel) bool {
 	if value.Permission != model.Permission.ValueString() {
 		return false
+	}
+	desiredTag := ""
+	if !model.TagID.IsNull() && !model.TagID.IsUnknown() {
+		desiredTag = model.TagID.ValueString()
+	}
+	actualTag := ""
+	if value.TagID != nil {
+		actualTag = *value.TagID
+	}
+	// When the API returns tagId, require an exact match. When it omits tagId
+	// (current documented list schema), only accept untagged desired grants so
+	// tag-scoped grants are not selected by accident.
+	if actualTag != "" || desiredTag != "" {
+		if actualTag == "" && desiredTag != "" {
+			return false
+		}
+		if actualTag != desiredTag {
+			return false
+		}
 	}
 	if !model.MemberID.IsNull() && model.MemberID.ValueString() != "" {
 		return value.MemberID != nil && *value.MemberID == model.MemberID.ValueString()
@@ -564,11 +606,20 @@ func (r *grantResource) ImportState(ctx context.Context, request resource.Import
 }
 
 func setGrant(state *grantModel, value *sigma.Grant) {
+	priorTag := state.TagID
 	state.ID = types.StringValue(value.GrantID)
 	state.InodeID = types.StringValue(value.InodeID)
 	state.MemberID = nullableString(value.MemberID)
 	state.TeamID = nullableString(value.TeamID)
 	state.Permission = types.StringValue(value.Permission)
+	if value.TagID != nil {
+		state.TagID = types.StringValue(*value.TagID)
+	} else if !priorTag.IsNull() && !priorTag.IsUnknown() {
+		// List/get schemas may omit tagId; keep the configured tag identity in state.
+		state.TagID = priorTag
+	} else {
+		state.TagID = types.StringNull()
+	}
 	state.OrganizationID = types.StringValue(value.OrganizationID)
 	state.InodeType = types.StringValue(value.InodeType)
 	state.CreatedBy = types.StringValue(value.CreatedBy)

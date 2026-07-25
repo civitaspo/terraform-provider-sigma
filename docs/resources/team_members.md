@@ -3,12 +3,12 @@
 page_title: "sigma_team_members Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Authoritatively manages all members of a Sigma team. Do not use with sigma_team_member for the same team.
+  Authoritatively manages all members of a Sigma team. On apply, members not listed in member_ids are removed; on destroy, every member currently in state is removed. Do not use with sigma_team_member for the same team.
 ---
 
 # sigma_team_members (Resource)
 
-Authoritatively manages all members of a Sigma team. Do not use with `sigma_team_member` for the same team.
+Authoritatively manages all members of a Sigma team. On apply, members not listed in `member_ids` are removed; on destroy, every member currently in state is removed. Do not use with `sigma_team_member` for the same team.
 
 ## Example Usage
 
@@ -24,7 +24,7 @@ resource "sigma_team_members" "example" {
 
 ### Required
 
-- `member_ids` (Set of String) Authoritative set of member IDs.
+- `member_ids` (Set of String) Authoritative set of member IDs. Members absent from this set are removed from the team.
 - `team_id` (String) Team ID.
 
 ### Read-Only

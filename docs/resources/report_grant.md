@@ -31,7 +31,7 @@ resource "sigma_report_grant" "example" {
 ### Optional
 
 - `member_id` (String) Member ID receiving the grant. Exactly one of `member_id` or `team_id` must be set.
-- `tag_id` (String) Optional version tag ID. Supported by generic, workbook, and report grants.
+- `tag_id` (String) Optional version tag ID. Supported by generic, workbook, and report grants. Changing this forces a new resource. Tagged workbook/report grants are created through the generic grants API so Terraform receives a stable grant ID.
 - `team_id` (String) Team ID receiving the grant. Exactly one of `member_id` or `team_id` must be set.
 
 ### Read-Only
