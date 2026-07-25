@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.1.1] - 2026-07-25
+
+### Bug Fixes
+
+- floor Release PR base on shipped .release-version (#29)
+
+### Maintenance
+
+- auto-request approval for SecureFix-authored PRs (#28)
+
 ## [0.1.0] - 2026-07-24
 
 ### Features
