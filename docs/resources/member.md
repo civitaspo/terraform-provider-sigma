@@ -3,12 +3,12 @@
 page_title: "sigma_member Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users.
+  Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible.
 ---
 
 # sigma_member (Resource)
 
-Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users.
+Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible.
 
 ## Example Usage
 

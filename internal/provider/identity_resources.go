@@ -56,7 +56,7 @@ func (r *memberResource) Configure(_ context.Context, req resource.ConfigureRequ
 }
 func (r *memberResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users.",
+		MarkdownDescription: "Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible.",
 		Attributes: map[string]schema.Attribute{
 			"id":              schema.StringAttribute{Computed: true, MarkdownDescription: "Member ID."},
 			"email":           schema.StringAttribute{Required: true, MarkdownDescription: "Member email address."},
@@ -70,6 +70,19 @@ func (r *memberResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		},
 	}
 }
+func memberUpdateInput(plan *memberModel) sigma.UpdateMemberInput {
+	first, last, email := plan.FirstName.ValueString(), plan.LastName.ValueString(), plan.Email.ValueString()
+	input := sigma.UpdateMemberInput{FirstName: &first, LastName: &last, Email: &email}
+	if !plan.MemberType.IsNull() && !plan.MemberType.IsUnknown() {
+		memberType := plan.MemberType.ValueString()
+		input.MemberType = &memberType
+	}
+	if !plan.UserKind.IsNull() && !plan.UserKind.IsUnknown() {
+		userKind := plan.UserKind.ValueString()
+		input.UserKind = &userKind
+	}
+	return input
+}
 func (r *memberResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan memberModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -81,8 +94,23 @@ func (r *memberResource) Create(ctx context.Context, req resource.CreateRequest,
 		MemberType: plan.MemberType.ValueString(), UserKind: plan.UserKind.ValueString(),
 	})
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to create Sigma member", err.Error())
-		return
+		existing, findErr := r.client.FindMemberByEmail(ctx, plan.Email.ValueString(), true)
+		if findErr != nil || existing == nil || !existing.IsArchived {
+			resp.Diagnostics.AddError("Unable to create Sigma member", err.Error())
+			return
+		}
+		input := memberUpdateInput(&plan)
+		archived := false
+		input.IsArchived = &archived
+		reactivated, reactivateErr := r.client.UpdateMember(ctx, existing.MemberID, input)
+		if reactivateErr != nil {
+			resp.Diagnostics.AddError(
+				"Unable to reactivate archived Sigma member",
+				fmt.Sprintf("Create failed (%s); reactivating archived member %s also failed: %s", err.Error(), existing.MemberID, reactivateErr.Error()),
+			)
+			return
+		}
+		member = reactivated
 	}
 	setMember(&plan, member)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -108,13 +136,12 @@ func (r *memberResource) Read(ctx context.Context, req resource.ReadRequest, res
 func (r *memberResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan memberModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	var state memberModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	first, last, email, memberType, userKind := plan.FirstName.ValueString(), plan.LastName.ValueString(), plan.Email.ValueString(), plan.MemberType.ValueString(), plan.UserKind.ValueString()
-	member, err := r.client.UpdateMember(ctx, plan.ID.ValueString(), sigma.UpdateMemberInput{
-		FirstName: &first, LastName: &last, Email: &email, MemberType: &memberType, UserKind: &userKind,
-	})
+	member, err := r.client.UpdateMember(ctx, state.ID.ValueString(), memberUpdateInput(&plan))
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Sigma member", err.Error())
 		return
