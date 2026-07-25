@@ -261,11 +261,13 @@ func (r *teamResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 func (r *teamResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan teamModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	var state teamModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	name, description, visibility := plan.Name.ValueString(), plan.Description.ValueString(), plan.Visibility.ValueString()
-	team, err := r.client.UpdateTeam(ctx, plan.ID.ValueString(), sigma.UpdateTeamInput{Name: &name, Description: &description, Visibility: &visibility})
+	team, err := r.client.UpdateTeam(ctx, state.ID.ValueString(), sigma.UpdateTeamInput{Name: &name, Description: &description, Visibility: &visibility})
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Sigma team", err.Error())
 		return
