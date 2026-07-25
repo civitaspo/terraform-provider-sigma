@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type Member struct {
@@ -31,6 +32,7 @@ type UpdateMemberInput struct {
 	Email      *string `json:"email,omitempty"`
 	MemberType *string `json:"memberType,omitempty"`
 	UserKind   *string `json:"userKind,omitempty"`
+	IsArchived *bool   `json:"isArchived,omitempty"`
 }
 
 func (c *Client) CreateMember(ctx context.Context, in CreateMemberInput) (*Member, error) {
@@ -53,6 +55,25 @@ func (c *Client) DeleteMember(ctx context.Context, id string) error {
 }
 func (c *Client) ListMembers(ctx context.Context) ([]Member, error) {
 	return ListAll[Member](ctx, c, "/v2/members")
+}
+
+// FindMemberByEmail looks up a member by email. When includeArchived is true, archived
+// members are included so callers can reactivate deactivated accounts.
+func (c *Client) FindMemberByEmail(ctx context.Context, email string, includeArchived bool) (*Member, error) {
+	path := "/v2/members?email=" + url.QueryEscape(email)
+	if includeArchived {
+		path += "&includeArchived=true"
+	}
+	members, err := ListAll[Member](ctx, c, path)
+	if err != nil {
+		return nil, err
+	}
+	for i := range members {
+		if strings.EqualFold(members[i].Email, email) {
+			return &members[i], nil
+		}
+	}
+	return nil, &APIError{StatusCode: http.StatusNotFound, Message: "member not found"}
 }
 
 type Team struct {
