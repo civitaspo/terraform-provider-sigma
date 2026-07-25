@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pass allowed_committers on Approve Request client (#32)
 - floor Release PR base on shipped .release-version (#29)
 
+### Documentation
+
+- note tag protection and immutable releases (#41)
+
 ### Maintenance
 
 - include dependabot in Approve Request actors (#34)
