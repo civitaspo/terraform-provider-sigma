@@ -27,7 +27,7 @@ The `Lint` workflow runs fixers (`pinact`, `disable-checkout-persist-credentials
 
 ### Auto-approval
 
-The `Approve Request` workflow asks the server to approve pull requests authored by `civitaspo`, `renovate[bot]`, or `civitaspo-securefix-server[bot]` (and on `/approve` comments from `civitaspo`). The server validates that all commits are signed and that committers are in an allowlist, then approves with a machine-user fine-grained PAT.
+The `Approve Request` workflow asks the server to approve pull requests authored by `civitaspo`, `renovate[bot]`, or `civitaspo-securefix-server[bot]` (and on `/approve` comments from `civitaspo`). Both the client and server actions validate that all commits are signed and that committers are in `allowed_committers` (defaults are only Renovate/Dependabot; this repository passes `civitaspo` and `civitaspo-securefix-server[bot]` as well). When client validation passes, it creates a label on `securefix-server`; the server then approves with the machine-user PAT (`civitaspo-bot`).
 
 ### Release
 
