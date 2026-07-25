@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- enrich Terraform Registry provider overview (#45)
 - note tag protection and immutable releases (#41)
 
 ### Maintenance
