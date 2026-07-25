@@ -27,7 +27,13 @@ The `Lint` workflow runs fixers (`pinact`, `disable-checkout-persist-credentials
 
 ### Auto-approval
 
-The `Approve Request` workflow asks the server to approve pull requests authored by `civitaspo`, `renovate[bot]`, or `civitaspo-securefix-server[bot]` (and on `/approve` comments from `civitaspo`). Both the client and server actions validate that all commits are signed and that committers are in `allowed_committers` (defaults are only Renovate/Dependabot; this repository passes `civitaspo` and `civitaspo-securefix-server[bot]` as well). When client validation passes, it creates a label on `securefix-server`; the server then approves with the machine-user PAT (`civitaspo-bot`).
+The `Approve Request` workflow asks the server to approve pull requests authored by `civitaspo`, `renovate[bot]`, `dependabot[bot]`, or `civitaspo-securefix-server[bot]` (and on `/approve` comments from `civitaspo`). Both the client and server actions validate that all commits are signed and that committers are in `allowed_committers` (defaults are only Renovate/Dependabot; this repository also passes `civitaspo` and `civitaspo-securefix-server[bot]`). When client validation passes, it creates a label on `securefix-server`; the server then approves with the machine-user PAT (`civitaspo-bot`).
+
+## Dependency updates
+
+- **Version updates:** [Renovate](https://docs.renovatebot.com/) (`renovate.json5`) owns Go modules, GitHub Actions, and mise tooling. Non-major updates automerge when checks pass.
+- **Dependabot version updates:** Not configured. There is no `.github/dependabot.yml`, so Dependabot does not open routine version-bump PRs (those would duplicate Renovate).
+- **Dependabot security updates:** May remain enabled via the GitHub repository security settings (`vulnerability-alerts` / automated security fixes). Those PRs are eligible for Approve Request because `dependabot[bot]` is listed in the workflow `if:` and in `allowed_committers`.
 
 ### Release
 
