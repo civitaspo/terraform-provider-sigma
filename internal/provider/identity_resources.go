@@ -292,7 +292,7 @@ func (r *teamMemberResource) Configure(_ context.Context, req resource.Configure
 func (r *teamMemberResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages one member of a Sigma team. Do not use with `sigma_team_members` for the same team.",
+		MarkdownDescription: "Manages one member of a Sigma team. Do not use with `sigma_team_members` for the same team; the authoritative resource will remove members managed elsewhere.",
 		Attributes: map[string]schema.Attribute{
 			"id":            schema.StringAttribute{Computed: true, MarkdownDescription: "Composite ID in `teamId/memberId` form."},
 			"team_id":       schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Team ID."},
@@ -378,11 +378,11 @@ func (r *teamMembersResource) Configure(_ context.Context, req resource.Configur
 }
 func (r *teamMembersResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Authoritatively manages all members of a Sigma team. Do not use with `sigma_team_member` for the same team.",
+		MarkdownDescription: "Authoritatively manages all members of a Sigma team. On apply, members not listed in `member_ids` are removed; on destroy, every member currently in state is removed. Do not use with `sigma_team_member` for the same team.",
 		Attributes: map[string]schema.Attribute{
 			"id":         schema.StringAttribute{Computed: true, MarkdownDescription: "Team ID."},
 			"team_id":    schema.StringAttribute{Required: true, PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}, MarkdownDescription: "Team ID."},
-			"member_ids": schema.SetAttribute{Required: true, ElementType: types.StringType, MarkdownDescription: "Authoritative set of member IDs."},
+			"member_ids": schema.SetAttribute{Required: true, ElementType: types.StringType, MarkdownDescription: "Authoritative set of member IDs. Members absent from this set are removed from the team."},
 		},
 	}
 }

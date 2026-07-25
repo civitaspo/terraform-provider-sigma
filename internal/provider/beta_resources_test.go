@@ -243,6 +243,69 @@ resource "sigma_deployment_policy" "test" {
 	}}))
 }
 
+func TestDeploymentPolicyResourceOmitsAttachmentSyncWhenNull(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	policy := map[string]any{
+		"deploymentPolicyId": "policy-1", "name": "Starter", "nameInTenant": "Starter",
+		"versionTagId": "tag-1", "sourceSwapPolicies": []string{}, "copyInputTableData": false,
+	}
+	inodes := []string{"inode-existing"}
+	tenants := []string{"tenant-existing"}
+	deleteCalls := 0
+	mock.Mux.HandleFunc("/v2/deploymentPolicies", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(map[string]any{"deploymentPolicyId": "policy-1"})
+	})
+	mock.Mux.HandleFunc("/v2/deploymentPolicies/policy-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		switch request.Method {
+		case http.MethodGet, http.MethodPatch:
+			_ = json.NewEncoder(response).Encode(policy)
+		case http.MethodDelete:
+			_ = json.NewEncoder(response).Encode(map[string]any{})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	mock.Mux.HandleFunc("/v2/deploymentPolicies/policy-1/files", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		entries := make([]any, 0, len(inodes))
+		for _, id := range inodes {
+			entries = append(entries, map[string]any{"inodeId": id})
+		}
+		_ = json.NewEncoder(response).Encode(map[string]any{"entries": entries})
+	})
+	mock.Mux.HandleFunc("/v2/deploymentPolicies/policy-1/files/", func(response http.ResponseWriter, request *http.Request) {
+		deleteCalls++
+		http.Error(response, "should not delete unmanaged attachments", http.StatusInternalServerError)
+	})
+	mock.Mux.HandleFunc("/v2/deploymentPolicies/policy-1/tenants", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(map[string]any{"entries": tenants})
+	})
+	mock.Mux.HandleFunc("/v2/deploymentPolicies/policy-1/tenants/", func(response http.ResponseWriter, request *http.Request) {
+		deleteCalls++
+		http.Error(response, "should not delete unmanaged attachments", http.StatusInternalServerError)
+	})
+	config := betaProviderConfig(mock) + `
+resource "sigma_deployment_policy" "test" {
+  name           = "Starter"
+  version_tag_id = "tag-1"
+}
+`
+	resource.UnitTest(t, betaTestCase([]resource.TestStep{{
+		Config: config,
+		Check:  resource.TestCheckResourceAttr("sigma_deployment_policy.test", "id", "policy-1"),
+	}}))
+	if deleteCalls != 0 {
+		t.Fatalf("unexpected attachment delete calls: %d", deleteCalls)
+	}
+}
+
 func TestSourceSwapPolicyResource(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
 	policy := map[string]any{

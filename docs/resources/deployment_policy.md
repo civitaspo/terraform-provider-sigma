@@ -3,12 +3,12 @@
 page_title: "sigma_deployment_policy Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a Sigma deployment policy. Destroy archives the policy. inode_ids and tenant_ids are authoritative attachments. This resource uses a Sigma Beta API and may change without notice.
+  Manages a Sigma deployment policy. Destroy archives the policy. When set, inode_ids and tenant_ids are authoritative attachments ([] removes all). Omit either attribute to leave that attachment set unmanaged. This resource uses a Sigma Beta API and may change without notice.
 ---
 
 # sigma_deployment_policy (Resource)
 
-Manages a Sigma deployment policy. Destroy archives the policy. `inode_ids` and `tenant_ids` are authoritative attachments. This resource uses a Sigma Beta API and may change without notice.
+Manages a Sigma deployment policy. Destroy archives the policy. When set, `inode_ids` and `tenant_ids` are authoritative attachments (`[]` removes all). Omit either attribute to leave that attachment set unmanaged. This resource uses a Sigma Beta API and may change without notice.
 
 ## Example Usage
 
@@ -32,10 +32,10 @@ resource "sigma_deployment_policy" "example" {
 ### Optional
 
 - `copy_input_table_data` (Boolean) Whether to copy editable draft input table data when deploying.
-- `inode_ids` (Set of String) Authoritative set of document inode IDs attached to the policy.
+- `inode_ids` (Set of String) Authoritative set of document inode IDs attached to the policy. Omit to leave document attachments unmanaged; set to `[]` to remove all.
 - `name_in_tenant` (String) Workspace name created in receiving tenants. Defaults to the policy name when omitted.
 - `source_swap_policies` (Set of String) Source swap policy IDs used when deploying documents.
-- `tenant_ids` (Set of String) Authoritative set of tenant organization IDs attached to the policy.
+- `tenant_ids` (Set of String) Authoritative set of tenant organization IDs attached to the policy. Omit to leave tenant attachments unmanaged; set to `[]` to remove all.
 - `version_tag_id` (String) Version tag ID. Cannot be changed after create; changing this forces a new resource.
 
 ### Read-Only

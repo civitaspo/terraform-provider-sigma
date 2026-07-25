@@ -157,6 +157,7 @@ type Grant struct {
 	MemberID       *string `json:"memberId"`
 	TeamID         *string `json:"teamId"`
 	Permission     string  `json:"permission"`
+	TagID          *string `json:"tagId"`
 	CreatedBy      string  `json:"createdBy"`
 	UpdatedBy      string  `json:"updatedBy"`
 	CreatedAt      string  `json:"createdAt"`

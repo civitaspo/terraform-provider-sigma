@@ -78,7 +78,7 @@ Always set `base_url` explicitly for the cloud where your organization is hosted
 | `sigma_user_attribute_team_assignment` | |
 | `sigma_user_attribute_user_assignment` | |
 
-Do not combine fine-grained `sigma_team_member` and authoritative `sigma_team_members` for the same team.
+Do not combine fine-grained `sigma_team_member` and authoritative `sigma_team_members` for the same team. `sigma_team_members` removes any member absent from `member_ids` and removes every tracked member on destroy.
 
 ### Workspaces, files, and grants
 

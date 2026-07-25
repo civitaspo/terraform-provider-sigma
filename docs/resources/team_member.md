@@ -3,12 +3,12 @@
 page_title: "sigma_team_member Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages one member of a Sigma team. Do not use with sigma_team_members for the same team.
+  Manages one member of a Sigma team. Do not use with sigma_team_members for the same team; the authoritative resource will remove members managed elsewhere.
 ---
 
 # sigma_team_member (Resource)
 
-Manages one member of a Sigma team. Do not use with `sigma_team_members` for the same team.
+Manages one member of a Sigma team. Do not use with `sigma_team_members` for the same team; the authoritative resource will remove members managed elsewhere.
 
 ## Example Usage
 
