@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- invalidate cached token and retry once on 401 (#37)
+- omit null member fields and reactivate archived members (#36)
 - prevent write-only secret wipes on connection updates (#35)
 - automerge non-major Renovate updates (#31)
 - pass allowed_committers on Approve Request client (#32)
