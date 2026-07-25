@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- prevent write-only secret wipes on connection updates (#35)
 - automerge non-major Renovate updates (#31)
 - pass allowed_committers on Approve Request client (#32)
 - floor Release PR base on shipped .release-version (#29)
