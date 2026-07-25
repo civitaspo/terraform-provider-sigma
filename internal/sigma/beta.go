@@ -3,6 +3,7 @@ package sigma
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 )
@@ -11,7 +12,8 @@ import (
 func listByPageToken[T any](ctx context.Context, client *Client, path string) ([]T, error) {
 	var all []T
 	next := path
-	for {
+	seen := map[string]struct{}{}
+	for pageNum := 0; pageNum < maxListPages; pageNum++ {
 		var page struct {
 			Entries []T    `json:"entries"`
 			Next    string `json:"nextPageToken"`
@@ -23,6 +25,10 @@ func listByPageToken[T any](ctx context.Context, client *Client, path string) ([
 		if page.Next == "" {
 			return all, nil
 		}
+		if _, ok := seen[page.Next]; ok {
+			return nil, fmt.Errorf("sigma pagination cycle detected: nextPageToken %q repeated", page.Next)
+		}
+		seen[page.Next] = struct{}{}
 		parsed, err := url.Parse(path)
 		if err != nil {
 			return nil, err
@@ -32,6 +38,7 @@ func listByPageToken[T any](ctx context.Context, client *Client, path string) ([
 		parsed.RawQuery = query.Encode()
 		next = parsed.String()
 	}
+	return nil, fmt.Errorf("sigma pagination exceeded %d pages for %s", maxListPages, path)
 }
 
 // Tenant is a Sigma tenant organization (Beta).
