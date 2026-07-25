@@ -186,6 +186,57 @@ func TestWhoami(t *testing.T) {
 	}
 }
 
+func TestClientRetriesOnceAfterUnauthorized(t *testing.T) {
+	t.Parallel()
+
+	var tokenCalls atomic.Int64
+	var whoamiCalls atomic.Int64
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/auth/token", func(response http.ResponseWriter, request *http.Request) {
+		call := tokenCalls.Add(1)
+		_ = json.NewEncoder(response).Encode(map[string]any{
+			"access_token": "token-" + string(rune('0'+call)),
+			"token_type":   "Bearer",
+			"expires_in":   3600,
+		})
+	})
+	mux.HandleFunc("/v2/whoami", func(response http.ResponseWriter, request *http.Request) {
+		call := whoamiCalls.Add(1)
+		if call == 1 {
+			if got := request.Header.Get("Authorization"); got != "Bearer token-1" {
+				t.Errorf("first Authorization = %q", got)
+			}
+			http.Error(response, `{"message":"unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+		if got := request.Header.Get("Authorization"); got != "Bearer token-2" {
+			t.Errorf("retry Authorization = %q", got)
+		}
+		_ = json.NewEncoder(response).Encode(map[string]string{
+			"userId":         "user-1",
+			"organizationId": "org-1",
+		})
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "client-id", "client-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.sleep = func(context.Context, time.Duration) error { return nil }
+
+	if _, err := client.Whoami(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got := tokenCalls.Load(); got != 2 {
+		t.Fatalf("token calls = %d, want 2", got)
+	}
+	if got := whoamiCalls.Load(); got != 2 {
+		t.Fatalf("whoami calls = %d, want 2", got)
+	}
+}
+
 func validTokenHandler(response http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(response).Encode(map[string]any{
 		"access_token": "token",
