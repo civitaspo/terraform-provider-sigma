@@ -20,22 +20,13 @@
   },
   "packageRules": [
     {
-      "description": "Automerge patch, pin, and digest updates",
+      "description": "Automerge non-major updates (minor, patch, pin, digest)",
       "matchUpdateTypes": [
+        "minor",
         "patch",
         "pin",
         "pinDigest",
         "digest"
-      ],
-      "automerge": true
-    },
-    {
-      "description": "Automerge Go module minor updates",
-      "matchManagers": [
-        "gomod"
-      ],
-      "matchUpdateTypes": [
-        "minor"
       ],
       "automerge": true
     },
