@@ -3,12 +3,12 @@
 page_title: "sigma_member Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible.
+  Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible. Destroy refuses members marked inactive through SCIM (is_inactive); deactivate those users in your identity provider, or remove the resource from state with terraform state rm. The API does not expose a SCIM-provisioned flag for still-active members.
 ---
 
 # sigma_member (Resource)
 
-Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible.
+Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible. Destroy refuses members marked inactive through SCIM (`is_inactive`); deactivate those users in your identity provider, or remove the resource from state with `terraform state rm`. The API does not expose a SCIM-provisioned flag for still-active members.
 
 ## Example Usage
 
@@ -39,7 +39,7 @@ resource "sigma_member" "example" {
 
 - `id` (String) Member ID.
 - `is_archived` (Boolean) Whether the member is deactivated.
-- `is_inactive` (Boolean) Whether the member is inactive through SCIM.
+- `is_inactive` (Boolean) Whether the member is archived by SCIM. Destroy refuses when this is true.
 - `organization_id` (String) Organization ID.
 
 ## Import

@@ -3,12 +3,12 @@
 page_title: "sigma_account_type Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a custom Sigma account type. The API has no update or get-by-ID endpoint, so configuration changes replace it. Import by account type name.
+  Manages a custom Sigma account type. The API has no update or get-by-ID endpoint, so name, description, and permissions changes replace it. Import by account type name. reassign_to_account_type_id is destroy-time only and can change without recreation.
 ---
 
 # sigma_account_type (Resource)
 
-Manages a custom Sigma account type. The API has no update or get-by-ID endpoint, so configuration changes replace it. Import by account type name.
+Manages a custom Sigma account type. The API has no update or get-by-ID endpoint, so name, description, and permissions changes replace it. Import by account type name. `reassign_to_account_type_id` is destroy-time only and can change without recreation.
 
 ## Example Usage
 
@@ -31,7 +31,7 @@ resource "sigma_account_type" "example" {
 
 ### Optional
 
-- `reassign_to_account_type_id` (String) Account type ID to receive users when this type is deleted.
+- `reassign_to_account_type_id` (String) Account type ID that receives users when this type is destroyed (`reassignToAccountTypeId` query parameter). Used only on delete; changing it updates state without recreating the account type. Sigma requires it when users are still assigned to this type.
 
 ### Read-Only
 
