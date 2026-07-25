@@ -34,6 +34,15 @@ func importPassthrough(ctx context.Context, request resource.ImportStateRequest,
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
 }
 
+// splitCompositeImportID splits `left/right` import IDs and rejects empty segments.
+func splitCompositeImportID(id string) (left, right string, ok bool) {
+	parts := strings.SplitN(id, "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", false
+	}
+	return parts[0], parts[1], true
+}
+
 type memberResource struct{ configuredResource }
 type memberModel struct {
 	ID             types.String `tfsdk:"id"`
@@ -56,7 +65,7 @@ func (r *memberResource) Configure(_ context.Context, req resource.ConfigureRequ
 }
 func (r *memberResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible.",
+		MarkdownDescription: "Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible. Destroy refuses members marked inactive through SCIM (`is_inactive`); deactivate those users in your identity provider, or remove the resource from state with `terraform state rm`. The API does not expose a SCIM-provisioned flag for still-active members.",
 		Attributes: map[string]schema.Attribute{
 			"id":              schema.StringAttribute{Computed: true, MarkdownDescription: "Member ID."},
 			"email":           schema.StringAttribute{Required: true, MarkdownDescription: "Member email address."},
@@ -66,7 +75,7 @@ func (r *memberResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"user_kind":       schema.StringAttribute{Optional: true, Computed: true, MarkdownDescription: "Member kind: `internal`, `guest`, or `embed`."},
 			"organization_id": schema.StringAttribute{Computed: true, MarkdownDescription: "Organization ID."},
 			"is_archived":     schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the member is deactivated."},
-			"is_inactive":     schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the member is inactive through SCIM."},
+			"is_inactive":     schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the member is archived by SCIM. Destroy refuses when this is true."},
 		},
 	}
 }
@@ -153,6 +162,21 @@ func (r *memberResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	var state memberModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	member, err := r.client.GetMember(ctx, state.ID.ValueString())
+	if sigma.IsNotFound(err) {
+		return
+	}
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to read Sigma member before deactivate", err.Error())
+		return
+	}
+	if member.IsInactive || state.IsInactive.ValueBool() {
+		resp.Diagnostics.AddError(
+			"Cannot deactivate SCIM-managed Sigma member",
+			"Sigma reports this member as inactive through SCIM (isInactive). Do not call DELETE /v2/members for SCIM-managed users; deactivate them in your identity provider instead. To drop Terraform management without calling the API, use `terraform state rm`.",
+		)
 		return
 	}
 	if err := r.client.DeleteMember(ctx, state.ID.ValueString()); err != nil && !sigma.IsNotFound(err) {
@@ -352,14 +376,14 @@ func (r *teamMemberResource) Delete(ctx context.Context, req resource.DeleteRequ
 	}
 }
 func (r *teamMemberResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	parts := strings.SplitN(req.ID, "/", 2)
-	if len(parts) != 2 {
-		resp.Diagnostics.AddError("Invalid import ID", "Use `teamId/memberId`.")
+	teamID, memberID, ok := splitCompositeImportID(req.ID)
+	if !ok {
+		resp.Diagnostics.AddError("Invalid import ID", "Use `teamId/memberId` with non-empty segments.")
 		return
 	}
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("team_id"), parts[0])...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("member_id"), parts[1])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("team_id"), teamID)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("member_id"), memberID)...)
 }
 
 type teamMembersResource struct{ configuredResource }
@@ -492,14 +516,17 @@ func (r *accountTypeResource) Configure(_ context.Context, req resource.Configur
 func (r *accountTypeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a custom Sigma account type. The API has no update or get-by-ID endpoint, so configuration changes replace it. Import by account type name.",
+		MarkdownDescription: "Manages a custom Sigma account type. The API has no update or get-by-ID endpoint, so name, description, and permissions changes replace it. Import by account type name. `reassign_to_account_type_id` is destroy-time only and can change without recreation.",
 		Attributes: map[string]schema.Attribute{
-			"id":                          schema.StringAttribute{Computed: true, MarkdownDescription: "Account type ID."},
-			"name":                        schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Account type name."},
-			"description":                 schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Account type description."},
-			"permissions":                 schema.SetAttribute{Required: true, ElementType: types.StringType, PlanModifiers: []planmodifier.Set{setplanmodifier.RequiresReplace()}, MarkdownDescription: "Enabled permission names."},
-			"is_custom":                   schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether this is a custom account type."},
-			"reassign_to_account_type_id": schema.StringAttribute{Optional: true, PlanModifiers: replace, MarkdownDescription: "Account type ID to receive users when this type is deleted."},
+			"id":          schema.StringAttribute{Computed: true, MarkdownDescription: "Account type ID."},
+			"name":        schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Account type name."},
+			"description": schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Account type description."},
+			"permissions": schema.SetAttribute{Required: true, ElementType: types.StringType, PlanModifiers: []planmodifier.Set{setplanmodifier.RequiresReplace()}, MarkdownDescription: "Enabled permission names."},
+			"is_custom":   schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether this is a custom account type."},
+			"reassign_to_account_type_id": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Account type ID that receives users when this type is destroyed (`reassignToAccountTypeId` query parameter). Used only on delete; changing it updates state without recreating the account type. Sigma requires it when users are still assigned to this type.",
+			},
 		},
 	}
 }
@@ -551,7 +578,14 @@ func (r *accountTypeResource) Read(ctx context.Context, req resource.ReadRequest
 	state.Permissions, _ = types.SetValueFrom(ctx, types.StringType, names)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
-func (r *accountTypeResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {
+func (r *accountTypeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan accountTypeModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// Only destroy-time reassign_to_account_type_id is mutable in place; other fields ForceNew.
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 func (r *accountTypeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state accountTypeModel
@@ -799,14 +833,14 @@ func (r *attributeAssignmentResource) setAssignmentState(
 	diagnostics.Append(set(ctx, path.Root("value"), plan.Value)...)
 }
 func (r *attributeAssignmentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	parts := strings.SplitN(req.ID, "/", 2)
-	if len(parts) != 2 {
-		resp.Diagnostics.AddError("Invalid import ID", "Use `userAttributeId/"+r.target+"Id`.")
+	attributeID, targetID, ok := splitCompositeImportID(req.ID)
+	if !ok {
+		resp.Diagnostics.AddError("Invalid import ID", "Use `userAttributeId/"+r.target+"Id` with non-empty segments.")
 		return
 	}
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("user_attribute_id"), parts[0])...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root(r.target+"_id"), parts[1])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("user_attribute_id"), attributeID)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root(r.target+"_id"), targetID)...)
 }
 
 var (

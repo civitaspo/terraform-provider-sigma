@@ -423,16 +423,16 @@ func (r *connectionGrantResource) Delete(ctx context.Context, req resource.Delet
 	}
 }
 func (r *connectionGrantResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	parts := strings.SplitN(req.ID, "/", 2)
-	if len(parts) != 2 {
-		resp.Diagnostics.AddError("Invalid import ID", "Use `connectionId/grantId` or `connectionPathId/grantId`.")
+	parentID, grantID, ok := splitCompositeImportID(req.ID)
+	if !ok {
+		resp.Diagnostics.AddError("Invalid import ID", "Use `connectionId/grantId` or `connectionPathId/grantId` with non-empty segments.")
 		return
 	}
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), parts[1])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), grantID)...)
 	if r.path {
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("connection_path_id"), parts[0])...)
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("connection_path_id"), parentID)...)
 	} else {
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("connection_id"), parts[0])...)
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("connection_id"), parentID)...)
 	}
 }
 
