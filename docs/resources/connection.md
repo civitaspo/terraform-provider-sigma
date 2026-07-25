@@ -3,12 +3,12 @@
 page_title: "sigma_connection Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a Sigma warehouse connection. details_json is polymorphic by warehouse type; put write-only fields such as password, serviceAccount, and clientSecret in credentials_wo. Changing credentials_wo_version resends credentials. Sigma's get endpoint does not return warehouse details, so imported resources cannot recover them.
+  Manages a Sigma warehouse connection. details_json is polymorphic by warehouse type; put write-only fields such as password, serviceAccount, and clientSecret in credentials_wo. Sigma's update connection API replaces warehouse details entirely, so any update that previously sent credentials_wo requires incrementing credentials_wo_version (and resupplying credentials_wo) to avoid clearing authentication. Sigma's get endpoint does not return warehouse details, so imported resources cannot recover them.
 ---
 
 # sigma_connection (Resource)
 
-Manages a Sigma warehouse connection. `details_json` is polymorphic by warehouse `type`; put write-only fields such as `password`, `serviceAccount`, and `clientSecret` in `credentials_wo`. Changing `credentials_wo_version` resends credentials. Sigma's get endpoint does not return warehouse details, so imported resources cannot recover them.
+Manages a Sigma warehouse connection. `details_json` is polymorphic by warehouse `type`; put write-only fields such as `password`, `serviceAccount`, and `clientSecret` in `credentials_wo`. Sigma's update connection API replaces warehouse details entirely, so any update that previously sent `credentials_wo` requires incrementing `credentials_wo_version` (and resupplying `credentials_wo`) to avoid clearing authentication. Sigma's get endpoint does not return warehouse details, so imported resources cannot recover them.
 
 ## Example Usage
 
@@ -44,8 +44,8 @@ resource "sigma_connection" "example" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `credentials_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only JSON object merged into `details_json` before create or update.
-- `credentials_wo_version` (Number) Increment to resend write-only credentials.
+- `credentials_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only JSON object merged into `details_json` before create or update. Required whenever `credentials_wo_version` changes.
+- `credentials_wo_version` (Number) Set on create when using `credentials_wo`, and increment on every update that should retain or rotate warehouse credentials. Sigma PUT replaces details, so updates without a version bump are rejected when credentials were previously managed.
 - `description_json` (String) JSON object accepted by Sigma as the connection description.
 - `details_json` (String) JSON object containing non-secret warehouse-specific connection details.
 - `pool_sizes_json` (String) JSON object configuring connection pool sizes.

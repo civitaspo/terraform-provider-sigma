@@ -3,12 +3,12 @@
 page_title: "sigma_api_connector Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a third-party API connector in Sigma.
+  Manages a third-party API connector in Sigma. When secrets_wo has been managed via secrets_wo_version, changing params_json requires incrementing the version and resupplying secrets because PATCH replaces the full params object. Metadata-only updates omit params so existing secrets are retained.
 ---
 
 # sigma_api_connector (Resource)
 
-Manages a third-party API connector in Sigma.
+Manages a third-party API connector in Sigma. When `secrets_wo` has been managed via `secrets_wo_version`, changing `params_json` requires incrementing the version and resupplying secrets because PATCH replaces the full `params` object. Metadata-only updates omit `params` so existing secrets are retained.
 
 ## Example Usage
 
@@ -43,8 +43,8 @@ resource "sigma_api_connector" "example" {
 - `auth_id` (String) Associated `sigma_api_credential` ID.
 - `config_json` (String) JSON timeout, retry, redirect, and rate limit configuration.
 - `description` (String) Description.
-- `secrets_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only JSON object merged into `params_json` for static secret parameters.
-- `secrets_wo_version` (Number) Increment to resend write-only connector secrets.
+- `secrets_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only JSON object merged into `params_json` for static secret parameters. Required whenever `secrets_wo_version` changes.
+- `secrets_wo_version` (Number) Set on create when using `secrets_wo`, and increment when rotating secrets or changing `params_json` after secrets were managed.
 
 ### Read-Only
 
