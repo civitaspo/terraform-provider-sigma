@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update actions/checkout action to v7 (#20)
 - update actions/create-github-app-token action to v3 (#24)
 - auto-request approval for SecureFix-authored PRs (#28)
 
