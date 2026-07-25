@@ -10,6 +10,13 @@ This repository uses a tagpr-equivalent release flow built on CSM actions.
 4. The **Release Tag** workflow creates an annotated tag `vX.Y.Z` and requests a server-side release.
 5. The securefix-server **Release Terraform Provider** workflow checks out the tag, runs GoReleaser with the GPG key from the `main` environment, and publishes the GitHub Release.
 
+## Repository release protections
+
+- **Tag protection** (`Protect tags` ruleset): active — blocks force-pushes and deletion of `v*` tags outside the allowed release path.
+- **Immutable releases**: enabled — after a release is published, its assets and associated Git tag cannot be modified or deleted.
+
+GoReleaser is compatible with immutable releases: it creates the GitHub Release as a draft, uploads all artifacts, then publishes once. The SecureFix release workflow does not re-upload or mutate assets after publish. Do not enable workflows that attach or replace assets on an already-published release.
+
 ## Version bump rules (while major is 0)
 
 Scripts live under `scripts/release/`.
