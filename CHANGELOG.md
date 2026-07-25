@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- add identity resource mock UnitTests (#42)
 - include dependabot in Approve Request actors (#34)
 - disable dependency dashboard (#33)
 - update jdx/mise-action action to v4.2.3 (#19)
