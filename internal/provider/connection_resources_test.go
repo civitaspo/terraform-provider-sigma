@@ -3,6 +3,7 @@ package provider_test
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"testing"
 
 	sigmaprovider "github.com/civitaspo/terraform-provider-sigma/internal/provider"
@@ -110,6 +111,89 @@ resource "sigma_connection" "test" {
 	}))
 }
 
+func TestConnectionResourceUpdateWithoutCredentialsVersionFails(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	putCalls := 0
+	mock.Mux.HandleFunc("/v2/connections", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method != http.MethodPost {
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+			return
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(map[string]any{
+			"connectionId": "connection-1", "name": "warehouse", "type": "postgres",
+			"description": map[string]any{}, "poolSizes": map[string]any{}, "timeoutSecs": 30,
+			"friendlyName": true,
+		})
+	})
+	mock.Mux.HandleFunc("/v2/connections/connection-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		switch request.Method {
+		case http.MethodGet:
+			_ = json.NewEncoder(response).Encode(map[string]any{
+				"connectionId": "connection-1", "name": "warehouse", "type": "postgres",
+				"description": map[string]any{}, "poolSizes": map[string]any{}, "timeoutSecs": 30,
+				"friendlyName": true,
+			})
+		case http.MethodPut:
+			putCalls++
+			http.Error(response, "should not PUT without credentials", http.StatusInternalServerError)
+		case http.MethodDelete:
+			_ = json.NewEncoder(response).Encode(map[string]any{})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	mock.Mux.HandleFunc("/v2/connections/connection-1/test", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(map[string]string{"read": "SUCCESS", "write": "SUCCESS"})
+	})
+
+	createConfig := connectionProviderConfig(mock) + `
+resource "sigma_connection" "test" {
+  name = "warehouse"
+  details_json = jsonencode({
+    type     = "postgres"
+    host     = "db.example.com"
+    database = "analytics"
+    user     = "sigma"
+  })
+  credentials_wo         = jsonencode({ password = "secret" })
+  credentials_wo_version = 1
+  timeout_secs           = 30
+  use_friendly_names     = true
+}
+`
+	updateConfig := connectionProviderConfig(mock) + `
+resource "sigma_connection" "test" {
+  name = "warehouse"
+  details_json = jsonencode({
+    type     = "postgres"
+    host     = "db.example.com"
+    database = "analytics"
+    user     = "sigma"
+  })
+  credentials_wo         = jsonencode({ password = "secret" })
+  credentials_wo_version = 1
+  timeout_secs           = 60
+  use_friendly_names     = true
+}
+`
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{
+		{Config: createConfig},
+		{
+			Config:      updateConfig,
+			ExpectError: regexp.MustCompile(`Cannot update Sigma connection without resending credentials`),
+		},
+	}))
+	if putCalls != 0 {
+		t.Fatalf("unexpected PUT calls without credentials: %d", putCalls)
+	}
+}
+
 func TestConnectionGrantResources(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -214,6 +298,86 @@ resource "sigma_api_connector" "test" {
 	}}))
 }
 
+func TestAPIConnectorResourceUpdateOmitsParamsWithoutSecretsVersion(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	params := map[string]any{"method": "GET", "url": "https://api.example.com/weather", "headers": []any{}, "pathParams": []any{}, "queryParams": []any{}}
+	connector := map[string]any{
+		"apiConnectorId": "connector-1", "name": "weather", "description": "Weather API",
+		"params": params, "config": map[string]any{}, "authId": "credential-1",
+	}
+	mock.Mux.HandleFunc("/v2/api-connectors", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(connector)
+	})
+	mock.Mux.HandleFunc("/v2/api-connectors/connector-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		switch request.Method {
+		case http.MethodGet:
+			_ = json.NewEncoder(response).Encode(connector)
+		case http.MethodPatch:
+			var body map[string]any
+			_ = json.NewDecoder(request.Body).Decode(&body)
+			if _, ok := body["params"]; ok {
+				t.Errorf("metadata update must omit params to retain secrets; got %#v", body)
+			}
+			if body["description"] != "Updated" {
+				t.Errorf("description = %#v", body["description"])
+			}
+			connector["description"] = "Updated"
+			_ = json.NewEncoder(response).Encode(connector)
+		case http.MethodDelete:
+			_ = json.NewEncoder(response).Encode(map[string]any{})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	createConfig := connectionProviderConfig(mock) + `
+resource "sigma_api_connector" "test" {
+  name        = "weather"
+  description = "Weather API"
+  auth_id     = "credential-1"
+  params_json = jsonencode({
+    method      = "GET"
+    url         = "https://api.example.com/weather"
+    headers     = []
+    pathParams  = []
+    queryParams = []
+  })
+  secrets_wo = jsonencode({
+    queryParams = [{ name = "api_key", value = "secret", type = "string" }]
+  })
+  secrets_wo_version = 1
+}
+`
+	updateConfig := connectionProviderConfig(mock) + `
+resource "sigma_api_connector" "test" {
+  name        = "weather"
+  description = "Updated"
+  auth_id     = "credential-1"
+  params_json = jsonencode({
+    method      = "GET"
+    url         = "https://api.example.com/weather"
+    headers     = []
+    pathParams  = []
+    queryParams = []
+  })
+  secrets_wo = jsonencode({
+    queryParams = [{ name = "api_key", value = "secret", type = "string" }]
+  })
+  secrets_wo_version = 1
+}
+`
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{
+		{Config: createConfig},
+		{
+			Config: updateConfig,
+			Check:  resource.TestCheckResourceAttr("sigma_api_connector.test", "description", "Updated"),
+		},
+	}))
+}
+
 func TestAPICredentialResource(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
 	credential := map[string]any{
@@ -237,13 +401,24 @@ func TestAPICredentialResource(t *testing.T) {
 		switch request.Method {
 		case http.MethodGet:
 			_ = json.NewEncoder(response).Encode(credential)
+		case http.MethodPatch:
+			var body map[string]any
+			_ = json.NewDecoder(request.Body).Decode(&body)
+			if _, ok := body["credential"]; ok {
+				t.Errorf("metadata update must omit credential; got %#v", body)
+			}
+			if body["description"] != "Updated credential" {
+				t.Errorf("description = %#v", body["description"])
+			}
+			credential["description"] = "Updated credential"
+			_ = json.NewEncoder(response).Encode(credential)
 		case http.MethodDelete:
 			_ = json.NewEncoder(response).Encode(map[string]any{})
 		default:
 			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
 		}
 	})
-	config := connectionProviderConfig(mock) + `
+	createConfig := connectionProviderConfig(mock) + `
 resource "sigma_api_credential" "test" {
   name        = "weather"
   description = "Weather credential"
@@ -259,13 +434,35 @@ resource "sigma_api_credential" "test" {
   credential_wo_version = 1
 }
 `
-	resource.UnitTest(t, connectionTestCase([]resource.TestStep{{
-		Config: config,
-		Check: resource.ComposeAggregateTestCheckFunc(
-			resource.TestCheckResourceAttr("sigma_api_credential.test", "id", "credential-1"),
-			resource.TestCheckResourceAttr("sigma_api_credential.test", "auth_method", "apiKey"),
-		),
-	}}))
+	updateConfig := connectionProviderConfig(mock) + `
+resource "sigma_api_credential" "test" {
+  name        = "weather"
+  description = "Updated credential"
+  allowlist   = ["api.example.com"]
+  credential_wo = jsonencode({
+    authMethod = "apiKey"
+    apiKey = {
+      key          = "X-API-Key"
+      value        = "secret"
+      isQueryParam = false
+    }
+  })
+  credential_wo_version = 1
+}
+`
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{
+		{
+			Config: createConfig,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("sigma_api_credential.test", "id", "credential-1"),
+				resource.TestCheckResourceAttr("sigma_api_credential.test", "auth_method", "apiKey"),
+			),
+		},
+		{
+			Config: updateConfig,
+			Check:  resource.TestCheckResourceAttr("sigma_api_credential.test", "description", "Updated credential"),
+		},
+	}))
 }
 
 func TestConnectionDataSources(t *testing.T) {

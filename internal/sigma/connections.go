@@ -142,7 +142,7 @@ type APIConnector struct {
 type APIConnectorInput struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`
-	Params      json.RawMessage `json:"params"`
+	Params      json.RawMessage `json:"params,omitempty"`
 	Config      json.RawMessage `json:"config,omitempty"`
 	AuthID      *string         `json:"authId,omitempty"`
 }
@@ -196,7 +196,7 @@ type APICredential struct {
 type APICredentialInput struct {
 	Name        string          `json:"name"`
 	Allowlist   []string        `json:"allowlist"`
-	Credential  json.RawMessage `json:"credential"`
+	Credential  json.RawMessage `json:"credential,omitempty"`
 	Description string          `json:"description,omitempty"`
 }
 

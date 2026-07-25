@@ -62,6 +62,21 @@ func jsonString(value json.RawMessage) types.String {
 	return types.StringValue(canonical)
 }
 
+func jsonValuesEqual(left, right types.String) bool {
+	if left.Equal(right) {
+		return true
+	}
+	if left.IsNull() || right.IsNull() || left.IsUnknown() || right.IsUnknown() {
+		return false
+	}
+	leftCanonical, leftErr := canonicalJSON([]byte(left.ValueString()))
+	rightCanonical, rightErr := canonicalJSON([]byte(right.ValueString()))
+	if leftErr != nil || rightErr != nil {
+		return false
+	}
+	return leftCanonical == rightCanonical
+}
+
 type connectionResource struct{ configuredResource }
 type connectionResourceModel struct {
 	ID                   types.String  `tfsdk:"id"`
@@ -85,7 +100,7 @@ func (r *connectionResource) Configure(_ context.Context, req resource.Configure
 }
 func (r *connectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Sigma warehouse connection. `details_json` is polymorphic by warehouse `type`; put write-only fields such as `password`, `serviceAccount`, and `clientSecret` in `credentials_wo`. Changing `credentials_wo_version` resends credentials. Sigma's get endpoint does not return warehouse details, so imported resources cannot recover them.",
+		MarkdownDescription: "Manages a Sigma warehouse connection. `details_json` is polymorphic by warehouse `type`; put write-only fields such as `password`, `serviceAccount`, and `clientSecret` in `credentials_wo`. Sigma's update connection API replaces warehouse details entirely, so any update that previously sent `credentials_wo` requires incrementing `credentials_wo_version` (and resupplying `credentials_wo`) to avoid clearing authentication. Sigma's get endpoint does not return warehouse details, so imported resources cannot recover them.",
 		Attributes: map[string]schema.Attribute{
 			"id":                     schema.StringAttribute{Computed: true, MarkdownDescription: "Connection ID."},
 			"name":                   schema.StringAttribute{Required: true, MarkdownDescription: "Connection name."},
@@ -95,8 +110,8 @@ func (r *connectionResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			"pool_sizes_json":        schema.StringAttribute{Optional: true, Computed: true, MarkdownDescription: "JSON object configuring connection pool sizes."},
 			"timeout_secs":           schema.Float64Attribute{Optional: true, Computed: true, MarkdownDescription: "Connection timeout in seconds."},
 			"use_friendly_names":     schema.BoolAttribute{Optional: true, Computed: true, MarkdownDescription: "Whether friendly names are enabled."},
-			"credentials_wo":         schema.StringAttribute{Optional: true, WriteOnly: true, Sensitive: true, MarkdownDescription: "Write-only JSON object merged into `details_json` before create or update."},
-			"credentials_wo_version": schema.Int64Attribute{Optional: true, MarkdownDescription: "Increment to resend write-only credentials."},
+			"credentials_wo":         schema.StringAttribute{Optional: true, WriteOnly: true, Sensitive: true, MarkdownDescription: "Write-only JSON object merged into `details_json` before create or update. Required whenever `credentials_wo_version` changes."},
+			"credentials_wo_version": schema.Int64Attribute{Optional: true, MarkdownDescription: "Set on create when using `credentials_wo`, and increment on every update that should retain or rotate warehouse credentials. Sigma PUT replaces details, so updates without a version bump are rejected when credentials were previously managed."},
 		},
 	}
 }
@@ -203,8 +218,18 @@ func (r *connectionResource) Update(ctx context.Context, req resource.UpdateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// Resend write-only credentials only when the version attribute changes.
-	if !plan.CredentialsWOVersion.Equal(state.CredentialsWOVersion) {
+	managedCredentials := !state.CredentialsWOVersion.IsNull() && !state.CredentialsWOVersion.IsUnknown()
+	resendingCredentials := !plan.CredentialsWOVersion.Equal(state.CredentialsWOVersion)
+	// Sigma PUT replaces warehouse details entirely. Never send details without
+	// write-only credentials once they have been managed via credentials_wo_version.
+	if managedCredentials && !resendingCredentials {
+		resp.Diagnostics.AddError(
+			"Cannot update Sigma connection without resending credentials",
+			"Sigma's update connection API replaces warehouse details entirely. Increment `credentials_wo_version` and supply `credentials_wo` on every update so warehouse authentication is not cleared.",
+		)
+		return
+	}
+	if resendingCredentials {
 		plan.CredentialsWO = config.CredentialsWO
 	}
 	input, err := connectionInput(&plan)
@@ -212,7 +237,7 @@ func (r *connectionResource) Update(ctx context.Context, req resource.UpdateRequ
 		resp.Diagnostics.AddError("Invalid Sigma connection configuration", err.Error())
 		return
 	}
-	value, err := r.client.UpdateConnection(ctx, plan.ID.ValueString(), input)
+	value, err := r.client.UpdateConnection(ctx, state.ID.ValueString(), input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Sigma connection", err.Error())
 		return
@@ -431,15 +456,15 @@ func (r *apiConnectorResource) Configure(_ context.Context, req resource.Configu
 	r.configure(req, resp)
 }
 func (r *apiConnectorResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{MarkdownDescription: "Manages a third-party API connector in Sigma.", Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{MarkdownDescription: "Manages a third-party API connector in Sigma. When `secrets_wo` has been managed via `secrets_wo_version`, changing `params_json` requires incrementing the version and resupplying secrets because PATCH replaces the full `params` object. Metadata-only updates omit `params` so existing secrets are retained.", Attributes: map[string]schema.Attribute{
 		"id":                 schema.StringAttribute{Computed: true, MarkdownDescription: "API connector ID."},
 		"name":               schema.StringAttribute{Required: true, MarkdownDescription: "Display name."},
 		"description":        schema.StringAttribute{Optional: true, MarkdownDescription: "Description."},
 		"params_json":        schema.StringAttribute{Required: true, MarkdownDescription: "JSON request parameters (`method`, `url`, headers, path/query parameters, and body)."},
 		"config_json":        schema.StringAttribute{Optional: true, Computed: true, MarkdownDescription: "JSON timeout, retry, redirect, and rate limit configuration."},
 		"auth_id":            schema.StringAttribute{Optional: true, Computed: true, MarkdownDescription: "Associated `sigma_api_credential` ID."},
-		"secrets_wo":         schema.StringAttribute{Optional: true, WriteOnly: true, Sensitive: true, MarkdownDescription: "Write-only JSON object merged into `params_json` for static secret parameters."},
-		"secrets_wo_version": schema.Int64Attribute{Optional: true, MarkdownDescription: "Increment to resend write-only connector secrets."},
+		"secrets_wo":         schema.StringAttribute{Optional: true, WriteOnly: true, Sensitive: true, MarkdownDescription: "Write-only JSON object merged into `params_json` for static secret parameters. Required whenever `secrets_wo_version` changes."},
+		"secrets_wo_version": schema.Int64Attribute{Optional: true, MarkdownDescription: "Set on create when using `secrets_wo`, and increment when rotating secrets or changing `params_json` after secrets were managed."},
 	}}
 }
 func apiConnectorInput(plan *apiConnectorResourceModel) (sigma.APIConnectorInput, error) {
@@ -455,6 +480,19 @@ func apiConnectorInput(plan *apiConnectorResourceModel) (sigma.APIConnectorInput
 	if !plan.AuthID.IsNull() && !plan.AuthID.IsUnknown() {
 		value := plan.AuthID.ValueString()
 		input.AuthID = &value
+	}
+	return input, nil
+}
+
+// apiConnectorUpdateInput builds a PATCH body. When omitParams is true, params are left
+// unchanged on the server so previously stored static secrets are retained.
+func apiConnectorUpdateInput(plan *apiConnectorResourceModel, omitParams bool) (sigma.APIConnectorInput, error) {
+	input, err := apiConnectorInput(plan)
+	if err != nil {
+		return sigma.APIConnectorInput{}, err
+	}
+	if omitParams {
+		input.Params = nil
 	}
 	return input, nil
 }
@@ -520,15 +558,29 @@ func (r *apiConnectorResource) Update(ctx context.Context, req resource.UpdateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if !plan.SecretsWOVersion.Equal(state.SecretsWOVersion) {
+	managedSecrets := !state.SecretsWOVersion.IsNull() && !state.SecretsWOVersion.IsUnknown()
+	resendingSecrets := !plan.SecretsWOVersion.Equal(state.SecretsWOVersion)
+	omitParams := false
+	if managedSecrets && !resendingSecrets {
+		if !jsonValuesEqual(plan.ParamsJSON, state.ParamsJSON) {
+			resp.Diagnostics.AddError(
+				"Cannot update Sigma API connector params without resending secrets",
+				"This connector manages static secrets via `secrets_wo`. Increment `secrets_wo_version` and supply `secrets_wo` whenever `params_json` changes so secret parameters are not cleared. Metadata-only updates may omit a version bump.",
+			)
+			return
+		}
+		// Leave params unchanged on the server so existing secrets are retained.
+		omitParams = true
+	}
+	if resendingSecrets {
 		plan.SecretsWO = config.SecretsWO
 	}
-	input, err := apiConnectorInput(&plan)
+	input, err := apiConnectorUpdateInput(&plan, omitParams)
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid Sigma API connector configuration", err.Error())
 		return
 	}
-	value, err := r.client.UpdateAPIConnector(ctx, plan.ID.ValueString(), input)
+	value, err := r.client.UpdateAPIConnector(ctx, state.ID.ValueString(), input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Sigma API connector", err.Error())
 		return
@@ -570,18 +622,18 @@ func (r *apiCredentialResource) Configure(_ context.Context, req resource.Config
 	r.configure(req, resp)
 }
 func (r *apiCredentialResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{MarkdownDescription: "Manages credentials used to call third-party APIs from Sigma. This resource does not manage Sigma organization API client keys.", Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{MarkdownDescription: "Manages credentials used to call third-party APIs from Sigma. This resource does not manage Sigma organization API client keys. Increment `credential_wo_version` to rotate secrets; updates without a version bump omit `credential` so Sigma retains existing secrets.", Attributes: map[string]schema.Attribute{
 		"id":                    schema.StringAttribute{Computed: true, MarkdownDescription: "API credential ID."},
 		"name":                  schema.StringAttribute{Required: true, MarkdownDescription: "Display name."},
 		"description":           schema.StringAttribute{Optional: true, MarkdownDescription: "Description."},
 		"auth_method":           schema.StringAttribute{Computed: true, MarkdownDescription: "Authentication method."},
 		"allowlist":             schema.SetAttribute{Required: true, ElementType: types.StringType, MarkdownDescription: "Non-empty hostname glob allowlist."},
 		"credential_json":       schema.StringAttribute{Computed: true, MarkdownDescription: "Nonsensitive credential projection returned by Sigma."},
-		"credential_wo":         schema.StringAttribute{Optional: true, WriteOnly: true, Sensitive: true, MarkdownDescription: "Write-only credential JSON. Supported methods are `basic`, `bearer`, `apiKey`, `oAuthClientCredentials`, and `awsSigV4`."},
-		"credential_wo_version": schema.Int64Attribute{Optional: true, MarkdownDescription: "Increment to rotate or resend credential secrets."},
+		"credential_wo":         schema.StringAttribute{Optional: true, WriteOnly: true, Sensitive: true, MarkdownDescription: "Write-only credential JSON. Supported methods are `basic`, `bearer`, `apiKey`, `oAuthClientCredentials`, and `awsSigV4`. Required on create and whenever `credential_wo_version` changes."},
+		"credential_wo_version": schema.Int64Attribute{Optional: true, MarkdownDescription: "Increment to rotate or resend credential secrets. Updates without a version bump omit the credential body."},
 	}}
 }
-func apiCredentialInput(ctx context.Context, plan *apiCredentialResourceModel) (sigma.APICredentialInput, error) {
+func apiCredentialInput(ctx context.Context, plan *apiCredentialResourceModel, requireCredential bool) (sigma.APICredentialInput, error) {
 	var allowlist []string
 	diagnostics := plan.Allowlist.ElementsAs(ctx, &allowlist, false)
 	if diagnostics.HasError() {
@@ -594,8 +646,8 @@ func apiCredentialInput(ctx context.Context, plan *apiCredentialResourceModel) (
 	if err != nil {
 		return sigma.APICredentialInput{}, fmt.Errorf("decode credential_wo: %w", err)
 	}
-	if len(credential) == 0 {
-		return sigma.APICredentialInput{}, fmt.Errorf("credential_wo is required for create and update")
+	if requireCredential && len(credential) == 0 {
+		return sigma.APICredentialInput{}, fmt.Errorf("credential_wo is required")
 	}
 	return sigma.APICredentialInput{Name: plan.Name.ValueString(), Description: plan.Description.ValueString(), Allowlist: allowlist, Credential: credential}, nil
 }
@@ -616,7 +668,7 @@ func (r *apiCredentialResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 	plan.CredentialWO = config.CredentialWO
-	input, err := apiCredentialInput(ctx, &plan)
+	input, err := apiCredentialInput(ctx, &plan, true)
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid Sigma API credential configuration", err.Error())
 		return
@@ -650,18 +702,23 @@ func (r *apiCredentialResource) Read(ctx context.Context, req resource.ReadReque
 func (r *apiCredentialResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan apiCredentialResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	var state apiCredentialResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	var config apiCredentialResourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	plan.CredentialWO = config.CredentialWO
-	input, err := apiCredentialInput(ctx, &plan)
+	resendingCredential := !plan.CredentialWOVersion.Equal(state.CredentialWOVersion)
+	if resendingCredential {
+		plan.CredentialWO = config.CredentialWO
+	}
+	input, err := apiCredentialInput(ctx, &plan, resendingCredential)
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid Sigma API credential configuration", err.Error())
 		return
 	}
-	value, err := r.client.UpdateAPICredential(ctx, plan.ID.ValueString(), input)
+	value, err := r.client.UpdateAPICredential(ctx, state.ID.ValueString(), input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Sigma API credential", err.Error())
 		return
