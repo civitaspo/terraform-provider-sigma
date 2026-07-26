@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.1.1] - 2026-07-25
+
+### Bug Fixes
+
+- refuse SCIM member destroy and harden composite imports (#40)
+- preserve base_url path and harden list/404 handling (#39)
+- avoid attachment wipes and ambiguous tagged grant lookups (#38)
+- invalidate cached token and retry once on 401 (#37)
+- omit null member fields and reactivate archived members (#36)
+- prevent write-only secret wipes on connection updates (#35)
+- automerge non-major Renovate updates (#31)
+- pass allowed_committers on Approve Request client (#32)
+- floor Release PR base on shipped .release-version (#29)
+
+### Documentation
+
+- enrich Terraform Registry provider overview (#45)
+- note tag protection and immutable releases (#41)
+
+### Maintenance
+
+- add identity and document data source UnitTests (#44)
+- cover member PATCH omit and connection credential updates (#43)
+- add identity resource mock UnitTests (#42)
+- include dependabot in Approve Request actors (#34)
+- disable dependency dashboard (#33)
+- update jdx/mise-action action to v4.2.3 (#19)
+- update dependency jdx/mise to v2026.7.13 (#13)
+- update actions/checkout action to v7 (#20)
+- update actions/create-github-app-token action to v3 (#24)
+- auto-request approval for SecureFix-authored PRs (#28)
+
 ## [0.1.0] - 2026-07-24
 
 ### Features
