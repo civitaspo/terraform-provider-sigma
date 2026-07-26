@@ -115,13 +115,20 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           SERVER_REPOSITORY: ${{ vars.SECUREFIX_SERVER_REPOSITORY }}
           TAG: ${{ steps.release.outputs.tag }}
+          MERGE_SHA: ${{ steps.target.outputs.merge_sha }}
         run: |
           set -euo pipefail
           test -n "$SERVER_REPOSITORY"
           # SECUREFIX_SERVER_REPOSITORY is the repo name only (securefix-action input format).
+          # Include the tagged merge commit SHA. Release Tag on pull_request.closed uses
+          # workflow_run.head_sha = PR head, which differs from the squash merge commit.
           server_full_name="${GITHUB_REPOSITORY_OWNER}/${SERVER_REPOSITORY}"
           label_name="release-tf-provider-${GITHUB_RUN_ID}-${TAG}"
-          description="${GITHUB_REPOSITORY}/${GITHUB_RUN_ID}/${TAG}"
+          description="${GITHUB_REPOSITORY}/${GITHUB_RUN_ID}/${TAG}/${MERGE_SHA}"
+          if [ "${#description}" -gt 100 ]; then
+            echo "Label description exceeds GitHub's 100-character limit: $description" >&2
+            exit 1
+          fi
           gh api --method POST "repos/${server_full_name}/labels" \
             -f name="$label_name" \
             -f color="1f6feb" \

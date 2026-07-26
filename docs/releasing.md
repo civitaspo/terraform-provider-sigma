@@ -42,10 +42,10 @@ goreleaser build --snapshot --clean --single-target
 The Release Tag workflow creates a label on `civitaspo/securefix-server` whose description is:
 
 ```text
-civitaspo/terraform-provider-sigma/<run_id>/vX.Y.Z
+civitaspo/terraform-provider-sigma/<run_id>/vX.Y.Z/<merge-commit-sha>
 ```
 
-The server accepts in-progress `Release Tag` runs and publishes signed artifacts for that tag.
+The merge commit SHA is required because `Release Tag` on a merged `release/next` PR tags the squash-merge commit on `main`, while the workflow run's `head_sha` is the PR head. The server accepts in-progress `Release Tag` runs and publishes signed artifacts for that tag.
 
 ## First registry publication
 
