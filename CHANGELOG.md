@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.1.2] - 2026-07-29
+## [0.1.2] - 2026-07-30
 
 ### Bug Fixes
 
@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency aqua:suzuki-shunsuke/pinact to v4.1.1 (#53)
 - update dependency jdx/mise to v2026.7.16 (#52)
 - update dependency jdx/mise to v2026.7.15 (#51)
 - update dependency jdx/mise to v2026.7.14 (#50)
