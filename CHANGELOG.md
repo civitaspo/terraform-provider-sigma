@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.1.2] - 2026-08-08
+
+### Bug Fixes
+
+- pass merge commit SHA in release request label (#46)
+
+### Maintenance
+
+- update dependency jdx/mise to v2026.8.3 (#60)
+- update dependency jdx/mise to v2026.8.2 (#59)
+- update dependency jdx/mise to v2026.8.1 (#58)
+- update dependency jdx/mise to v2026.8.0 (#57)
+- update jdx/mise-action action to v4.2.4 (#56)
+- update dependency jdx/mise to v2026.7.18 (#55)
+- update dependency jdx/mise to v2026.7.17 (#54)
+- update dependency aqua:suzuki-shunsuke/pinact to v4.1.1 (#53)
+- update dependency jdx/mise to v2026.7.16 (#52)
+- update dependency jdx/mise to v2026.7.15 (#51)
+- update dependency jdx/mise to v2026.7.14 (#50)
+- update dependency aqua:goreleaser/goreleaser to v2.17.1 (#49)
+- lock file maintenance (#48)
+
 ## [0.1.1] - 2026-07-25
 
 ### Bug Fixes
