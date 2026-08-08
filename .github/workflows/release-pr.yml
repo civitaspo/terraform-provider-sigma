@@ -57,14 +57,25 @@ jobs:
             fi
           fi
           echo "Using base tag: $latest_tag"
-          version=$(scripts/release/next-version.sh "$latest_tag")
-          if [ -z "$version" ]; then
+
+          # git-cliff needs a real tag object for bump math. When the floor comes
+          # from .release-version before Release Tag finishes, create a local tag.
+          if ! git rev-parse --verify --quiet "${latest_tag}^{commit}" >/dev/null; then
+            base_commit=$(git log -1 --format=%H -- .release-version)
+            git tag "$latest_tag" "$base_commit"
+          fi
+
+          bumped=$(git cliff --bumped-version)
+          bumped=${bumped#v}
+          current=${latest_tag#v}
+          if [ -z "$bumped" ] || [ "$bumped" = "$current" ]; then
             echo "No releasable commits found."
             echo "releasable=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          version=$bumped
 
-          scripts/release/changelog.sh "$version" "$latest_tag" > /tmp/release-changelog
+          git cliff --bump --unreleased --strip header > /tmp/release-changelog
           awk '
             { print }
             /^## Unreleased$/ {

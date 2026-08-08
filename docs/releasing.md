@@ -19,7 +19,7 @@ GoReleaser is compatible with immutable releases: it creates the GitHub Release 
 
 ## Version bump rules (while major is 0)
 
-Scripts live under `scripts/release/`.
+Configured in [`cliff.toml`](../cliff.toml) and applied by [git-cliff](https://git-cliff.org/) (`mise` tool `aqua:orhun/git-cliff`):
 
 - Conventional Commit breaking change (`type!:` or `BREAKING CHANGE`) → minor
 - `feat:` → minor
@@ -31,8 +31,8 @@ The Release PR workflow floors the base version on both the latest `v*` tag and 
 ## Local helpers
 
 ```bash
-scripts/release/next-version.sh
-scripts/release/changelog.sh 0.1.0
+git cliff --bumped-version
+git cliff --bump --unreleased --strip header
 goreleaser check
 goreleaser build --snapshot --clean --single-target
 ```
