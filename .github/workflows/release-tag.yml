@@ -120,11 +120,19 @@ jobs:
           set -euo pipefail
           test -n "$SERVER_REPOSITORY"
           # SECUREFIX_SERVER_REPOSITORY is the repo name only (securefix-action input format).
-          # Include the tagged merge commit SHA. Release Tag on pull_request.closed uses
+          # Include the tagged merge commit SHA when it fits GitHub's 100-char label
+          # description limit. Release Tag on pull_request.closed uses
           # workflow_run.head_sha = PR head, which differs from the squash merge commit.
           server_full_name="${GITHUB_REPOSITORY_OWNER}/${SERVER_REPOSITORY}"
           label_name="release-tf-provider-${GITHUB_RUN_ID}-${TAG}"
-          description="${GITHUB_REPOSITORY}/${GITHUB_RUN_ID}/${TAG}/${MERGE_SHA}"
+          description_with_sha="${GITHUB_REPOSITORY}/${GITHUB_RUN_ID}/${TAG}/${MERGE_SHA}"
+          description_without_sha="${GITHUB_REPOSITORY}/${GITHUB_RUN_ID}/${TAG}"
+          if [ "${#description_with_sha}" -le 100 ]; then
+            description=$description_with_sha
+          else
+            echo "Omitting merge SHA from label description (${#description_with_sha} > 100 chars)."
+            description=$description_without_sha
+          fi
           if [ "${#description}" -gt 100 ]; then
             echo "Label description exceeds GitHub's 100-character limit: $description" >&2
             exit 1
