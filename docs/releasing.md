@@ -33,6 +33,8 @@ Configured in `cliff.toml` (`[bump]`) and applied by git-cliff on the shared Rel
 
 The Release PR workflow floors the base version on both the latest `v*` tag and `.release-version` on `main`.
 
+git-cliff regenerates the full changelog from git history. **Do not edit `CHANGELOG.md` on feature PRs** — Lint fails if a non-`release/next` PR touches that file. Use Conventional Commit subjects; the Release PR is the only writer.
+
 ## Local helpers
 
 ```bash
