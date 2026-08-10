@@ -7,14 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.1.2] - 2026-08-08
+## [0.1.2] - 2026-08-10
+
 
 ### Bug Fixes
 
+- install git-cliff for shared Release PR reusable (#66)
 - pass merge commit SHA in release request label (#46)
+
+
+### Documentation
+
+- point releasing guide at shared client-releases spec (#64)
+
 
 ### Maintenance
 
+- bump securefix-server reusables for job summary links (#65)
+- use securefix-server release workflow reusables (#62)
 - update dependency jdx/mise to v2026.8.3 (#60)
 - update dependency jdx/mise to v2026.8.2 (#59)
 - update dependency jdx/mise to v2026.8.1 (#58)
@@ -29,7 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - update dependency aqua:goreleaser/goreleaser to v2.17.1 (#49)
 - lock file maintenance (#48)
 
-## [0.1.1] - 2026-07-25
+## [0.1.1] - 2026-07-26
+
 
 ### Bug Fixes
 
@@ -43,10 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pass allowed_committers on Approve Request client (#32)
 - floor Release PR base on shipped .release-version (#29)
 
+
 ### Documentation
 
 - enrich Terraform Registry provider overview (#45)
 - note tag protection and immutable releases (#41)
+
 
 ### Maintenance
 
@@ -63,6 +76,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2026-07-24
 
+
+### Bug Fixes
+
+- harden Release Tag existing-tag check and allow dispatch (#26)
+- use Securefix server repository name-only variable (#23)
+- scan full history for first release version (#8)
+
+
+### Documentation
+
+- coverage matrix, contributing guide, and polish (#22)
+- use main environment for securefix-server releases (#17)
+
+
 ### Features
 
 - beta resources (tenants, deployment policies, source swap policies) (#21)
@@ -73,19 +100,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - identity and access resources (#9)
 - provider skeleton, Sigma API client, and whoami data source (#3)
 
-### Bug Fixes
-
-- use Securefix server repository name-only variable (#23)
-- scan full history for first release version (#8)
-
-### Documentation
-
-- coverage matrix, contributing guide, and polish (#22)
-- use main environment for securefix-server releases (#17)
 
 ### Maintenance
 
 - release pipeline (release PR, tagging, server-side goreleaser) (#7)
 - add lint, test, and approval workflows (#2)
 - repository foundation (#1)
+
+
+### Miscellaneous
+
 - Add initial README for terraform-provider-sigma
+
+
