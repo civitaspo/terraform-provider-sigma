@@ -10,6 +10,10 @@ on:
         description: "PR mode: apply autofixes via Securefix. Push mode: check-only."
         type: boolean
         required: true
+      suite:
+        description: "full = all jobs; title = pr-title only (PR edited)."
+        type: string
+        required: true
 
 permissions: {}
 
