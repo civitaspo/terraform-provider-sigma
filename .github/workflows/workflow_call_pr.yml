@@ -15,6 +15,7 @@ permissions: {}
 
 jobs:
   test:
+    if: ${{ inputs.suite == 'full' }}
     name: test
     runs-on: ubuntu-latest
     permissions:
@@ -51,6 +52,7 @@ jobs:
         run: echo "go.mod not present yet; skipping build/vet/test"
 
   goreleaser-check:
+    if: ${{ inputs.suite == 'full' }}
     name: goreleaser-check
     runs-on: ubuntu-latest
     permissions:
@@ -78,6 +80,7 @@ jobs:
         run: goreleaser build --snapshot --clean --single-target
 
   lint:
+    if: ${{ inputs.suite == 'full' }}
     name: lint
     runs-on: ubuntu-latest
     permissions:
@@ -207,8 +210,8 @@ jobs:
         run: git diff --exit-code
 
   pr-title:
+    if: ${{ inputs.autofix && (inputs.suite == 'full' || inputs.suite == 'title') }}
     name: pr-title
-    if: inputs.autofix
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
