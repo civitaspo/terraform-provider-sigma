@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- fix broken CI badge after workflow rename (#71)
 - point releasing guide at shared client-releases spec (#64)
 
 
