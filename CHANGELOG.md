@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- grant nested reusable workflow permissions from callers (#68)
 - collapse PR checks into status-check gate (#67)
 - bump securefix-server reusables for job summary links (#65)
 - use securefix-server release workflow reusables (#62)
