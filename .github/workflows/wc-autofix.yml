@@ -1,21 +1,19 @@
-name: Lint
+# Autofix (workflow_call). Used from workflow_call_pr.yml.
+
+name: autofix (workflow_call)
 
 on:
-  pull_request:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_call:
 
 permissions: {}
 
-concurrency:
-  group: lint-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
 
 jobs:
-  lint:
-    name: lint
+  autofix:
+    name: autofix
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,9 +30,8 @@ jobs:
           persist-credentials: false
 
       - name: Forbid CHANGELOG edits outside release/next
-        if: github.event_name == 'pull_request' && github.head_ref != 'release/next'
+        if: github.head_ref != 'release/next'
         run: |
-          set -euo pipefail
           base="${{ github.event.pull_request.base.sha }}"
           head="${{ github.event.pull_request.head.sha }}"
           if git diff --name-only "${base}...${head}" | grep -qx 'CHANGELOG.md'; then
@@ -52,52 +49,24 @@ jobs:
           cache: false
 
       - name: Fix action pins
-        if: github.event_name == 'pull_request'
         env:
           PINACT_GITHUB_TOKEN: ${{ github.token }}
         run: pinact run
 
-      - name: Check action pins
-        if: github.event_name != 'pull_request'
-        env:
-          PINACT_GITHUB_TOKEN: ${{ github.token }}
-        run: pinact run --check
-
       - name: Disable checkout credentials
-        if: github.event_name == 'pull_request'
         run: disable-checkout-persist-credentials
 
-      - name: Ensure checkout credentials are disabled
-        if: github.event_name != 'pull_request'
-        run: |
-          disable-checkout-persist-credentials
-          git diff --exit-code -- .github/workflows
-
       - name: Format Go sources
-        if: github.event_name == 'pull_request' && hashFiles('go.mod') != ''
+        if: hashFiles('go.mod') != ''
         run: gofmt -w .
 
-      - name: Check Go formatting
-        if: github.event_name != 'pull_request' && hashFiles('go.mod') != ''
-        run: test -z "$(gofmt -l .)"
-
       - name: Tidy Go modules
-        if: github.event_name == 'pull_request' && hashFiles('go.mod') != ''
+        if: hashFiles('go.mod') != ''
         run: go mod tidy
 
-      - name: Check Go modules are tidy
-        if: github.event_name != 'pull_request' && hashFiles('go.mod') != ''
-        run: go mod tidy -diff
-
       - name: Generate provider docs
-        if: github.event_name == 'pull_request' && hashFiles('go.mod') != ''
+        if: hashFiles('go.mod') != ''
         run: tfplugindocs generate
-
-      - name: Check provider docs are up to date
-        if: github.event_name != 'pull_request' && hashFiles('go.mod') != ''
-        run: |
-          tfplugindocs generate
-          git diff --exit-code -- docs examples
 
       - name: Run ghalint
         run: ghalint run
@@ -107,7 +76,6 @@ jobs:
         run: golangci-lint run ./...
 
       - name: Detect automated fixes
-        if: github.event_name == 'pull_request'
         id: fixes
         run: |
           if git diff --quiet; then
@@ -117,9 +85,8 @@ jobs:
           echo "changed=true" >> "$GITHUB_OUTPUT"
           git diff --name-only
 
-      - name: Request Securefix commit
+      - name: Request SecureFix commit
         if: |
-          github.event_name == 'pull_request' &&
           steps.fixes.outputs.changed == 'true' &&
           env.SECUREFIX_CLIENT_APP_ID != ''
         uses: csm-actions/securefix-action@4d885e1bcb71f4f110215c833002ce9fa0ee0fa6 # v0.6.0
@@ -130,15 +97,10 @@ jobs:
           commit_message: "ci: apply automated fixes"
           server_repository: ${{ env.SECUREFIX_SERVER_REPOSITORY }}
 
-      - name: Require Securefix configuration
+      - name: Require SecureFix configuration
         if: |
-          github.event_name == 'pull_request' &&
           steps.fixes.outputs.changed == 'true' &&
           env.SECUREFIX_CLIENT_APP_ID == ''
         run: |
           echo "Automated fixes are needed, but SECUREFIX_CLIENT_APP_ID is not configured." >&2
           exit 1
-
-      - name: Check for uncommitted changes
-        if: github.event_name != 'pull_request'
-        run: git diff --exit-code
