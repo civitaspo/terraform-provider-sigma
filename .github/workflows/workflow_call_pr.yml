@@ -1,13 +1,10 @@
-# Reusable jobs for PR/push CI. Called from ci.yml.
-# github.event_name is always workflow_call here — use inputs.autofix for PR vs push behavior.
-
-name: PR checks (reusable)
+name: PR checks (workflow_call)
 
 on:
   workflow_call:
     inputs:
       autofix:
-        description: "PR mode: apply autofixes via Securefix. Push mode: check-only."
+        description: "PR mode: apply autofixes via SecureFix. Push mode: check-only."
         type: boolean
         required: true
       suite:
@@ -20,222 +17,27 @@ permissions: {}
 jobs:
   test:
     if: ${{ inputs.suite == 'full' }}
-    name: test
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/wc-test.yml
     permissions:
       contents: read
-    timeout-minutes: 20
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up mise
-        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
-        with:
-          version: "2026.8.3"
-          install_args: "--locked"
-          cache: false
-
-      - name: Build
-        if: hashFiles('go.mod') != ''
-        run: go build ./...
-
-      - name: Vet
-        if: hashFiles('go.mod') != ''
-        run: go vet ./...
-
-      - name: Test
-        if: hashFiles('go.mod') != ''
-        run: go test -race -cover ./...
-
-      - name: Skip until Go module exists
-        if: hashFiles('go.mod') == ''
-        run: echo "go.mod not present yet; skipping build/vet/test"
 
   goreleaser-check:
     if: ${{ inputs.suite == 'full' }}
-    name: goreleaser-check
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/wc-goreleaser-check.yml
     permissions:
       contents: read
-    timeout-minutes: 15
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Set up mise
-        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
-        with:
-          version: "2026.8.3"
-          install_args: "--locked"
-          cache: false
-
-      - name: Check GoReleaser configuration
-        run: goreleaser check
-
-      - name: Build release snapshot
-        run: goreleaser build --snapshot --clean --single-target
 
   lint:
     if: ${{ inputs.suite == 'full' }}
-    name: lint
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/wc-lint.yml
+    with:
+      autofix: ${{ inputs.autofix }}
+    secrets: inherit
     permissions:
       contents: read
-    timeout-minutes: 15
-    env:
-      SECUREFIX_CLIENT_APP_ID: ${{ vars.SECUREFIX_CLIENT_APP_ID }}
-      SECUREFIX_SERVER_REPOSITORY: ${{ vars.SECUREFIX_SERVER_REPOSITORY }}
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Forbid CHANGELOG edits outside release/next
-        if: inputs.autofix && github.head_ref != 'release/next'
-        run: |
-          set -euo pipefail
-          base="${{ github.event.pull_request.base.sha }}"
-          head="${{ github.event.pull_request.head.sha }}"
-          if git diff --name-only "${base}...${head}" | grep -qx 'CHANGELOG.md'; then
-            echo "CHANGELOG.md is owned by the Release PR (git-cliff)." >&2
-            echo "Do not edit it on feature PRs; use Conventional Commit subjects instead." >&2
-            echo "See docs/releasing.md." >&2
-            exit 1
-          fi
-
-      - name: Set up mise
-        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
-        with:
-          version: "2026.8.3"
-          install_args: "--locked"
-          cache: false
-
-      - name: Fix action pins
-        if: inputs.autofix
-        env:
-          PINACT_GITHUB_TOKEN: ${{ github.token }}
-        run: pinact run
-
-      - name: Check action pins
-        if: ${{ !inputs.autofix }}
-        env:
-          PINACT_GITHUB_TOKEN: ${{ github.token }}
-        run: pinact run --check
-
-      - name: Disable checkout credentials
-        if: inputs.autofix
-        run: disable-checkout-persist-credentials
-
-      - name: Ensure checkout credentials are disabled
-        if: ${{ !inputs.autofix }}
-        run: |
-          disable-checkout-persist-credentials
-          git diff --exit-code -- .github/workflows
-
-      - name: Format Go sources
-        if: inputs.autofix && hashFiles('go.mod') != ''
-        run: gofmt -w .
-
-      - name: Check Go formatting
-        if: ${{ !inputs.autofix && hashFiles('go.mod') != '' }}
-        run: test -z "$(gofmt -l .)"
-
-      - name: Tidy Go modules
-        if: inputs.autofix && hashFiles('go.mod') != ''
-        run: go mod tidy
-
-      - name: Check Go modules are tidy
-        if: ${{ !inputs.autofix && hashFiles('go.mod') != '' }}
-        run: go mod tidy -diff
-
-      - name: Generate provider docs
-        if: inputs.autofix && hashFiles('go.mod') != ''
-        run: tfplugindocs generate
-
-      - name: Check provider docs are up to date
-        if: ${{ !inputs.autofix && hashFiles('go.mod') != '' }}
-        run: |
-          tfplugindocs generate
-          git diff --exit-code -- docs examples
-
-      - name: Run ghalint
-        run: ghalint run
-
-      - name: Run golangci-lint
-        if: hashFiles('go.mod') != ''
-        run: golangci-lint run ./...
-
-      - name: Detect automated fixes
-        if: inputs.autofix
-        id: fixes
-        run: |
-          if git diff --quiet; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-          git diff --name-only
-
-      - name: Request SecureFix commit
-        if: |
-          inputs.autofix &&
-          steps.fixes.outputs.changed == 'true' &&
-          env.SECUREFIX_CLIENT_APP_ID != ''
-        uses: csm-actions/securefix-action@4d885e1bcb71f4f110215c833002ce9fa0ee0fa6 # v0.6.0
-        with:
-          action: client
-          app_id: ${{ env.SECUREFIX_CLIENT_APP_ID }}
-          app_private_key: ${{ secrets.SECUREFIX_CLIENT_PRIVATE_KEY }}
-          commit_message: "ci: apply automated fixes"
-          server_repository: ${{ env.SECUREFIX_SERVER_REPOSITORY }}
-
-      - name: Require SecureFix configuration
-        if: |
-          inputs.autofix &&
-          steps.fixes.outputs.changed == 'true' &&
-          env.SECUREFIX_CLIENT_APP_ID == ''
-        run: |
-          echo "Automated fixes are needed, but SECUREFIX_CLIENT_APP_ID is not configured." >&2
-          exit 1
-
-      - name: Check for uncommitted changes
-        if: ${{ !inputs.autofix }}
-        run: git diff --exit-code
 
   pr-title:
     if: ${{ inputs.autofix && (inputs.suite == 'full' || inputs.suite == 'title') }}
-    name: pr-title
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/wc-pr-title.yml
     permissions:
       pull-requests: read
-    timeout-minutes: 5
-
-    steps:
-      - name: Validate pull request title
-        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          types: |
-            feat
-            fix
-            docs
-            refactor
-            test
-            ci
-            build
-            chore
-            perf
-            revert
-          requireScope: false
