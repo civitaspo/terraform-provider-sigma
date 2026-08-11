@@ -1,0 +1,27 @@
+# Push aggregator: check-only wc-* units (no SecureFix, no pr-title).
+
+name: Push checks (workflow_call)
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  test:
+    uses: ./.github/workflows/wc-test.yml
+    permissions:
+      contents: read
+
+  goreleaser-check:
+    uses: ./.github/workflows/wc-goreleaser-check.yml
+    permissions:
+      contents: read
+
+  lint:
+    uses: ./.github/workflows/wc-lint.yml
+    with:
+      autofix: false
+    secrets: inherit
+    permissions:
+      contents: read
