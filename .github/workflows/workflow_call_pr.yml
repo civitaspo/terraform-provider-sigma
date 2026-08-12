@@ -1,0 +1,47 @@
+# PR aggregator: fans out to wc-* units.
+# Assumes caller is a pull_request workflow. Title-only is an input from the outer layer.
+
+name: PR checks (workflow_call)
+
+on:
+  workflow_call:
+    inputs:
+      changed_title_only:
+        description: "True when the PR event only changed the title (action=edited)."
+        type: boolean
+        required: true
+    secrets:
+      SECUREFIX_CLIENT_PRIVATE_KEY:
+        required: false
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+jobs:
+  test:
+    if: ${{ !inputs.changed_title_only }}
+    uses: ./.github/workflows/wc-test.yml
+    permissions:
+      contents: read
+
+  goreleaser-check:
+    if: ${{ !inputs.changed_title_only }}
+    uses: ./.github/workflows/wc-goreleaser-check.yml
+    permissions:
+      contents: read
+
+  autofix:
+    if: ${{ !inputs.changed_title_only }}
+    uses: ./.github/workflows/wc-autofix.yml
+    secrets:
+      SECUREFIX_CLIENT_PRIVATE_KEY: ${{ secrets.SECUREFIX_CLIENT_PRIVATE_KEY }}
+    permissions:
+      contents: read
+
+  pr-title:
+    uses: ./.github/workflows/wc-pr-title.yml
+    permissions:
+      pull-requests: read

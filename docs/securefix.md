@@ -4,17 +4,24 @@ This repository uses [`csm-actions/securefix-action`](https://github.com/csm-act
 
 The shared server repository is [`civitaspo/securefix-server`](https://github.com/civitaspo/securefix-server).
 
+**Canonical client release specification:** [securefix-server docs/client-releases.md](https://github.com/civitaspo/securefix-server/blob/main/docs/client-releases.md)
+
 ## GitHub Apps
 
 Install both apps on this repository and on `civitaspo/securefix-server`:
 
 - Client app: `issues: write` (creates request labels on the server repo)
-- Server app: `contents: write`, `actions: read`, `pull_requests: write`, and `workflows: write`
+- Server app: `contents: write`, `actions: read`, `pull_requests: write` / `pull_requests: read`, and `workflows: write` as required by Securefix and Release
 
 ## Variables and secrets (this repository)
 
+Required for the shared release / approve reusables:
+
+- Secret `SECUREFIX_CLIENT_PRIVATE_KEY` (client GitHub App private key)
+
+Still used by the local `Lint` Securefix autofix path (not hardcoded in that workflow yet):
+
 - Variable `SECUREFIX_CLIENT_APP_ID`
-- Secret `SECUREFIX_CLIENT_PRIVATE_KEY`
 - Variable `SECUREFIX_SERVER_REPOSITORY` (value: `securefix-server` — repository name only; `securefix-action` expects this format)
 
 Strong secrets (GPG keys, machine-user PAT, server app private key) live only in `civitaspo/securefix-server`.
@@ -27,18 +34,12 @@ The `Lint` workflow runs fixers (`pinact`, `disable-checkout-persist-credentials
 
 ### Auto-approval
 
-The `Approve Request` workflow asks the server to approve pull requests authored by `civitaspo`, `renovate[bot]`, `dependabot[bot]`, or `civitaspo-securefix-server[bot]` (and on `/approve` comments from `civitaspo`). Both the client and server actions validate that all commits are signed and that committers are in `allowed_committers` (defaults are only Renovate/Dependabot; this repository also passes `civitaspo` and `civitaspo-securefix-server[bot]`). When client validation passes, it creates a label on `securefix-server`; the server then approves with the machine-user PAT (`civitaspo-bot`).
-
-## Dependency updates
-
-- **Version updates:** [Renovate](https://docs.renovatebot.com/) (`renovate.json5`) owns Go modules, GitHub Actions, and mise tooling. Non-major updates automerge when checks pass.
-- **Dependabot version updates:** Not configured. There is no `.github/dependabot.yml`, so Dependabot does not open routine version-bump PRs (those would duplicate Renovate).
-- **Dependabot security updates:** May remain enabled via the GitHub repository security settings (`vulnerability-alerts` / automated security fixes). Those PRs are eligible for Approve Request because `dependabot[bot]` is listed in the workflow `if:` and in `allowed_committers`.
+The `Approve Request` thin wrapper calls `reusable-approve-request.yml` on `securefix-server`. Trusted authors / committers are defined on the server (see client-releases.md). When validation passes, the server approves with the machine-user PAT (`civitaspo-bot`).
 
 ### Release
 
-1. The `Release PR` workflow asks Securefix to open or update `release/next` with changelog and version metadata.
-2. After that PR is squash-merged, the `Release Tag` workflow creates an annotated tag and requests a server-side release.
-3. The server `main` environment runs GoReleaser with the provider GPG key and publishes the GitHub Release.
+1. The `Release PR` reusable runs git-cliff (`cliff.toml` + mise `aqua:orhun/git-cliff`) and asks Securefix to open or update `release/next`.
+2. After that PR is squash-merged, the `Release Tag` reusable creates an annotated tag and a `release-request-*` label on `civitaspo/securefix-server`.
+3. The server `Release` workflow (`publish: goreleaser` for this repo in `release-clients.yaml`) runs GoReleaser with the provider GPG key from the server `main` environment and publishes the GitHub Release.
 
-See [releasing.md](releasing.md) once the release pipeline lands.
+See [releasing.md](releasing.md) and the [canonical client-releases doc](https://github.com/civitaspo/securefix-server/blob/main/docs/client-releases.md).

@@ -1,6 +1,6 @@
 # terraform-provider-sigma
 
-[![CI](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/ci.yml/badge.svg)](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/ci.yml)
+[![CI](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/pull_request.yml/badge.svg)](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/pull_request.yml)
 [![Release](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/release-tag.yml/badge.svg)](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/release-tag.yml)
 [![Terraform Registry](https://img.shields.io/badge/registry-civitaspo%2Fsigma-purple.svg)](https://registry.terraform.io/providers/civitaspo/sigma/latest)
 

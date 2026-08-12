@@ -1,18 +1,9 @@
-name: PR Title
+name: pr-title (workflow_call)
 
 on:
-  pull_request:
-    types:
-      - opened
-      - edited
-      - synchronize
-      - reopened
+  workflow_call:
 
 permissions: {}
-
-concurrency:
-  group: pr-title-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
 
 jobs:
   pr-title:
