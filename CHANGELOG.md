@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.1.2] - 2026-08-11
+## [0.1.2] - 2026-08-12
 
 
 ### Bug Fixes
@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- migrate Renovate config (#63)
 - harden reusable workflow calls for status-check (#70)
 - update dependency jdx/mise to v2026.8.4 (#69)
 - grant nested reusable workflow permissions from callers (#68)
