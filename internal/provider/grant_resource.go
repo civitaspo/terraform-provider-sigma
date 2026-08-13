@@ -14,15 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var (
-	_ resource.Resource                   = (*grantResource)(nil)
-	_ resource.ResourceWithConfigure      = (*grantResource)(nil)
-	_ resource.ResourceWithImportState    = (*grantResource)(nil)
-	_ resource.ResourceWithValidateConfig = (*grantResource)(nil)
-)
-
-type grantResource struct{ configuredResource }
-
+// grantModel, grantSchema, and lookup helpers are shared by specialized grant
+// resources. Public sigma_grant was removed in v0.2.
 type grantModel struct {
 	ID             types.String `tfsdk:"id"`
 	InodeID        types.String `tfsdk:"inode_id"`
@@ -36,24 +29,6 @@ type grantModel struct {
 	UpdatedBy      types.String `tfsdk:"updated_by"`
 	CreatedAt      types.String `tfsdk:"created_at"`
 	UpdatedAt      types.String `tfsdk:"updated_at"`
-}
-
-func NewGrantResource() resource.Resource { return &grantResource{} }
-
-func (r *grantResource) Metadata(_ context.Context, request resource.MetadataRequest, response *resource.MetadataResponse) {
-	response.TypeName = request.ProviderTypeName + "_grant"
-}
-
-func (r *grantResource) Configure(_ context.Context, request resource.ConfigureRequest, response *resource.ConfigureResponse) {
-	r.configure(request, response)
-}
-
-func (r *grantResource) Schema(_ context.Context, _ resource.SchemaRequest, response *resource.SchemaResponse) {
-	response.Schema = grantSchema(
-		"Manages a generic Sigma inode grant.",
-		"Inode ID.",
-		"Permission allowed by the inode type: `admin`, `annotate`, `update`, `usage`, `writeback`, `create`, `organize`, `explore`, `view`, `edit`, or `apply`.",
-	)
 }
 
 func grantSchema(description, inodeDescription, permissionDescription string) schema.Schema {
@@ -77,84 +52,6 @@ func grantSchema(description, inodeDescription, permissionDescription string) sc
 	}
 }
 
-func (r *grantResource) ValidateConfig(ctx context.Context, request resource.ValidateConfigRequest, response *resource.ValidateConfigResponse) {
-	var config grantModel
-	response.Diagnostics.Append(request.Config.Get(ctx, &config)...)
-	if response.Diagnostics.HasError() {
-		return
-	}
-	if config.MemberID.IsUnknown() || config.TeamID.IsUnknown() || config.Permission.IsUnknown() || config.TagID.IsUnknown() {
-		return
-	}
-	validateGrant(&config, genericGrantPermissions, true, &response.Diagnostics)
-}
-
-func (r *grantResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
-	var plan grantModel
-	response.Diagnostics.Append(request.Plan.Get(ctx, &plan)...)
-	if response.Diagnostics.HasError() || !validateGrant(&plan, genericGrantPermissions, true, &response.Diagnostics) {
-		return
-	}
-	value, err := r.client.CreateGrant(ctx, sigma.CreateGrantInput{
-		Grantee:    sigma.Grantee{MemberID: plan.MemberID.ValueString(), TeamID: plan.TeamID.ValueString()},
-		Permission: plan.Permission.ValueString(),
-		InodeID:    plan.InodeID.ValueString(),
-		TagID:      plan.TagID.ValueString(),
-	})
-	if err != nil {
-		response.Diagnostics.AddError("Unable to create Sigma grant", err.Error())
-		return
-	}
-	if value == nil {
-		value, err = lookupListedGrant(func() ([]sigma.Grant, error) {
-			return r.client.ListGrants(ctx, plan.InodeID.ValueString())
-		}, &plan, "")
-		if err != nil {
-			response.Diagnostics.AddError("Unable to locate created Sigma grant", err.Error())
-			return
-		}
-	}
-	setGrant(&plan, value)
-	response.Diagnostics.Append(response.State.Set(ctx, &plan)...)
-}
-
-func (r *grantResource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
-	var state grantModel
-	response.Diagnostics.Append(request.State.Get(ctx, &state)...)
-	if response.Diagnostics.HasError() {
-		return
-	}
-	value, err := r.client.GetGrant(ctx, state.ID.ValueString())
-	if sigma.IsNotFound(err) {
-		response.State.RemoveResource(ctx)
-		return
-	}
-	if err != nil {
-		response.Diagnostics.AddError("Unable to read Sigma grant", err.Error())
-		return
-	}
-	setGrant(&state, value)
-	response.Diagnostics.Append(response.State.Set(ctx, &state)...)
-}
-
-func (r *grantResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {}
-
-func (r *grantResource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
-	var state grantModel
-	response.Diagnostics.Append(request.State.Get(ctx, &state)...)
-	if response.Diagnostics.HasError() {
-		return
-	}
-	if err := r.client.DeleteGrant(ctx, state.ID.ValueString()); err != nil && !sigma.IsNotFound(err) {
-		response.Diagnostics.AddError("Unable to delete Sigma grant", err.Error())
-	}
-}
-
-func (r *grantResource) ImportState(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {
-	importPassthrough(ctx, request, response)
-}
-
-var genericGrantPermissions = []string{"admin", "annotate", "update", "usage", "writeback", "create", "organize", "explore", "view", "edit", "apply"}
 var workspaceGrantPermissions = []string{"view", "explore", "organize", "edit"}
 var workbookGrantPermissions = []string{"view", "explore", "edit"}
 var reportGrantPermissions = []string{"view", "edit"}

@@ -82,18 +82,6 @@ func nullable(value string) any {
 	return value
 }
 
-func stringSlice(raw any) []string {
-	values, ok := raw.([]any)
-	if !ok {
-		return nil
-	}
-	out := make([]string, 0, len(values))
-	for _, value := range values {
-		out = append(out, value.(string))
-	}
-	return out
-}
-
 func requireAcceptance(t *testing.T) {
 	t.Helper()
 	if os.Getenv("TF_ACC") == "" {
