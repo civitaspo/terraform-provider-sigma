@@ -54,7 +54,7 @@ func (r *memberResource) Configure(_ context.Context, req resource.ConfigureRequ
 }
 func (r *memberResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible. `add_to_teams` and `send_invite` apply only to `POST /v2/members` (not reactivation). Destroy refuses members marked inactive through SCIM (`is_inactive`); deactivate those users in your identity provider, or remove the resource from state with `terraform state rm`. The API does not expose a SCIM-provisioned flag for still-active members. Do not also manage the same team membership with `sigma_team_member` or `sigma_team_members`.",
+		MarkdownDescription: "Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible. `add_to_teams` and `send_invite` apply only to `POST /v2/members` (not reactivation). Destroy refuses members marked inactive through SCIM (`is_inactive`); deactivate those users in your identity provider, or remove the resource from state with `terraform state rm`. The API does not expose a SCIM-provisioned flag for still-active members. Do not also manage the same team membership with `sigma_team_member`.",
 		Attributes: map[string]schema.Attribute{
 			"id":              schema.StringAttribute{Computed: true, MarkdownDescription: "Member ID."},
 			"email":           schema.StringAttribute{Required: true, MarkdownDescription: "Member email address."},
@@ -78,7 +78,7 @@ func (r *memberResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"add_to_teams": schema.SetNestedAttribute{
 				Optional:            true,
 				PlanModifiers:       []planmodifier.Set{setplanmodifier.RequiresReplace()},
-				MarkdownDescription: "Teams to add the member to at create time (`addToTeams`). Changing this value forces replacement. Recreating an archived member does not re-apply this list. Do not also manage the same membership with `sigma_team_member` or `sigma_team_members`.",
+				MarkdownDescription: "Teams to add the member to at create time (`addToTeams`). Changing this value forces replacement. Recreating an archived member does not re-apply this list. Do not also manage the same membership with `sigma_team_member`.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"team_id":       schema.StringAttribute{Required: true, MarkdownDescription: "Team ID."},

@@ -3,12 +3,12 @@
 page_title: "sigma_member Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible. add_to_teams and send_invite apply only to POST /v2/members (not reactivation). Destroy refuses members marked inactive through SCIM (is_inactive); deactivate those users in your identity provider, or remove the resource from state with terraform state rm. The API does not expose a SCIM-provisioned flag for still-active members. Do not also manage the same team membership with sigma_team_member or sigma_team_members.
+  Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible. add_to_teams and send_invite apply only to POST /v2/members (not reactivation). Destroy refuses members marked inactive through SCIM (is_inactive); deactivate those users in your identity provider, or remove the resource from state with terraform state rm. The API does not expose a SCIM-provisioned flag for still-active members. Do not also manage the same team membership with sigma_team_member.
 ---
 
 # sigma_member (Resource)
 
-Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible. `add_to_teams` and `send_invite` apply only to `POST /v2/members` (not reactivation). Destroy refuses members marked inactive through SCIM (`is_inactive`); deactivate those users in your identity provider, or remove the resource from state with `terraform state rm`. The API does not expose a SCIM-provisioned flag for still-active members. Do not also manage the same team membership with `sigma_team_member` or `sigma_team_members`.
+Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible. `add_to_teams` and `send_invite` apply only to `POST /v2/members` (not reactivation). Destroy refuses members marked inactive through SCIM (`is_inactive`); deactivate those users in your identity provider, or remove the resource from state with `terraform state rm`. The API does not expose a SCIM-provisioned flag for still-active members. Do not also manage the same team membership with `sigma_team_member`.
 
 ## Example Usage
 
@@ -42,7 +42,7 @@ resource "sigma_member" "example" {
 
 ### Optional
 
-- `add_to_teams` (Attributes Set) Teams to add the member to at create time (`addToTeams`). Changing this value forces replacement. Recreating an archived member does not re-apply this list. Do not also manage the same membership with `sigma_team_member` or `sigma_team_members`. (see [below for nested schema](#nestedatt--add_to_teams))
+- `add_to_teams` (Attributes Set) Teams to add the member to at create time (`addToTeams`). Changing this value forces replacement. Recreating an archived member does not re-apply this list. Do not also manage the same membership with `sigma_team_member`. (see [below for nested schema](#nestedatt--add_to_teams))
 - `archive_documents` (Boolean) On destroy, PATCH `archiveDocuments` with `isArchived=true` before DELETE. Archives the member's documents instead of transferring them, and also archives scheduled exports. Do not set together with `new_owner_id`.
 - `archive_scheduled_exports` (Boolean) On destroy, PATCH `archiveScheduledExports` with `isArchived=true` before DELETE. Archives scheduled exports instead of transferring them.
 - `member_type` (String) Account type name.

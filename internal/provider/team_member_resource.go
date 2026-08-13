@@ -37,7 +37,7 @@ func (r *teamMemberResource) Configure(_ context.Context, req resource.Configure
 func (r *teamMemberResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages one member of a Sigma team. Do not use with `sigma_team_members` for the same team; the authoritative resource will remove members managed elsewhere.",
+		MarkdownDescription: "Manages one member of a Sigma team.",
 		Attributes: map[string]schema.Attribute{
 			"id":            schema.StringAttribute{Computed: true, MarkdownDescription: "Composite ID in `teamId/memberId` form."},
 			"team_id":       schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Team ID."},
