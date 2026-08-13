@@ -83,12 +83,14 @@ type Team struct {
 	Visibility  string   `json:"visibility"`
 	IsArchived  bool     `json:"isArchived"`
 	Members     []string `json:"members"`
+	WorkspaceID *string  `json:"workspaceId"`
 }
 type CreateTeamInput struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description,omitempty"`
-	Visibility  string   `json:"visibility,omitempty"`
-	Members     []string `json:"members,omitempty"`
+	Name             string   `json:"name"`
+	Description      string   `json:"description,omitempty"`
+	Visibility       string   `json:"visibility,omitempty"`
+	Members          []string `json:"members,omitempty"`
+	CreateTeamFolder *bool    `json:"createTeamFolder,omitempty"`
 }
 type UpdateTeamInput struct {
 	Name        *string `json:"name,omitempty"`

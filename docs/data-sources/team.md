@@ -25,3 +25,4 @@ Retrieves a Sigma team by ID.
 - `is_archived` (Boolean) Whether archived.
 - `name` (String) Team name.
 - `visibility` (String) Visibility.
+- `workspace_id` (String) ID of the team workspace when the API returns it.

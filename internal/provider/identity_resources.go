@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -200,11 +201,13 @@ func setMember(state *memberModel, value *sigma.Member) {
 
 type teamResource struct{ configuredResource }
 type teamModel struct {
-	ID          types.String `tfsdk:"id"`
-	Name        types.String `tfsdk:"name"`
-	Description types.String `tfsdk:"description"`
-	Visibility  types.String `tfsdk:"visibility"`
-	IsArchived  types.Bool   `tfsdk:"is_archived"`
+	ID               types.String `tfsdk:"id"`
+	Name             types.String `tfsdk:"name"`
+	Description      types.String `tfsdk:"description"`
+	Visibility       types.String `tfsdk:"visibility"`
+	IsArchived       types.Bool   `tfsdk:"is_archived"`
+	CreateTeamFolder types.Bool   `tfsdk:"create_team_folder"`
+	WorkspaceID      types.String `tfsdk:"workspace_id"`
 }
 
 func NewTeamResource() resource.Resource { return &teamResource{} }
@@ -216,13 +219,23 @@ func (r *teamResource) Configure(_ context.Context, req resource.ConfigureReques
 }
 func (r *teamResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Sigma team.",
+		MarkdownDescription: "Manages a Sigma team. `create_team_folder` is accepted only on create (`POST /v2/teams`); changing it forces replacement.",
 		Attributes: map[string]schema.Attribute{
 			"id":          schema.StringAttribute{Computed: true, MarkdownDescription: "Team ID."},
 			"name":        schema.StringAttribute{Required: true, MarkdownDescription: "Team name."},
 			"description": schema.StringAttribute{Optional: true, MarkdownDescription: "Team description."},
 			"visibility":  schema.StringAttribute{Optional: true, Computed: true, MarkdownDescription: "Team visibility: `public` or `private`."},
 			"is_archived": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the team is archived."},
+			"create_team_folder": schema.BoolAttribute{
+				Optional:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
+				MarkdownDescription: "When true, Sigma creates a workspace associated with the team at create time. The API only accepts `createTeamFolder` on `POST /v2/teams`; changing this value forces replacement.",
+			},
+			"workspace_id": schema.StringAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "ID of the team workspace when one exists. Present on create responses; later GET and list responses may omit it, in which case Terraform keeps the last known value.",
+			},
 		},
 	}
 }
@@ -232,7 +245,12 @@ func (r *teamResource) Create(ctx context.Context, req resource.CreateRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	team, err := r.client.CreateTeam(ctx, sigma.CreateTeamInput{Name: plan.Name.ValueString(), Description: plan.Description.ValueString(), Visibility: plan.Visibility.ValueString()})
+	input := sigma.CreateTeamInput{Name: plan.Name.ValueString(), Description: plan.Description.ValueString(), Visibility: plan.Visibility.ValueString()}
+	if !plan.CreateTeamFolder.IsNull() && !plan.CreateTeamFolder.IsUnknown() {
+		createTeamFolder := plan.CreateTeamFolder.ValueBool()
+		input.CreateTeamFolder = &createTeamFolder
+	}
+	team, err := r.client.CreateTeam(ctx, input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create Sigma team", err.Error())
 		return
@@ -298,6 +316,11 @@ func setTeam(state *teamModel, value *sigma.Team) {
 	}
 	state.Visibility = types.StringValue(value.Visibility)
 	state.IsArchived = types.BoolValue(value.IsArchived)
+	if value.WorkspaceID != nil && *value.WorkspaceID != "" {
+		state.WorkspaceID = types.StringValue(*value.WorkspaceID)
+	} else if state.WorkspaceID.IsUnknown() {
+		state.WorkspaceID = types.StringNull()
+	}
 }
 
 type teamMemberResource struct{ configuredResource }
