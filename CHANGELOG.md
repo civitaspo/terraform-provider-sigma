@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- update module github.com/oapi-codegen/runtime to v1.6.0 (#83)
 - install git-cliff for shared Release PR reusable (#66)
 - pass merge commit SHA in release request label (#46)
 
