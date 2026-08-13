@@ -3,8 +3,11 @@ package sigma
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -122,6 +125,7 @@ func TestClientSerializesConcurrentTokenRequests(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v2/auth/token", func(response http.ResponseWriter, request *http.Request) {
 		tokenCalls.Add(1)
+		time.Sleep(50 * time.Millisecond)
 		validTokenHandler(response, request)
 	})
 	mux.HandleFunc("/v2/whoami", func(response http.ResponseWriter, _ *http.Request) {
@@ -280,6 +284,172 @@ func TestResolveEndpointJoinsBasePath(t *testing.T) {
 	}
 	if got := endpoint.String(); got != "https://proxy.example.com/sigma/v2/members?limit=1" {
 		t.Errorf("endpoint = %q", got)
+	}
+}
+
+func TestClientRejectsCrossHostRequest(t *testing.T) {
+	t.Parallel()
+
+	client, err := NewClient("https://api.sigmacomputing.com", "client-id", "client-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := http.NewRequest(http.MethodGet, "https://evil.example/v2/whoami", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.transport.Do(request)
+	if err == nil || !strings.Contains(err.Error(), "not the configured host") {
+		t.Fatalf("error = %v, want cross-host rejection", err)
+	}
+}
+
+func TestClientDoesNotRetryPOST(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int64
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/auth/token", validTokenHandler)
+	mux.HandleFunc("/v2/members", func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost {
+			t.Errorf("method = %s", request.Method)
+		}
+		calls.Add(1)
+		http.Error(response, `{"message":"rate limited"}`, http.StatusTooManyRequests)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "client-id", "client-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.sleep = func(context.Context, time.Duration) error {
+		t.Fatal("POST should not sleep for retry")
+		return nil
+	}
+	_, err = client.CreateMember(context.Background(), CreateMemberInput{Email: "ada@example.com", FirstName: "Ada", LastName: "Lovelace"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("POST calls = %d, want 1", got)
+	}
+}
+
+func TestClientDoesNotRetryPATCH(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int64
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/auth/token", validTokenHandler)
+	mux.HandleFunc("/v2/members/member-1", func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPatch {
+			t.Errorf("method = %s", request.Method)
+		}
+		calls.Add(1)
+		http.Error(response, `{"message":"unavailable"}`, http.StatusBadGateway)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "client-id", "client-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.sleep = func(context.Context, time.Duration) error {
+		t.Fatal("PATCH should not sleep for retry")
+		return nil
+	}
+	first := "Ada"
+	_, err = client.UpdateMember(context.Background(), "member-1", UpdateMemberInput{FirstName: &first})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("PATCH calls = %d, want 1", got)
+	}
+}
+
+func TestClientRetriesIdempotent5xxAndHonorsCancellation(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int64
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/auth/token", validTokenHandler)
+	mux.HandleFunc("/v2/whoami", func(response http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		http.Error(response, `{"message":"unavailable"}`, http.StatusBadGateway)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "client-id", "client-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	client.sleep = func(ctx context.Context, _ time.Duration) error {
+		cancel()
+		return ctx.Err()
+	}
+	_, err = client.Whoami(ctx)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want context cancellation", err)
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("whoami calls = %d, want 1 before cancelled backoff", got)
+	}
+}
+
+func TestClientCapsRetryAfter(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/auth/token", validTokenHandler)
+	mux.HandleFunc("/v2/whoami", func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Retry-After", "120")
+		http.Error(response, "rate limited", http.StatusTooManyRequests)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "client-id", "client-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var slept time.Duration
+	client.sleep = func(_ context.Context, delay time.Duration) error {
+		slept = delay
+		return fmt.Errorf("stop after first backoff")
+	}
+	_, err = client.Whoami(context.Background())
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if slept != 60*time.Second {
+		t.Errorf("retry delay = %s, want 60s cap", slept)
+	}
+}
+
+func TestWhoamiEmptyBodyIsError(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/auth/token", validTokenHandler)
+	mux.HandleFunc("/v2/whoami", func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusOK)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "client-id", "client-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.Whoami(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "empty body") {
+		t.Fatalf("error = %v, want empty body", err)
 	}
 }
 

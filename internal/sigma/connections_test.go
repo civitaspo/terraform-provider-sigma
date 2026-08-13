@@ -28,6 +28,24 @@ func TestConnectionUseOauthJSON(t *testing.T) {
 	}
 }
 
+func TestConnectionMapsTimeoutDefault(t *testing.T) {
+	t.Parallel()
+	encoded := []byte(`{"connectionId":"connection-1","name":"warehouse","type":"postgres","friendlyName":true,"timeout":{"default":45,"worksheet":10}}`)
+	var value sigma.Connection
+	if err := json.Unmarshal(encoded, &value); err != nil {
+		t.Fatal(err)
+	}
+	if value.TimeoutSecs == nil || *value.TimeoutSecs != 45 {
+		t.Fatalf("timeoutSecs from timeout.default = %#v", value.TimeoutSecs)
+	}
+	if value.Timeout == nil || value.Timeout.Default != 45 || value.Timeout.Worksheet == nil || *value.Timeout.Worksheet != 10 {
+		t.Fatalf("timeout object = %#v", value.Timeout)
+	}
+	if !value.FriendlyName {
+		t.Fatal("friendlyName = false")
+	}
+}
+
 func TestConnectionInputRestoreJSON(t *testing.T) {
 	t.Parallel()
 	restore := true

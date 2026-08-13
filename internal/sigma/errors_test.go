@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -86,5 +87,15 @@ func TestIsNotFoundAcceptsBare404Message(t *testing.T) {
 	err := &APIError{StatusCode: http.StatusNotFound, Message: "member not found"}
 	if !IsNotFound(err) {
 		t.Fatalf("IsNotFound(%v) = false", err)
+	}
+}
+
+func TestAPIErrorIncludesRequestID(t *testing.T) {
+	t.Parallel()
+
+	err := &APIError{StatusCode: http.StatusNotFound, Code: "not_found", Message: "identity not found", RequestID: "request-123"}
+	got := err.Error()
+	if !strings.Contains(got, "404") || !strings.Contains(got, "not_found") || !strings.Contains(got, "request_id=request-123") || !strings.Contains(got, "identity not found") {
+		t.Fatalf("Error() = %q", got)
 	}
 }
