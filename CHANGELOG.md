@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
+- add member create options and destroy-time transfer controls (#74)
 - add create_team_folder and workspace_id to sigma_team (#73)
 
 
