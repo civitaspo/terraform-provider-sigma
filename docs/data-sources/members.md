@@ -27,6 +27,7 @@ Read-Only:
 
 - `email` (String) Email address.
 - `first_name` (String) First name.
+- `home_folder_id` (String) ID of the member's My Documents folder.
 - `id` (String) Member ID.
 - `is_archived` (Boolean) Whether deactivated.
 - `is_inactive` (Boolean) Whether inactive through SCIM.

@@ -17,7 +17,7 @@ func TestIdentityDataSources(t *testing.T) {
 	member := map[string]any{
 		"memberId": "member-1", "organizationId": "org-1", "email": "ada@example.com",
 		"firstName": "Ada", "lastName": "Lovelace", "memberType": "Creator", "userKind": "internal",
-		"isArchived": false, "isInactive": false,
+		"isArchived": false, "isInactive": false, "homeFolderId": "folder-1",
 	}
 	team := map[string]any{
 		"teamId": "team-1", "name": "Analytics", "description": "Core", "visibility": "private", "isArchived": false, "workspaceId": "workspace-1",
@@ -85,7 +85,9 @@ data "sigma_user_attributes" "all" {}
 			Config: config,
 			Check: resource.ComposeAggregateTestCheckFunc(
 				resource.TestCheckResourceAttr("data.sigma_member.one", "email", "ada@example.com"),
+				resource.TestCheckResourceAttr("data.sigma_member.one", "home_folder_id", "folder-1"),
 				resource.TestCheckResourceAttr("data.sigma_members.all", "members.#", "1"),
+				resource.TestCheckResourceAttr("data.sigma_members.all", "members.0.home_folder_id", "folder-1"),
 				resource.TestCheckResourceAttr("data.sigma_team.one", "name", "Analytics"),
 				resource.TestCheckResourceAttr("data.sigma_team.one", "workspace_id", "workspace-1"),
 				resource.TestCheckResourceAttr("data.sigma_teams.all", "teams.#", "1"),

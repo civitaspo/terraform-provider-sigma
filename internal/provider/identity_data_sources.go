@@ -83,7 +83,8 @@ func memberDataAttributes(requireID bool) map[string]schema.Attribute {
 		"first_name": schema.StringAttribute{Computed: true, MarkdownDescription: "First name."}, "last_name": schema.StringAttribute{Computed: true, MarkdownDescription: "Last name."},
 		"member_type": schema.StringAttribute{Computed: true, MarkdownDescription: "Account type."}, "user_kind": schema.StringAttribute{Computed: true, MarkdownDescription: "User kind."},
 		"organization_id": schema.StringAttribute{Computed: true, MarkdownDescription: "Organization ID."}, "is_archived": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether deactivated."},
-		"is_inactive": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether inactive through SCIM."},
+		"is_inactive":    schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether inactive through SCIM."},
+		"home_folder_id": schema.StringAttribute{Computed: true, MarkdownDescription: "ID of the member's My Documents folder."},
 	}
 }
 func teamDataAttributes(requireID bool) map[string]schema.Attribute {
@@ -106,6 +107,7 @@ type memberDataModel struct {
 	MemberType     types.String `tfsdk:"member_type"`
 	UserKind       types.String `tfsdk:"user_kind"`
 	OrganizationID types.String `tfsdk:"organization_id"`
+	HomeFolderID   types.String `tfsdk:"home_folder_id"`
 	IsArchived     types.Bool   `tfsdk:"is_archived"`
 	IsInactive     types.Bool   `tfsdk:"is_inactive"`
 }
@@ -221,7 +223,11 @@ func (d *identityDataSource) Read(ctx context.Context, req datasource.ReadReques
 	}
 }
 func memberData(v *sigma.Member) memberDataModel {
-	return memberDataModel{ID: types.StringValue(v.MemberID), Email: types.StringValue(v.Email), FirstName: types.StringValue(v.FirstName), LastName: types.StringValue(v.LastName), MemberType: types.StringValue(v.MemberType), UserKind: types.StringValue(v.UserKind), OrganizationID: types.StringValue(v.OrganizationID), IsArchived: types.BoolValue(v.IsArchived), IsInactive: types.BoolValue(v.IsInactive)}
+	homeFolderID := types.StringNull()
+	if v.HomeFolderID != "" {
+		homeFolderID = types.StringValue(v.HomeFolderID)
+	}
+	return memberDataModel{ID: types.StringValue(v.MemberID), Email: types.StringValue(v.Email), FirstName: types.StringValue(v.FirstName), LastName: types.StringValue(v.LastName), MemberType: types.StringValue(v.MemberType), UserKind: types.StringValue(v.UserKind), OrganizationID: types.StringValue(v.OrganizationID), HomeFolderID: homeFolderID, IsArchived: types.BoolValue(v.IsArchived), IsInactive: types.BoolValue(v.IsInactive)}
 }
 func teamData(v *sigma.Team) teamDataModel {
 	d := types.StringNull()

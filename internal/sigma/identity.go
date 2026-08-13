@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -16,28 +17,42 @@ type Member struct {
 	LastName       string `json:"lastName"`
 	Email          string `json:"email"`
 	UserKind       string `json:"userKind"`
+	HomeFolderID   string `json:"homeFolderId"`
 	IsArchived     bool   `json:"isArchived"`
 	IsInactive     bool   `json:"isInactive"`
 }
+type AddToTeamInput struct {
+	TeamID      string `json:"teamId"`
+	IsTeamAdmin *bool  `json:"isTeamAdmin,omitempty"`
+}
 type CreateMemberInput struct {
-	Email      string `json:"email"`
-	FirstName  string `json:"firstName"`
-	LastName   string `json:"lastName"`
-	MemberType string `json:"memberType,omitempty"`
-	UserKind   string `json:"userKind,omitempty"`
+	Email      string           `json:"email"`
+	FirstName  string           `json:"firstName"`
+	LastName   string           `json:"lastName"`
+	MemberType string           `json:"memberType,omitempty"`
+	UserKind   string           `json:"userKind,omitempty"`
+	AddToTeams []AddToTeamInput `json:"addToTeams,omitempty"`
+	SendInvite *bool            `json:"-"`
 }
 type UpdateMemberInput struct {
-	FirstName  *string `json:"firstName,omitempty"`
-	LastName   *string `json:"lastName,omitempty"`
-	Email      *string `json:"email,omitempty"`
-	MemberType *string `json:"memberType,omitempty"`
-	UserKind   *string `json:"userKind,omitempty"`
-	IsArchived *bool   `json:"isArchived,omitempty"`
+	FirstName               *string `json:"firstName,omitempty"`
+	LastName                *string `json:"lastName,omitempty"`
+	Email                   *string `json:"email,omitempty"`
+	MemberType              *string `json:"memberType,omitempty"`
+	UserKind                *string `json:"userKind,omitempty"`
+	IsArchived              *bool   `json:"isArchived,omitempty"`
+	NewOwnerID              *string `json:"newOwnerId,omitempty"`
+	ArchiveDocuments        *bool   `json:"archiveDocuments,omitempty"`
+	ArchiveScheduledExports *bool   `json:"archiveScheduledExports,omitempty"`
 }
 
 func (c *Client) CreateMember(ctx context.Context, in CreateMemberInput) (*Member, error) {
+	path := "/v2/members"
+	if in.SendInvite != nil {
+		path += "?sendInvite=" + strconv.FormatBool(*in.SendInvite)
+	}
 	var v Member
-	err := c.sendJSON(ctx, http.MethodPost, "/v2/members", in, &v)
+	err := c.sendJSON(ctx, http.MethodPost, path, in, &v)
 	return &v, err
 }
 func (c *Client) GetMember(ctx context.Context, id string) (*Member, error) {
