@@ -42,3 +42,39 @@ func TestGrantMatchesConsidersTagID(t *testing.T) {
 		t.Fatal("expected untagged grant to match null tag_id")
 	}
 }
+
+func TestLookupGrantAmbiguityNeverSelectsFirstMatch(t *testing.T) {
+	t.Parallel()
+
+	member := "member-1"
+	first := sigma.Grant{GrantID: "grant-1", Permission: "explore", MemberID: &member}
+	second := sigma.Grant{GrantID: "grant-2", Permission: "explore", MemberID: &member}
+	model := &grantModel{
+		Permission: types.StringValue("explore"),
+		MemberID:   types.StringValue("member-1"),
+	}
+	_, err := lookupGrant([]sigma.Grant{first, second}, model, "")
+	if err == nil {
+		t.Fatal("expected ambiguity error")
+	}
+	if got := err.Error(); got != "multiple grants matched inode, grantee, and permission; refusing to select the first match" {
+		t.Fatalf("error = %q", got)
+	}
+}
+
+func TestLookupGrantZeroMatchesIsNotFound(t *testing.T) {
+	t.Parallel()
+
+	member := "member-1"
+	model := &grantModel{
+		Permission: types.StringValue("explore"),
+		MemberID:   types.StringValue("member-1"),
+	}
+	_, err := lookupGrant([]sigma.Grant{{GrantID: "grant-1", Permission: "view", MemberID: &member}}, model, "")
+	if err == nil {
+		t.Fatal("expected not-found")
+	}
+	if !sigma.IsNotFound(err) {
+		t.Fatalf("error = %v, want structured not-found", err)
+	}
+}

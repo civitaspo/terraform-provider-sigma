@@ -31,6 +31,7 @@ func (r *workspaceGrantResource) Schema(_ context.Context, _ resource.SchemaRequ
 		"Manages a fine-grained Sigma workspace grant.",
 		"Workspace ID.",
 		"Workspace permission: `view`, `explore`, `organize`, or `edit`.",
+		workspaceGrantTagMarkdown,
 	)
 }
 
@@ -52,14 +53,20 @@ func (r *workspaceGrantResource) Create(ctx context.Context, request resource.Cr
 	if response.Diagnostics.HasError() || !validateGrant(&plan, workspaceGrantPermissions, false, &response.Diagnostics) {
 		return
 	}
-	grantee := sigma.Grantee{MemberID: plan.MemberID.ValueString(), TeamID: plan.TeamID.ValueString()}
-	err := r.client.CreateWorkspaceGrant(ctx, plan.InodeID.ValueString(), grantee, plan.Permission.ValueString())
+	inodeID, diags := knownString(plan.InodeID, "inode_id")
+	response.Diagnostics.Append(diags...)
+	permission, diags := knownString(plan.Permission, "permission")
+	response.Diagnostics.Append(diags...)
+	if response.Diagnostics.HasError() {
+		return
+	}
+	err := r.client.CreateWorkspaceGrant(ctx, inodeID, grantGrantee(&plan), permission)
 	if err != nil {
 		response.Diagnostics.AddError("Unable to create Sigma grant", err.Error())
 		return
 	}
 	value, err := lookupListedGrant(func() ([]sigma.Grant, error) {
-		return r.client.ListWorkspaceGrants(ctx, plan.InodeID.ValueString())
+		return r.client.ListWorkspaceGrants(ctx, inodeID)
 	}, &plan, "")
 	if err != nil {
 		response.Diagnostics.AddError("Unable to locate created Sigma grant", err.Error())
@@ -75,9 +82,16 @@ func (r *workspaceGrantResource) Read(ctx context.Context, request resource.Read
 	if response.Diagnostics.HasError() {
 		return
 	}
+	grantID, diags := knownString(state.ID, "id")
+	response.Diagnostics.Append(diags...)
+	inodeID, diags := knownString(state.InodeID, "inode_id")
+	response.Diagnostics.Append(diags...)
+	if response.Diagnostics.HasError() {
+		return
+	}
 	value, err := lookupListedGrant(func() ([]sigma.Grant, error) {
-		return r.client.ListWorkspaceGrants(ctx, state.InodeID.ValueString())
-	}, &state, state.ID.ValueString())
+		return r.client.ListWorkspaceGrants(ctx, inodeID)
+	}, &state, grantID)
 	if sigma.IsNotFound(err) {
 		response.State.RemoveResource(ctx)
 		return
@@ -99,7 +113,14 @@ func (r *workspaceGrantResource) Delete(ctx context.Context, request resource.De
 	if response.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteWorkspaceGrant(ctx, state.InodeID.ValueString(), state.ID.ValueString()); err != nil && !sigma.IsNotFound(err) {
+	grantID, diags := knownString(state.ID, "id")
+	response.Diagnostics.Append(diags...)
+	inodeID, diags := knownString(state.InodeID, "inode_id")
+	response.Diagnostics.Append(diags...)
+	if response.Diagnostics.HasError() {
+		return
+	}
+	if err := r.client.DeleteWorkspaceGrant(ctx, inodeID, grantID); err != nil && !sigma.IsNotFound(err) {
 		response.Diagnostics.AddError("Unable to delete Sigma grant", err.Error())
 	}
 }

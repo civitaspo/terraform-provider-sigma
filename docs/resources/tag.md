@@ -3,12 +3,12 @@
 page_title: "sigma_tag Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a Sigma version tag. The update API only accepts description; changing name or color forces replacement.
+  Manages a Sigma version tag. The update API only accepts description; changing name or color forces replacement. Update sends description only when that attribute changes; null/omitted description is not converted to an empty string.
 ---
 
 # sigma_tag (Resource)
 
-Manages a Sigma version tag. The update API only accepts `description`; changing `name` or `color` forces replacement.
+Manages a Sigma version tag. The update API only accepts `description`; changing `name` or `color` forces replacement. Update sends `description` only when that attribute changes; null/omitted description is not converted to an empty string.
 
 ## Example Usage
 

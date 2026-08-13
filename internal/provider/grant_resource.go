@@ -31,17 +31,25 @@ type grantModel struct {
 	UpdatedAt      types.String `tfsdk:"updated_at"`
 }
 
-func grantSchema(description, inodeDescription, permissionDescription string) schema.Schema {
+const documentGrantTagMarkdown = "Optional version tag ID. Changing this forces a new resource. Tagged workbook and report grants use generic `POST /v2/grants`, `GET /v2/grants/{grantId}`, and `DELETE /v2/grants/{grantId}` because the dedicated POST returns `{}` and list/get responses omit `tagId`. Terraform preserves the configured `tag_id` after refresh; import cannot reconstruct it from the API."
+
+const workspaceGrantTagMarkdown = "Optional version tag ID. Not supported for workspace grants."
+
+func grantSchema(description, inodeDescription, permissionDescription, tagDescription string) schema.Schema {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	return schema.Schema{
 		MarkdownDescription: description,
 		Attributes: map[string]schema.Attribute{
-			"id":              schema.StringAttribute{Computed: true, MarkdownDescription: "Grant ID."},
-			"inode_id":        schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: inodeDescription},
-			"member_id":       schema.StringAttribute{Optional: true, PlanModifiers: replace, MarkdownDescription: "Member ID receiving the grant. Exactly one of `member_id` or `team_id` must be set."},
-			"team_id":         schema.StringAttribute{Optional: true, PlanModifiers: replace, MarkdownDescription: "Team ID receiving the grant. Exactly one of `member_id` or `team_id` must be set."},
-			"permission":      schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: permissionDescription},
-			"tag_id":          schema.StringAttribute{Optional: true, PlanModifiers: replace, MarkdownDescription: "Optional version tag ID. Supported by generic, workbook, and report grants. Changing this forces a new resource. Tagged workbook/report grants are created through the generic grants API so Terraform receives a stable grant ID."},
+			"id":         schema.StringAttribute{Computed: true, MarkdownDescription: "Grant ID."},
+			"inode_id":   schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: inodeDescription},
+			"member_id":  schema.StringAttribute{Optional: true, PlanModifiers: replace, MarkdownDescription: "Member ID receiving the grant. Exactly one of `member_id` or `team_id` must be set."},
+			"team_id":    schema.StringAttribute{Optional: true, PlanModifiers: replace, MarkdownDescription: "Team ID receiving the grant. Exactly one of `member_id` or `team_id` must be set."},
+			"permission": schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: permissionDescription},
+			"tag_id": schema.StringAttribute{
+				Optional:            true,
+				PlanModifiers:       replace,
+				MarkdownDescription: tagDescription,
+			},
 			"organization_id": schema.StringAttribute{Computed: true, MarkdownDescription: "Organization ID."},
 			"inode_type":      schema.StringAttribute{Computed: true, MarkdownDescription: "Inode type."},
 			"created_by":      schema.StringAttribute{Computed: true, MarkdownDescription: "ID of the member who created the grant."},
@@ -103,7 +111,7 @@ func lookupGrant(values []sigma.Grant, model *grantModel, grantID string) (*sigm
 	case 0:
 		return nil, &sigma.APIError{StatusCode: 404, Message: "grant not found"}
 	default:
-		return nil, fmt.Errorf("multiple grants matched inode/grantee/permission; set a unique permission or import by grant ID (tag-scoped grants may not be distinguishable in list responses)")
+		return nil, fmt.Errorf("multiple grants matched inode, grantee, and permission; refusing to select the first match")
 	}
 }
 
@@ -134,6 +142,21 @@ func grantMatches(value *sigma.Grant, model *grantModel) bool {
 		return value.MemberID != nil && *value.MemberID == model.MemberID.ValueString()
 	}
 	return value.TeamID != nil && *value.TeamID == model.TeamID.ValueString()
+}
+
+func taggedDocumentGrant(model *grantModel) bool {
+	return !model.TagID.IsNull() && !model.TagID.IsUnknown() && model.TagID.ValueString() != ""
+}
+
+func grantGrantee(model *grantModel) sigma.Grantee {
+	var grantee sigma.Grantee
+	if !model.MemberID.IsNull() && !model.MemberID.IsUnknown() {
+		grantee.MemberID = model.MemberID.ValueString()
+	}
+	if !model.TeamID.IsNull() && !model.TeamID.IsUnknown() {
+		grantee.TeamID = model.TeamID.ValueString()
+	}
+	return grantee
 }
 
 func importGrantCompositeID(ctx context.Context, request resource.ImportStateRequest, response *resource.ImportStateResponse) {

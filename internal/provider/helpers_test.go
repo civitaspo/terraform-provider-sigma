@@ -81,13 +81,6 @@ func writeNotFound(response http.ResponseWriter) {
 	_ = json.NewEncoder(response).Encode(map[string]any{"message": "not found"})
 }
 
-func nullable(value string) any {
-	if value == "" {
-		return nil
-	}
-	return value
-}
-
 func requireAcceptance(t *testing.T) {
 	t.Helper()
 	if os.Getenv("TF_ACC") == "" {
