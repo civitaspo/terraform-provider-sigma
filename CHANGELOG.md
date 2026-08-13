@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.1.2] - 2026-08-12
+## [0.2.0] - 2026-08-13
 
 
 ### Bug Fixes
@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - fix broken CI badge after workflow rename (#71)
 - point releasing guide at shared client-releases spec (#64)
+
+
+### Features
+
+- add create_team_folder and workspace_id to sigma_team (#73)
 
 
 ### Maintenance
