@@ -50,7 +50,7 @@ func TestConnectionResource(t *testing.T) {
 		_ = json.NewEncoder(response).Encode(map[string]any{
 			"connectionId": "connection-1", "name": "warehouse", "type": "postgres",
 			"description": map[string]any{}, "poolSizes": map[string]any{}, "timeoutSecs": 30,
-			"friendlyName": true,
+			"friendlyName": true, "useOauth": true,
 		})
 	})
 	mock.Mux.HandleFunc("/v2/connections/connection-1", func(response http.ResponseWriter, request *http.Request) {
@@ -61,14 +61,17 @@ func TestConnectionResource(t *testing.T) {
 			_ = json.NewEncoder(response).Encode(map[string]any{
 				"connectionId": "connection-1", "name": "warehouse", "type": "postgres",
 				"description": map[string]any{}, "poolSizes": map[string]any{}, "timeoutSecs": 30,
-				"friendlyName": true,
+				"friendlyName": true, "useOauth": true,
 			})
 		case http.MethodPut:
 			_ = json.NewEncoder(response).Encode(map[string]any{
 				"connectionId": "connection-1", "name": "warehouse", "type": "postgres",
 				"description": map[string]any{}, "poolSizes": map[string]any{}, "timeoutSecs": 30,
-				"friendlyName": true,
+				"friendlyName": true, "useOauth": true,
 			})
+		case http.MethodPatch:
+			t.Errorf("unexpected PATCH; connection updates must use PUT")
+			http.Error(response, "PATCH is deprecated", http.StatusMethodNotAllowed)
 		case http.MethodDelete:
 			_ = json.NewEncoder(response).Encode(map[string]any{})
 		default:
@@ -102,6 +105,7 @@ resource "sigma_connection" "test" {
 			Check: resource.ComposeAggregateTestCheckFunc(
 				resource.TestCheckResourceAttr("sigma_connection.test", "id", "connection-1"),
 				resource.TestCheckResourceAttr("sigma_connection.test", "type", "postgres"),
+				resource.TestCheckResourceAttr("sigma_connection.test", "use_oauth", "true"),
 			),
 		},
 		{
@@ -116,7 +120,7 @@ func TestConnectionResourceUpdateWithCredentialsVersionBump(t *testing.T) {
 	connection := map[string]any{
 		"connectionId": "connection-1", "name": "warehouse", "type": "postgres",
 		"description": map[string]any{}, "poolSizes": map[string]any{}, "timeoutSecs": float64(30),
-		"friendlyName": true,
+		"friendlyName": true, "useOauth": false,
 	}
 	var putBodies []map[string]any
 	mock.Mux.HandleFunc("/v2/connections", func(response http.ResponseWriter, request *http.Request) {
@@ -150,6 +154,9 @@ func TestConnectionResourceUpdateWithCredentialsVersionBump(t *testing.T) {
 			}
 			connection["timeoutSecs"] = float64(60)
 			_ = json.NewEncoder(response).Encode(connection)
+		case http.MethodPatch:
+			t.Errorf("unexpected PATCH; connection updates must use PUT")
+			http.Error(response, "PATCH is deprecated", http.StatusMethodNotAllowed)
 		case http.MethodDelete:
 			_ = json.NewEncoder(response).Encode(map[string]any{})
 		default:
@@ -201,6 +208,98 @@ resource "sigma_connection" "test" {
 	}))
 	if len(putBodies) != 1 {
 		t.Fatalf("expected 1 PUT with credentials version bump, got %d", len(putBodies))
+	}
+}
+
+func TestConnectionResourceRestoreOnPut(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	connection := map[string]any{
+		"connectionId": "connection-1", "name": "warehouse", "type": "postgres",
+		"description": map[string]any{}, "poolSizes": map[string]any{}, "timeoutSecs": float64(30),
+		"friendlyName": true, "useOauth": false,
+	}
+	var putBodies []map[string]any
+	mock.Mux.HandleFunc("/v2/connections", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method != http.MethodPost {
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+			return
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(connection)
+	})
+	mock.Mux.HandleFunc("/v2/connections/connection-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		switch request.Method {
+		case http.MethodGet:
+			_ = json.NewEncoder(response).Encode(connection)
+		case http.MethodPut:
+			var body map[string]any
+			_ = json.NewDecoder(request.Body).Decode(&body)
+			putBodies = append(putBodies, body)
+			if body["restore"] != true {
+				t.Errorf("restore = %#v", body["restore"])
+			}
+			details, _ := body["details"].(map[string]any)
+			if details["password"] != "secret" {
+				t.Errorf("credentials missing from restore PUT details: %#v", details)
+			}
+			_ = json.NewEncoder(response).Encode(connection)
+		case http.MethodPatch:
+			t.Errorf("unexpected PATCH; connection updates must use PUT")
+			http.Error(response, "PATCH is deprecated", http.StatusMethodNotAllowed)
+		case http.MethodDelete:
+			_ = json.NewEncoder(response).Encode(map[string]any{})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	mock.Mux.HandleFunc("/v2/connections/connection-1/test", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(map[string]string{"read": "SUCCESS", "write": "SUCCESS"})
+	})
+
+	createConfig := connectionProviderConfig(mock) + `
+resource "sigma_connection" "test" {
+  name = "warehouse"
+  details_json = jsonencode({
+    type     = "postgres"
+    host     = "db.example.com"
+    database = "analytics"
+    user     = "sigma"
+  })
+  credentials_wo         = jsonencode({ password = "secret" })
+  credentials_wo_version = 1
+}
+`
+	restoreConfig := connectionProviderConfig(mock) + `
+resource "sigma_connection" "test" {
+  name = "warehouse"
+  details_json = jsonencode({
+    type     = "postgres"
+    host     = "db.example.com"
+    database = "analytics"
+    user     = "sigma"
+  })
+  credentials_wo         = jsonencode({ password = "secret" })
+  credentials_wo_version = 2
+  restore                = true
+}
+`
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{
+		{Config: createConfig},
+		{
+			Config: restoreConfig,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("sigma_connection.test", "restore", "true"),
+				resource.TestCheckResourceAttr("sigma_connection.test", "use_oauth", "false"),
+			),
+		},
+	}))
+	if len(putBodies) != 1 {
+		t.Fatalf("expected 1 PUT with restore, got %d", len(putBodies))
 	}
 }
 
@@ -268,7 +367,7 @@ func TestConnectionResourceUpdateWithoutCredentialsVersionFails(t *testing.T) {
 		_ = json.NewEncoder(response).Encode(map[string]any{
 			"connectionId": "connection-1", "name": "warehouse", "type": "postgres",
 			"description": map[string]any{}, "poolSizes": map[string]any{}, "timeoutSecs": 30,
-			"friendlyName": true,
+			"friendlyName": true, "useOauth": false,
 		})
 	})
 	mock.Mux.HandleFunc("/v2/connections/connection-1", func(response http.ResponseWriter, request *http.Request) {
@@ -279,11 +378,14 @@ func TestConnectionResourceUpdateWithoutCredentialsVersionFails(t *testing.T) {
 			_ = json.NewEncoder(response).Encode(map[string]any{
 				"connectionId": "connection-1", "name": "warehouse", "type": "postgres",
 				"description": map[string]any{}, "poolSizes": map[string]any{}, "timeoutSecs": 30,
-				"friendlyName": true,
+				"friendlyName": true, "useOauth": false,
 			})
 		case http.MethodPut:
 			putCalls++
 			http.Error(response, "should not PUT without credentials", http.StatusInternalServerError)
+		case http.MethodPatch:
+			t.Errorf("unexpected PATCH; connection updates must use PUT")
+			http.Error(response, "PATCH is deprecated", http.StatusMethodNotAllowed)
 		case http.MethodDelete:
 			_ = json.NewEncoder(response).Encode(map[string]any{})
 		default:
@@ -614,12 +716,12 @@ func TestConnectionDataSources(t *testing.T) {
 	mock.Mux.HandleFunc("/v2/connections/connection-1", func(response http.ResponseWriter, request *http.Request) {
 		mock.AssertBearer(t, request)
 		response.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(response).Encode(map[string]any{"connectionId": "connection-1", "name": "warehouse", "type": "snowflake", "description": map[string]any{}, "poolSizes": map[string]any{}, "friendlyName": false})
+		_ = json.NewEncoder(response).Encode(map[string]any{"connectionId": "connection-1", "name": "warehouse", "type": "snowflake", "description": map[string]any{}, "poolSizes": map[string]any{}, "friendlyName": false, "useOauth": true})
 	})
 	mock.Mux.HandleFunc("/v2/connections", func(response http.ResponseWriter, request *http.Request) {
 		mock.AssertBearer(t, request)
 		response.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(response).Encode(map[string]any{"entries": []map[string]any{{"connectionId": "connection-1", "name": "warehouse", "type": "snowflake", "description": map[string]any{}, "poolSizes": map[string]any{}, "friendlyName": false}}, "nextPage": nil})
+		_ = json.NewEncoder(response).Encode(map[string]any{"entries": []map[string]any{{"connectionId": "connection-1", "name": "warehouse", "type": "snowflake", "description": map[string]any{}, "poolSizes": map[string]any{}, "friendlyName": false, "useOauth": true}}, "nextPage": nil})
 	})
 	mock.Mux.HandleFunc("/v2/connection/connection-1/lookup", func(response http.ResponseWriter, request *http.Request) {
 		mock.AssertBearer(t, request)
@@ -648,7 +750,9 @@ data "sigma_connection_paths" "all" {
 		Config: config,
 		Check: resource.ComposeAggregateTestCheckFunc(
 			resource.TestCheckResourceAttr("data.sigma_connection.one", "type", "snowflake"),
+			resource.TestCheckResourceAttr("data.sigma_connection.one", "use_oauth", "true"),
 			resource.TestCheckResourceAttr("data.sigma_connections.all", "connections.#", "1"),
+			resource.TestCheckResourceAttr("data.sigma_connections.all", "connections.0.use_oauth", "true"),
 			resource.TestCheckResourceAttr("data.sigma_connection_paths.lookup", "inode_id", "path-1"),
 			resource.TestCheckResourceAttr("data.sigma_connection_paths.all", "paths.#", "1"),
 		),

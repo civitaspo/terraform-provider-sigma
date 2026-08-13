@@ -33,3 +33,4 @@ data "sigma_connection" "example" {
 - `timeout_secs` (Number) Connection timeout in seconds.
 - `type` (String) Warehouse type.
 - `use_friendly_names` (Boolean) Whether friendly names are enabled.
+- `use_oauth` (Boolean) Whether the connection uses OAuth, as returned by Sigma GET `useOauth`.
