@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency go to v1.26.6 (#87)
 - update csm-actions/securefix-action action to v0.6.1 (#86)
 - add reproducible Sigma REST OpenAPI client generation (#79)
 - update jdx/mise-action action to v4.2.5 (#80)
