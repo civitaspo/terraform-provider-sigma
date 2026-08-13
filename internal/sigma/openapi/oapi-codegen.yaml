@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/v2.8.0/configuration-schema.json
+#
+# Generator settings for the vendored Sigma REST OpenAPI snapshot.
+# Selected operation IDs come from operations.yaml and are injected by
+# mise run openapi-generate. Never hand-edit generated.go.
+package: openapi
+output: internal/sigma/openapi/generated.go
+generate:
+  models: true
+  client: true
+output-options:
+  skip-prune: false

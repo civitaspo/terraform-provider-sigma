@@ -44,3 +44,6 @@ override.tf.json
 # Mise
 # Keep mise.lock tracked; ignore local mise caches only
 .mise/
+
+# OpenAPI generator working config
+internal/sigma/openapi/.oapi-codegen.run.yaml

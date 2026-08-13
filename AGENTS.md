@@ -32,6 +32,9 @@ Useful tasks:
 
 - `mise run build` — `go build ./...`
 - `mise run docs` — regenerate provider docs with `tfplugindocs` (never hand-edit files under `docs/` except `docs/securefix.md` and `docs/releasing.md`)
+- `mise run openapi-generate` — generate the Sigma REST client from `specs/sigma-rest-api.openapi.json` (never hand-edit `internal/sigma/openapi/generated.go`)
+- `mise run openapi-check` — regenerate from the vendored snapshot and fail on generated drift
+- `mise run openapi-update` — fetch a new live OpenAPI snapshot, normalize it, and regenerate (manual only; never run in CI)
 
 ## GitHub Actions
 
