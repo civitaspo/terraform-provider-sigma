@@ -1,5 +1,5 @@
 [tools]
-go = "1.26.5"
+go = "1.26.6"
 "aqua:golangci/golangci-lint" = "2.12.2"
 "aqua:hashicorp/terraform" = "1.15.8"
 "aqua:goreleaser/goreleaser" = "2.17.1"
