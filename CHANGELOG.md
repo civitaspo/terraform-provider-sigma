@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- correct dedicated grants, schedules, public embeds, and translations (#88)
 - make identity lifecycle and Framework conversions fail closed (#85)
 - update module github.com/oapi-codegen/runtime to v1.6.0 (#83)
 - install git-cliff for shared Release PR reusable (#66)
