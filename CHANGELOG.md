@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
+- wrap generated Sigma REST client with hardened transport (#82)
 - add sigma_user_attribute_tenant_assignment (#77)
 - add restore and computed use_oauth to sigma_connection (#76)
 - add workbook source copy and restore on sigma_file (#75)
