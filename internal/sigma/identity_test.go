@@ -116,6 +116,14 @@ func TestIdentityClientMethods(t *testing.T) {
 		write(response, map[string]any{})
 	})
 	mock.Mux.HandleFunc("/v2/user-attributes/attribute-1/users/member-1", func(response http.ResponseWriter, _ *http.Request) { write(response, map[string]any{}) })
+	mock.Mux.HandleFunc("/v2/user-attributes/attribute-1/tenants", func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			write(response, map[string]any{"entries": []sigma.AttributeAssignment{{TenantOrganizationID: "tenant-1", Value: sigma.AttributeValue{Val: "tenant-conn", Type: "string"}}}, "nextPage": nil})
+			return
+		}
+		write(response, map[string]any{})
+	})
+	mock.Mux.HandleFunc("/v2/user-attributes/attribute-1/tenants/tenant-1", func(response http.ResponseWriter, _ *http.Request) { write(response, map[string]any{}) })
 
 	client, err := sigma.NewClient(mock.URL(), mock.ClientID, mock.ClientSecret)
 	if err != nil {
@@ -216,6 +224,15 @@ func TestIdentityClientMethods(t *testing.T) {
 		t.Fatalf("user assignments = %v, %v", values, listErr)
 	}
 	if err = client.DeleteUserAttributeUser(ctx, attribute.UserAttributeID, member.MemberID); err != nil {
+		t.Fatal(err)
+	}
+	if err = client.SetUserAttributeTenant(ctx, attribute.UserAttributeID, "tenant-1", "tenant-conn"); err != nil {
+		t.Fatal(err)
+	}
+	if values, listErr := client.ListUserAttributeTenants(ctx, attribute.UserAttributeID); listErr != nil || len(values) != 1 || values[0].TenantOrganizationID != "tenant-1" {
+		t.Fatalf("tenant assignments = %v, %v", values, listErr)
+	}
+	if err = client.DeleteUserAttributeTenant(ctx, attribute.UserAttributeID, "tenant-1"); err != nil {
 		t.Fatal(err)
 	}
 	if err = client.DeleteUserAttribute(ctx, attribute.UserAttributeID); err != nil {

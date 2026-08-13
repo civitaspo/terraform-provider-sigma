@@ -124,6 +124,7 @@ func (p *SigmaProvider) Resources(context.Context) []func() resource.Resource {
 		NewUserAttributeResource,
 		NewUserAttributeTeamAssignmentResource,
 		NewUserAttributeUserAssignmentResource,
+		NewUserAttributeTenantAssignmentResource,
 		NewWorkspaceResource,
 		NewWorkspaceGrantResource,
 		NewFileResource,

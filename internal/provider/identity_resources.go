@@ -837,6 +837,9 @@ func NewUserAttributeTeamAssignmentResource() resource.Resource {
 func NewUserAttributeUserAssignmentResource() resource.Resource {
 	return &attributeAssignmentResource{target: "user"}
 }
+func NewUserAttributeTenantAssignmentResource() resource.Resource {
+	return &attributeAssignmentResource{target: "tenant"}
+}
 func (r *attributeAssignmentResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_user_attribute_" + r.target + "_assignment"
 }
@@ -845,16 +848,21 @@ func (r *attributeAssignmentResource) Configure(_ context.Context, req resource.
 }
 func (r *attributeAssignmentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
-	targetLabel := "User"
-	if r.target == "team" {
-		targetLabel = "Team"
+	targetDescription := "User ID."
+	description := fmt.Sprintf("Manages a Sigma user attribute assignment for one %s.", r.target)
+	switch r.target {
+	case "team":
+		targetDescription = "Team ID."
+	case "tenant":
+		targetDescription = "Tenant organization ID (`tenantOrganizationId`)."
+		description = "Manages a Sigma user attribute assignment for one tenant. " + betaAPINotice
 	}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: fmt.Sprintf("Manages a Sigma user attribute assignment for one %s.", r.target),
+		MarkdownDescription: description,
 		Attributes: map[string]schema.Attribute{
 			"id":                schema.StringAttribute{Computed: true, MarkdownDescription: "Composite assignment ID."},
 			"user_attribute_id": schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "User attribute ID."},
-			r.target + "_id":    schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: targetLabel + " ID."},
+			r.target + "_id":    schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: targetDescription},
 			"value":             schema.StringAttribute{Required: true, MarkdownDescription: "Assigned string value."},
 		},
 	}
@@ -867,9 +875,12 @@ func (r *attributeAssignmentResource) Create(ctx context.Context, req resource.C
 }
 func (r *attributeAssignmentResource) set(ctx context.Context, plan *assignmentModel, diagnostics interface{ AddError(string, string) }) bool {
 	var err error
-	if r.target == "team" {
+	switch r.target {
+	case "team":
 		err = r.client.SetUserAttributeTeam(ctx, plan.UserAttributeID.ValueString(), plan.TargetID.ValueString(), plan.Value.ValueString())
-	} else {
+	case "tenant":
+		err = r.client.SetUserAttributeTenant(ctx, plan.UserAttributeID.ValueString(), plan.TargetID.ValueString(), plan.Value.ValueString())
+	default:
 		err = r.client.SetUserAttributeUser(ctx, plan.UserAttributeID.ValueString(), plan.TargetID.ValueString(), plan.Value.ValueString())
 	}
 	if err != nil {
@@ -887,9 +898,12 @@ func (r *attributeAssignmentResource) Read(ctx context.Context, req resource.Rea
 	}
 	var assignments []sigma.AttributeAssignment
 	var err error
-	if r.target == "team" {
+	switch r.target {
+	case "team":
 		assignments, err = r.client.ListUserAttributeTeams(ctx, attributeID.ValueString())
-	} else {
+	case "tenant":
+		assignments, err = r.client.ListUserAttributeTenants(ctx, attributeID.ValueString())
+	default:
 		assignments, err = r.client.ListUserAttributeUsers(ctx, attributeID.ValueString())
 	}
 	if sigma.IsNotFound(err) {
@@ -902,8 +916,11 @@ func (r *attributeAssignmentResource) Read(ctx context.Context, req resource.Rea
 	}
 	for _, assignment := range assignments {
 		id := assignment.UserID
-		if r.target == "team" {
+		switch r.target {
+		case "team":
 			id = assignment.TeamID
+		case "tenant":
+			id = assignment.TenantOrganizationID
 		}
 		if id == targetID.ValueString() {
 			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("value"), assignment.Value.Val)...)
@@ -926,9 +943,12 @@ func (r *attributeAssignmentResource) Delete(ctx context.Context, req resource.D
 		return
 	}
 	var err error
-	if r.target == "team" {
+	switch r.target {
+	case "team":
 		err = r.client.DeleteUserAttributeTeam(ctx, attributeID.ValueString(), targetID.ValueString())
-	} else {
+	case "tenant":
+		err = r.client.DeleteUserAttributeTenant(ctx, attributeID.ValueString(), targetID.ValueString())
+	default:
 		err = r.client.DeleteUserAttributeUser(ctx, attributeID.ValueString(), targetID.ValueString())
 	}
 	if err != nil && !sigma.IsNotFound(err) {
@@ -960,7 +980,11 @@ func (r *attributeAssignmentResource) setAssignmentState(
 func (r *attributeAssignmentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	attributeID, targetID, ok := splitCompositeImportID(req.ID)
 	if !ok {
-		resp.Diagnostics.AddError("Invalid import ID", "Use `userAttributeId/"+r.target+"Id` with non-empty segments.")
+		targetToken := r.target + "Id"
+		if r.target == "tenant" {
+			targetToken = "tenantOrganizationId"
+		}
+		resp.Diagnostics.AddError("Invalid import ID", "Use `userAttributeId/"+targetToken+"` with non-empty segments.")
 		return
 	}
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
