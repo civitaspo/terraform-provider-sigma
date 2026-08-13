@@ -10,6 +10,7 @@ import (
 // Connection is the stable projection returned by Sigma's connection APIs.
 // Warehouse-specific configuration is intentionally represented by the request
 // Details field because the get endpoint does not return that configuration.
+// UseOauth is returned by GET as useOauth and is not a request field on PUT.
 type Connection struct {
 	ConnectionID string          `json:"connectionId"`
 	Name         string          `json:"name"`
@@ -18,6 +19,7 @@ type Connection struct {
 	PoolSizes    json.RawMessage `json:"poolSizes"`
 	TimeoutSecs  *float64        `json:"timeoutSecs"`
 	FriendlyName bool            `json:"friendlyName"`
+	UseOauth     *bool           `json:"useOauth"`
 }
 
 type ConnectionInput struct {
@@ -27,6 +29,7 @@ type ConnectionInput struct {
 	PoolSizes        json.RawMessage `json:"poolSizes,omitempty"`
 	TimeoutSecs      *float64        `json:"timeoutSecs,omitempty"`
 	UseFriendlyNames *bool           `json:"useFriendlyNames,omitempty"`
+	Restore          *bool           `json:"restore,omitempty"`
 }
 
 type ConnectionTest struct {

@@ -87,6 +87,8 @@ type connectionResourceModel struct {
 	PoolSizesJSON        types.String  `tfsdk:"pool_sizes_json"`
 	TimeoutSecs          types.Float64 `tfsdk:"timeout_secs"`
 	UseFriendlyNames     types.Bool    `tfsdk:"use_friendly_names"`
+	UseOauth             types.Bool    `tfsdk:"use_oauth"`
+	Restore              types.Bool    `tfsdk:"restore"`
 	CredentialsWO        types.String  `tfsdk:"credentials_wo"`
 	CredentialsWOVersion types.Int64   `tfsdk:"credentials_wo_version"`
 }
@@ -100,7 +102,7 @@ func (r *connectionResource) Configure(_ context.Context, req resource.Configure
 }
 func (r *connectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Sigma warehouse connection. `details_json` is polymorphic by warehouse `type`; put write-only fields such as `password`, `serviceAccount`, and `clientSecret` in `credentials_wo`. Sigma's update connection API replaces warehouse details entirely, so any update that previously sent `credentials_wo` requires incrementing `credentials_wo_version` (and resupplying `credentials_wo`) to avoid clearing authentication. Sigma's get endpoint does not return warehouse details, so imported resources cannot recover them.",
+		MarkdownDescription: "Manages a Sigma warehouse connection. `details_json` is polymorphic by warehouse `type`; put write-only fields such as `password`, `serviceAccount`, and `clientSecret` in `credentials_wo`. Sigma's update connection API replaces warehouse details entirely, so any update that previously sent `credentials_wo` requires incrementing `credentials_wo_version` (and resupplying `credentials_wo`) to avoid clearing authentication. Restore is not a credentials-free path. `use_oauth` is computed from GET `useOauth`; warehouse OAuth settings remain in `details_json`. Sigma's get endpoint does not return warehouse details, so imported resources cannot recover them.",
 		Attributes: map[string]schema.Attribute{
 			"id":                     schema.StringAttribute{Computed: true, MarkdownDescription: "Connection ID."},
 			"name":                   schema.StringAttribute{Required: true, MarkdownDescription: "Connection name."},
@@ -110,8 +112,10 @@ func (r *connectionResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			"pool_sizes_json":        schema.StringAttribute{Optional: true, Computed: true, MarkdownDescription: "JSON object configuring connection pool sizes."},
 			"timeout_secs":           schema.Float64Attribute{Optional: true, Computed: true, MarkdownDescription: "Connection timeout in seconds."},
 			"use_friendly_names":     schema.BoolAttribute{Optional: true, Computed: true, MarkdownDescription: "Whether friendly names are enabled."},
+			"use_oauth":              schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the connection uses OAuth, as returned by Sigma GET `useOauth`. Not settable; warehouse OAuth configuration remains in `details_json`."},
+			"restore":                schema.BoolAttribute{Optional: true, MarkdownDescription: "When true, PUT `restore=true` to unarchive a deleted connection. Sigma PUT still replaces warehouse details, so restore is not a credentials-free path: increment `credentials_wo_version` and resupply `credentials_wo` whenever credentials were previously managed."},
 			"credentials_wo":         schema.StringAttribute{Optional: true, WriteOnly: true, Sensitive: true, MarkdownDescription: "Write-only JSON object merged into `details_json` before create or update. Required whenever `credentials_wo_version` changes."},
-			"credentials_wo_version": schema.Int64Attribute{Optional: true, MarkdownDescription: "Set on create when using `credentials_wo`, and increment on every update that should retain or rotate warehouse credentials. Sigma PUT replaces details, so updates without a version bump are rejected when credentials were previously managed."},
+			"credentials_wo_version": schema.Int64Attribute{Optional: true, MarkdownDescription: "Set on create when using `credentials_wo`, and increment on every update that should retain or rotate warehouse credentials. Sigma PUT replaces details, so updates without a version bump are rejected when credentials were previously managed. Restore is not a credentials-free path."},
 		},
 	}
 }
@@ -156,6 +160,11 @@ func setConnection(state *connectionResourceModel, value *sigma.Connection) {
 		state.TimeoutSecs = types.Float64Value(*value.TimeoutSecs)
 	}
 	state.UseFriendlyNames = types.BoolValue(value.FriendlyName)
+	if value.UseOauth != nil {
+		state.UseOauth = types.BoolValue(*value.UseOauth)
+	} else {
+		state.UseOauth = types.BoolNull()
+	}
 }
 func (r *connectionResource) test(ctx context.Context, id string, resp interface{ AddWarning(string, string) }) {
 	result, err := r.client.TestConnection(ctx, id)
@@ -236,6 +245,10 @@ func (r *connectionResource) Update(ctx context.Context, req resource.UpdateRequ
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid Sigma connection configuration", err.Error())
 		return
+	}
+	if !plan.Restore.IsNull() && !plan.Restore.IsUnknown() {
+		restore := plan.Restore.ValueBool()
+		input.Restore = &restore
 	}
 	value, err := r.client.UpdateConnection(ctx, state.ID.ValueString(), input)
 	if err != nil {

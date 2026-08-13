@@ -51,6 +51,7 @@ func connectionDataAttributes(requireID bool) map[string]schema.Attribute {
 		"pool_sizes_json":    schema.StringAttribute{Computed: true, MarkdownDescription: "Pool sizes JSON returned by Sigma."},
 		"timeout_secs":       schema.Float64Attribute{Computed: true, MarkdownDescription: "Connection timeout in seconds."},
 		"use_friendly_names": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether friendly names are enabled."},
+		"use_oauth":          schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the connection uses OAuth, as returned by Sigma GET `useOauth`."},
 	}
 }
 func (d *connectionDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
@@ -87,6 +88,7 @@ type connectionDataModel struct {
 	PoolSizesJSON    types.String  `tfsdk:"pool_sizes_json"`
 	TimeoutSecs      types.Float64 `tfsdk:"timeout_secs"`
 	UseFriendlyNames types.Bool    `tfsdk:"use_friendly_names"`
+	UseOauth         types.Bool    `tfsdk:"use_oauth"`
 }
 type connectionsDataModel struct {
 	ID          types.String          `tfsdk:"id"`
@@ -116,9 +118,13 @@ func connectionData(value *sigma.Connection) connectionDataModel {
 		PoolSizesJSON:    jsonString(value.PoolSizes),
 		UseFriendlyNames: types.BoolValue(value.FriendlyName),
 		TimeoutSecs:      types.Float64Null(),
+		UseOauth:         types.BoolNull(),
 	}
 	if value.TimeoutSecs != nil {
 		state.TimeoutSecs = types.Float64Value(*value.TimeoutSecs)
+	}
+	if value.UseOauth != nil {
+		state.UseOauth = types.BoolValue(*value.UseOauth)
 	}
 	return state
 }
