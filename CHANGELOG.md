@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update jdx/mise-action action to v4.2.5 (#80)
 - update dependency jdx/mise to v2026.8.5 (#72)
 - migrate Renovate config (#63)
 - harden reusable workflow calls for status-check (#70)
