@@ -140,16 +140,12 @@ func TestListAllByPageTokenDetectsCursorCycle(t *testing.T) {
 func TestListAllByPageCap(t *testing.T) {
 	t.Parallel()
 
-	original := maxListPages
-	maxListPages = 2
-	t.Cleanup(func() { maxListPages = original })
-
 	calls := 0
-	_, err := listAllByPage(context.Background(), func(context.Context, *string) ([]int, *string, error) {
+	_, err := listAllCursors(context.Background(), func(context.Context, *string) ([]int, *string, error) {
 		calls++
 		next := fmt.Sprintf("cursor-%d", calls)
 		return []int{calls}, &next, nil
-	})
+	}, "nextPage", 2)
 	if err == nil || !strings.Contains(err.Error(), "exceeded 2 pages") {
 		t.Fatalf("error = %v, want page cap", err)
 	}

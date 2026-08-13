@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-var maxListPages = 10_000
+const defaultMaxListPages = 10_000
 
 type pageEnvelope[T any] struct {
 	Entries  []T     `json:"entries"`
@@ -25,21 +25,21 @@ type pageFetcher[T any] func(ctx context.Context, cursor *string) ([]T, *string,
 // listAllByPage follows Sigma's nextPage cursor, sending it as the generated
 // `page` request parameter on each subsequent call.
 func listAllByPage[T any](ctx context.Context, fetch pageFetcher[T]) ([]T, error) {
-	return listAllCursors(ctx, fetch, "nextPage")
+	return listAllCursors(ctx, fetch, "nextPage", defaultMaxListPages)
 }
 
 // listAllByPageToken follows Sigma's nextPageToken cursor, sending it as the
 // generated `pageToken` request parameter on each subsequent call.
 func listAllByPageToken[T any](ctx context.Context, fetch pageFetcher[T]) ([]T, error) {
-	return listAllCursors(ctx, fetch, "nextPageToken")
+	return listAllCursors(ctx, fetch, "nextPageToken", defaultMaxListPages)
 }
 
-func listAllCursors[T any](ctx context.Context, fetch pageFetcher[T], cursorName string) ([]T, error) {
+func listAllCursors[T any](ctx context.Context, fetch pageFetcher[T], cursorName string, maxPages int) ([]T, error) {
 	entries := make([]T, 0)
 	var cursor *string
 	seen := map[string]struct{}{}
 
-	for pageNum := 0; pageNum < maxListPages; pageNum++ {
+	for pageNum := 0; pageNum < maxPages; pageNum++ {
 		page, next, err := fetch(ctx, cursor)
 		if err != nil {
 			return nil, err
@@ -54,7 +54,7 @@ func listAllCursors[T any](ctx context.Context, fetch pageFetcher[T], cursorName
 		seen[*next] = struct{}{}
 		cursor = next
 	}
-	return nil, fmt.Errorf("sigma pagination exceeded %d pages", maxListPages)
+	return nil, fmt.Errorf("sigma pagination exceeded %d pages", maxPages)
 }
 
 func decodePageEnvelope[T any](body []byte) (pageEnvelope[T], error) {
