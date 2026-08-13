@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/civitaspo/terraform-provider-sigma/internal/sigma"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -35,7 +36,10 @@ func (r *userAttributeTeamAssignmentResource) Schema(_ context.Context, _ resour
 
 func (r *userAttributeTeamAssignmentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	plan := assignmentFromPlan(ctx, req.Plan.GetAttribute, &resp.Diagnostics, "team_id")
-	if !resp.Diagnostics.HasError() && setUserAttributeTeam(ctx, r.client, plan, &resp.Diagnostics) {
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if setUserAttributeTeam(ctx, r.client, plan, &resp.Diagnostics) {
 		setAssignmentState(ctx, plan, resp.State.SetAttribute, &resp.Diagnostics, "team_id")
 	}
 }
@@ -50,7 +54,10 @@ func (r *userAttributeTeamAssignmentResource) Read(ctx context.Context, req reso
 
 func (r *userAttributeTeamAssignmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	plan := assignmentFromPlan(ctx, req.Plan.GetAttribute, &resp.Diagnostics, "team_id")
-	if !resp.Diagnostics.HasError() && setUserAttributeTeam(ctx, r.client, plan, &resp.Diagnostics) {
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if setUserAttributeTeam(ctx, r.client, plan, &resp.Diagnostics) {
 		setAssignmentState(ctx, plan, resp.State.SetAttribute, &resp.Diagnostics, "team_id")
 	}
 }
@@ -62,7 +69,14 @@ func (r *userAttributeTeamAssignmentResource) Delete(ctx context.Context, req re
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteUserAttributeTeam(ctx, attributeID.ValueString(), targetID.ValueString()); err != nil && !sigma.IsNotFound(err) {
+	attribute, attributeDiags := knownString(attributeID, "user_attribute_id")
+	resp.Diagnostics.Append(attributeDiags...)
+	target, targetDiags := knownString(targetID, "team_id")
+	resp.Diagnostics.Append(targetDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.client.DeleteUserAttributeTeam(ctx, attribute, target); err != nil && !sigma.IsNotFound(err) {
 		resp.Diagnostics.AddError("Unable to delete Sigma user attribute assignment", err.Error())
 	}
 }
@@ -71,8 +85,17 @@ func (r *userAttributeTeamAssignmentResource) ImportState(ctx context.Context, r
 	importUserAttributeAssignment(ctx, req, resp, "team_id", "teamId")
 }
 
-func setUserAttributeTeam(ctx context.Context, client *sigma.Client, plan *assignmentModel, diagnostics interface{ AddError(string, string) }) bool {
-	if err := client.SetUserAttributeTeam(ctx, plan.UserAttributeID.ValueString(), plan.TargetID.ValueString(), plan.Value.ValueString()); err != nil {
+func setUserAttributeTeam(ctx context.Context, client *sigma.Client, plan *assignmentModel, diagnostics *diag.Diagnostics) bool {
+	attributeID, attributeDiags := knownString(plan.UserAttributeID, "user_attribute_id")
+	diagnostics.Append(attributeDiags...)
+	targetID, targetDiags := knownString(plan.TargetID, "team_id")
+	diagnostics.Append(targetDiags...)
+	value, valueDiags := knownString(plan.Value, "value")
+	diagnostics.Append(valueDiags...)
+	if diagnostics.HasError() {
+		return false
+	}
+	if err := client.SetUserAttributeTeam(ctx, attributeID, targetID, value); err != nil {
 		diagnostics.AddError("Unable to set Sigma user attribute assignment", err.Error())
 		return false
 	}

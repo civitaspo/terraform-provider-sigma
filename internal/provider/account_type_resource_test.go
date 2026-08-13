@@ -84,4 +84,55 @@ resource "sigma_account_type" "test" {
 	}
 }
 
+func TestAccountTypeResourceRead404RemovesState(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	accountType := map[string]any{
+		"accountTypeId": "type-1", "accountTypeName": "Analyst", "description": "Analyst access", "isCustom": true,
+	}
+	gone := false
+	mock.Mux.HandleFunc("/v2/accountTypes", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		switch request.Method {
+		case http.MethodPost:
+			response.WriteHeader(http.StatusCreated)
+			writeJSON(response, accountType)
+		case http.MethodGet:
+			entries := []any{accountType}
+			if gone {
+				entries = []any{}
+			}
+			writeJSON(response, map[string]any{"entries": entries})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	mock.Mux.HandleFunc("/v2/accountTypes/type-1/permissions", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		writeJSON(response, []map[string]any{{"permission": "viewWorksheet", "description": "View worksheets"}})
+	})
+	mock.Mux.HandleFunc("/v2/accountTypes/type-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method != http.MethodDelete {
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSON(response, map[string]any{})
+	})
+	config := identityProviderConfig(mock) + `
+resource "sigma_account_type" "test" {
+  name        = "Analyst"
+  description = "Analyst access"
+  permissions = ["viewWorksheet"]
+}
+`
+	resource.UnitTest(t, identityTestCase([]resource.TestStep{
+		{Config: config},
+		{
+			PreConfig:          func() { gone = true },
+			RefreshState:       true,
+			ExpectNonEmptyPlan: true,
+		},
+	}))
+}
+
 func TestAccAccountTypeResource(t *testing.T) { requireAcceptance(t) }

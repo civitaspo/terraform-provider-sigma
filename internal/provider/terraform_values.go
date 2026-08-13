@@ -1,6 +1,11 @@
 package provider
 
-import "github.com/hashicorp/terraform-plugin-framework/types"
+import (
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
 
 const betaAPINotice = "This resource uses a Sigma Beta API and may change without notice."
 
@@ -64,4 +69,54 @@ func stringOrNull(value *string) types.String {
 		return types.StringNull()
 	}
 	return types.StringValue(*value)
+}
+
+func changedStringPtr(plan, state types.String) *string {
+	if plan.IsUnknown() || plan.IsNull() || plan.Equal(state) {
+		return nil
+	}
+	value := plan.ValueString()
+	return &value
+}
+
+func changedBoolPtr(plan, state types.Bool) *bool {
+	if plan.IsUnknown() || plan.IsNull() || plan.Equal(state) {
+		return nil
+	}
+	value := plan.ValueBool()
+	return &value
+}
+
+func knownTrue(value types.Bool) bool {
+	return !value.IsNull() && !value.IsUnknown() && value.ValueBool()
+}
+
+func knownString(value types.String, attribute string) (string, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if value.IsNull() || value.IsUnknown() {
+		diags.AddError("Invalid "+attribute, attribute+" must be a known, non-null value.")
+		return "", diags
+	}
+	return value.ValueString(), diags
+}
+
+func knownStringSet(ctx context.Context, value types.Set, attribute string) ([]string, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if value.IsNull() || value.IsUnknown() {
+		diags.AddError("Invalid "+attribute, attribute+" must be a known, non-null set.")
+		return nil, diags
+	}
+	var items []string
+	diags.Append(value.ElementsAs(ctx, &items, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	return items, diags
+}
+
+func stringSetValue(ctx context.Context, values []string) (types.Set, diag.Diagnostics) {
+	if values == nil {
+		values = make([]string, 0)
+	}
+	return types.SetValueFrom(ctx, types.StringType, values)
 }

@@ -67,4 +67,51 @@ resource "sigma_user_attribute" "test" {
 	}))
 }
 
+func TestUserAttributeResourceRead404RemovesState(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	attribute := map[string]any{
+		"userAttributeId": "attribute-1", "name": "Region", "description": "Sales region",
+		"defaultValue": map[string]string{"val": "global", "type": "string"},
+	}
+	gone := false
+	mock.Mux.HandleFunc("/v2/user-attributes", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method != http.MethodPost {
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSON(response, attribute)
+	})
+	mock.Mux.HandleFunc("/v2/user-attributes/attribute-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		switch request.Method {
+		case http.MethodGet:
+			if gone {
+				writeNotFound(response)
+				return
+			}
+			writeJSON(response, attribute)
+		case http.MethodDelete:
+			writeJSON(response, map[string]any{})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	config := identityProviderConfig(mock) + `
+resource "sigma_user_attribute" "test" {
+  name          = "Region"
+  description   = "Sales region"
+  default_value = "global"
+}
+`
+	resource.UnitTest(t, identityTestCase([]resource.TestStep{
+		{Config: config},
+		{
+			PreConfig:          func() { gone = true },
+			RefreshState:       true,
+			ExpectNonEmptyPlan: true,
+		},
+	}))
+}
+
 func TestAccUserAttributeResource(t *testing.T) { requireAcceptance(t) }
