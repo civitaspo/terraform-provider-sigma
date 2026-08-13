@@ -51,11 +51,26 @@ func (r *userAttributeResource) Create(ctx context.Context, req resource.CreateR
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	var defaultValue *sigma.AttributeValue
-	if !plan.DefaultValue.IsNull() {
-		defaultValue = &sigma.AttributeValue{Val: plan.DefaultValue.ValueString(), Type: "string"}
+	name, diags := knownString(plan.Name, "name")
+	resp.Diagnostics.Append(diags...)
+	if plan.Description.IsUnknown() {
+		resp.Diagnostics.AddError("Invalid description", "description must be known during create.")
 	}
-	value, err := r.client.CreateUserAttribute(ctx, plan.Name.ValueString(), plan.Description.ValueString(), defaultValue)
+	if plan.DefaultValue.IsUnknown() {
+		resp.Diagnostics.AddError("Invalid default_value", "default_value must be known during create.")
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	description := ""
+	if value := optionalStringPtr(plan.Description); value != nil {
+		description = *value
+	}
+	var defaultValue *sigma.AttributeValue
+	if value := optionalStringPtr(plan.DefaultValue); value != nil {
+		defaultValue = &sigma.AttributeValue{Val: *value, Type: "string"}
+	}
+	value, err := r.client.CreateUserAttribute(ctx, name, description, defaultValue)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create Sigma user attribute", err.Error())
 		return
@@ -66,7 +81,15 @@ func (r *userAttributeResource) Create(ctx context.Context, req resource.CreateR
 func (r *userAttributeResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state userAttributeModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	value, err := r.client.GetUserAttribute(ctx, state.ID.ValueString())
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	id, diags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	value, err := r.client.GetUserAttribute(ctx, id)
 	if sigma.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -79,14 +102,21 @@ func (r *userAttributeResource) Read(ctx context.Context, req resource.ReadReque
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 func (r *userAttributeResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {
+	// The user-attribute API has no update operation; configuration fields RequireReplace.
 }
 func (r *userAttributeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state userAttributeModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if !resp.Diagnostics.HasError() {
-		if err := r.client.DeleteUserAttribute(ctx, state.ID.ValueString()); err != nil && !sigma.IsNotFound(err) {
-			resp.Diagnostics.AddError("Unable to delete Sigma user attribute", err.Error())
-		}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	id, diags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.client.DeleteUserAttribute(ctx, id); err != nil && !sigma.IsNotFound(err) {
+		resp.Diagnostics.AddError("Unable to delete Sigma user attribute", err.Error())
 	}
 }
 func (r *userAttributeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

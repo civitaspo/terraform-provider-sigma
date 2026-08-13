@@ -85,7 +85,7 @@ func (c *Client) ListMembers(ctx context.Context) ([]Member, error) {
 }
 
 // FindMemberByEmail looks up a member by email. When includeArchived is true, archived
-// members are included so callers can reactivate deactivated accounts.
+// members are included in the list filter.
 func (c *Client) FindMemberByEmail(ctx context.Context, email string, includeArchived bool) (*Member, error) {
 	params := &openapi.ListMembersParams{Email: &email}
 	if includeArchived {

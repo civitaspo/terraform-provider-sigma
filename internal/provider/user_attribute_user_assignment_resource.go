@@ -58,7 +58,10 @@ func userAttributeAssignmentSchema(target, targetDescription, description string
 
 func (r *userAttributeUserAssignmentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	plan := assignmentFromPlan(ctx, req.Plan.GetAttribute, &resp.Diagnostics, "user_id")
-	if !resp.Diagnostics.HasError() && setUserAttributeUser(ctx, r.client, plan, &resp.Diagnostics) {
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if setUserAttributeUser(ctx, r.client, plan, &resp.Diagnostics) {
 		setAssignmentState(ctx, plan, resp.State.SetAttribute, &resp.Diagnostics, "user_id")
 	}
 }
@@ -73,7 +76,10 @@ func (r *userAttributeUserAssignmentResource) Read(ctx context.Context, req reso
 
 func (r *userAttributeUserAssignmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	plan := assignmentFromPlan(ctx, req.Plan.GetAttribute, &resp.Diagnostics, "user_id")
-	if !resp.Diagnostics.HasError() && setUserAttributeUser(ctx, r.client, plan, &resp.Diagnostics) {
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if setUserAttributeUser(ctx, r.client, plan, &resp.Diagnostics) {
 		setAssignmentState(ctx, plan, resp.State.SetAttribute, &resp.Diagnostics, "user_id")
 	}
 }
@@ -85,7 +91,14 @@ func (r *userAttributeUserAssignmentResource) Delete(ctx context.Context, req re
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteUserAttributeUser(ctx, attributeID.ValueString(), targetID.ValueString()); err != nil && !sigma.IsNotFound(err) {
+	attribute, attributeDiags := knownString(attributeID, "user_attribute_id")
+	resp.Diagnostics.Append(attributeDiags...)
+	target, targetDiags := knownString(targetID, "user_id")
+	resp.Diagnostics.Append(targetDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.client.DeleteUserAttributeUser(ctx, attribute, target); err != nil && !sigma.IsNotFound(err) {
 		resp.Diagnostics.AddError("Unable to delete Sigma user attribute assignment", err.Error())
 	}
 }
@@ -94,8 +107,17 @@ func (r *userAttributeUserAssignmentResource) ImportState(ctx context.Context, r
 	importUserAttributeAssignment(ctx, req, resp, "user_id", "userId")
 }
 
-func setUserAttributeUser(ctx context.Context, client *sigma.Client, plan *assignmentModel, diagnostics interface{ AddError(string, string) }) bool {
-	if err := client.SetUserAttributeUser(ctx, plan.UserAttributeID.ValueString(), plan.TargetID.ValueString(), plan.Value.ValueString()); err != nil {
+func setUserAttributeUser(ctx context.Context, client *sigma.Client, plan *assignmentModel, diagnostics *diag.Diagnostics) bool {
+	attributeID, attributeDiags := knownString(plan.UserAttributeID, "user_attribute_id")
+	diagnostics.Append(attributeDiags...)
+	targetID, targetDiags := knownString(plan.TargetID, "user_id")
+	diagnostics.Append(targetDiags...)
+	value, valueDiags := knownString(plan.Value, "value")
+	diagnostics.Append(valueDiags...)
+	if diagnostics.HasError() {
+		return false
+	}
+	if err := client.SetUserAttributeUser(ctx, attributeID, targetID, value); err != nil {
 		diagnostics.AddError("Unable to set Sigma user attribute assignment", err.Error())
 		return false
 	}
@@ -112,6 +134,15 @@ func assignmentFromPlan(
 	diagnostics.Append(get(ctx, path.Root("user_attribute_id"), &plan.UserAttributeID)...)
 	diagnostics.Append(get(ctx, path.Root(targetAttr), &plan.TargetID)...)
 	diagnostics.Append(get(ctx, path.Root("value"), &plan.Value)...)
+	if diagnostics.HasError() {
+		return plan
+	}
+	_, attributeDiags := knownString(plan.UserAttributeID, "user_attribute_id")
+	diagnostics.Append(attributeDiags...)
+	_, targetDiags := knownString(plan.TargetID, targetAttr)
+	diagnostics.Append(targetDiags...)
+	_, valueDiags := knownString(plan.Value, "value")
+	diagnostics.Append(valueDiags...)
 	return plan
 }
 
@@ -122,7 +153,14 @@ func setAssignmentState(
 	diagnostics *diag.Diagnostics,
 	targetAttr string,
 ) {
-	diagnostics.Append(set(ctx, path.Root("id"), plan.UserAttributeID.ValueString()+"/"+plan.TargetID.ValueString())...)
+	attributeID, attributeDiags := knownString(plan.UserAttributeID, "user_attribute_id")
+	diagnostics.Append(attributeDiags...)
+	targetID, targetDiags := knownString(plan.TargetID, targetAttr)
+	diagnostics.Append(targetDiags...)
+	if diagnostics.HasError() {
+		return
+	}
+	diagnostics.Append(set(ctx, path.Root("id"), attributeID+"/"+targetID)...)
 	diagnostics.Append(set(ctx, path.Root("user_attribute_id"), plan.UserAttributeID)...)
 	diagnostics.Append(set(ctx, path.Root(targetAttr), plan.TargetID)...)
 	diagnostics.Append(set(ctx, path.Root("value"), plan.Value)...)
@@ -142,7 +180,14 @@ func readUserAttributeAssignment(
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	assignments, err := list(attributeID.ValueString())
+	attribute, attributeDiags := knownString(attributeID, "user_attribute_id")
+	resp.Diagnostics.Append(attributeDiags...)
+	target, targetDiags := knownString(targetID, targetAttr)
+	resp.Diagnostics.Append(targetDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	assignments, err := list(attribute)
 	if sigma.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -152,7 +197,7 @@ func readUserAttributeAssignment(
 		return
 	}
 	for _, assignment := range assignments {
-		if matchID(assignment) == targetID.ValueString() {
+		if matchID(assignment) == target {
 			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("value"), assignment.Value.Val)...)
 			return
 		}

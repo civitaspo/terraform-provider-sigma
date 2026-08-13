@@ -201,14 +201,6 @@ func requireFolder(value *sigma.File) error {
 	return nil
 }
 
-func changedStringPtr(plan, state types.String) *string {
-	if plan.IsUnknown() || plan.IsNull() || plan.Equal(state) {
-		return nil
-	}
-	value := plan.ValueString()
-	return &value
-}
-
 func setFolder(state *folderModel, value *sigma.File) {
 	state.ID = types.StringValue(value.ID)
 	state.URLID = types.StringValue(value.URLID)

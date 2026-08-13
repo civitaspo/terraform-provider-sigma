@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -37,12 +38,16 @@ func (r *teamMemberResource) Configure(_ context.Context, req resource.Configure
 func (r *teamMemberResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages one member of a Sigma team.",
+		MarkdownDescription: "Manages one member of a Sigma team. `team_id` and `member_id` force replacement because `PATCH /v2/teams/{teamId}/members` only adds or removes members. `is_team_admin` is read-only; the update-members API cannot change it.",
 		Attributes: map[string]schema.Attribute{
-			"id":            schema.StringAttribute{Computed: true, MarkdownDescription: "Composite ID in `teamId/memberId` form."},
-			"team_id":       schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Team ID."},
-			"member_id":     schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Member ID."},
-			"is_team_admin": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the member is a team administrator. The update-members API cannot modify this value."},
+			"id":        schema.StringAttribute{Computed: true, MarkdownDescription: "Composite ID in `teamId/memberId` form."},
+			"team_id":   schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Team ID."},
+			"member_id": schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Member ID."},
+			"is_team_admin": schema.BoolAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Whether the member is a team administrator. The update-members API cannot modify this value; Terraform refreshes it from the team members list.",
+			},
 		},
 	}
 }
@@ -52,11 +57,18 @@ func (r *teamMemberResource) Create(ctx context.Context, req resource.CreateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.UpdateTeamMembers(ctx, plan.TeamID.ValueString(), []string{plan.MemberID.ValueString()}, nil); err != nil {
+	teamID, teamDiags := knownString(plan.TeamID, "team_id")
+	resp.Diagnostics.Append(teamDiags...)
+	memberID, memberDiags := knownString(plan.MemberID, "member_id")
+	resp.Diagnostics.Append(memberDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.client.UpdateTeamMembers(ctx, teamID, []string{memberID}, nil); err != nil {
 		resp.Diagnostics.AddError("Unable to add Sigma team member", err.Error())
 		return
 	}
-	plan.ID = types.StringValue(plan.TeamID.ValueString() + "/" + plan.MemberID.ValueString())
+	plan.ID = types.StringValue(teamID + "/" + memberID)
 	plan.IsTeamAdmin = types.BoolValue(false)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -66,7 +78,14 @@ func (r *teamMemberResource) Read(ctx context.Context, req resource.ReadRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	members, err := r.client.ListTeamMembers(ctx, state.TeamID.ValueString())
+	teamID, teamDiags := knownString(state.TeamID, "team_id")
+	resp.Diagnostics.Append(teamDiags...)
+	memberID, memberDiags := knownString(state.MemberID, "member_id")
+	resp.Diagnostics.Append(memberDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	members, err := r.client.ListTeamMembers(ctx, teamID)
 	if sigma.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -76,7 +95,7 @@ func (r *teamMemberResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 	for _, member := range members {
-		if member.UserID == state.MemberID.ValueString() {
+		if member.UserID == memberID {
 			state.IsTeamAdmin = types.BoolValue(member.IsTeamAdmin)
 			resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 			return
@@ -85,6 +104,7 @@ func (r *teamMemberResource) Read(ctx context.Context, req resource.ReadRequest,
 	resp.State.RemoveResource(ctx)
 }
 func (r *teamMemberResource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {
+	// team_id and member_id RequireReplace; is_team_admin is computed and refreshed on Read.
 }
 func (r *teamMemberResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state teamMemberModel
@@ -92,7 +112,14 @@ func (r *teamMemberResource) Delete(ctx context.Context, req resource.DeleteRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.UpdateTeamMembers(ctx, state.TeamID.ValueString(), nil, []string{state.MemberID.ValueString()}); err != nil && !sigma.IsNotFound(err) {
+	teamID, teamDiags := knownString(state.TeamID, "team_id")
+	resp.Diagnostics.Append(teamDiags...)
+	memberID, memberDiags := knownString(state.MemberID, "member_id")
+	resp.Diagnostics.Append(memberDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.client.UpdateTeamMembers(ctx, teamID, nil, []string{memberID}); err != nil && !sigma.IsNotFound(err) {
 		resp.Diagnostics.AddError("Unable to remove Sigma team member", err.Error())
 	}
 }

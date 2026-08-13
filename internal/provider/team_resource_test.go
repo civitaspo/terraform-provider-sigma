@@ -45,11 +45,16 @@ func TestTeamResource(t *testing.T) {
 			if body["name"] != "Analytics Updated" {
 				t.Errorf("update team name = %#v", body["name"])
 			}
+			if _, ok := body["description"]; ok {
+				t.Errorf("name-only update sent description: %#v", body["description"])
+			}
+			if _, ok := body["visibility"]; ok {
+				t.Errorf("name-only update sent visibility: %#v", body["visibility"])
+			}
 			if _, ok := body["createTeamFolder"]; ok {
 				t.Errorf("update sent createTeamFolder: %#v", body["createTeamFolder"])
 			}
 			team["name"] = body["name"]
-			team["description"] = body["description"]
 			writeJSON(response, team)
 		case http.MethodDelete:
 			writeJSON(response, map[string]any{})
@@ -274,6 +279,53 @@ resource "sigma_team" "test" {
 			Config:             config,
 			PlanOnly:           true,
 			ExpectNonEmptyPlan: false,
+		},
+	}))
+}
+
+func TestTeamResourceRead404RemovesState(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	team := map[string]any{
+		"teamId": "team-1", "name": "Analytics", "description": "Core analytics",
+		"visibility": "private", "isArchived": false,
+	}
+	gone := false
+	mock.Mux.HandleFunc("/v2/teams", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method != http.MethodPost {
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSON(response, team)
+	})
+	mock.Mux.HandleFunc("/v2/teams/team-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		switch request.Method {
+		case http.MethodGet:
+			if gone {
+				writeNotFound(response)
+				return
+			}
+			writeJSON(response, team)
+		case http.MethodDelete:
+			writeJSON(response, map[string]any{})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	config := identityProviderConfig(mock) + `
+resource "sigma_team" "test" {
+  name        = "Analytics"
+  description = "Core analytics"
+  visibility  = "private"
+}
+`
+	resource.UnitTest(t, identityTestCase([]resource.TestStep{
+		{Config: config},
+		{
+			PreConfig:          func() { gone = true },
+			RefreshState:       true,
+			ExpectNonEmptyPlan: true,
 		},
 	}))
 }

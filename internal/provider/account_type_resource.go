@@ -57,17 +57,30 @@ func (r *accountTypeResource) Schema(_ context.Context, _ resource.SchemaRequest
 func (r *accountTypeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan accountTypeModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	var permissions []string
-	plan.Permissions.ElementsAs(ctx, &permissions, false)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	value, err := r.client.CreateAccountType(ctx, plan.Name.ValueString(), plan.Description.ValueString(), permissions)
+	name, nameDiags := knownString(plan.Name, "name")
+	resp.Diagnostics.Append(nameDiags...)
+	description, descriptionDiags := knownString(plan.Description, "description")
+	resp.Diagnostics.Append(descriptionDiags...)
+	permissions, permissionDiags := knownStringSet(ctx, plan.Permissions, "permissions")
+	resp.Diagnostics.Append(permissionDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	value, err := r.client.CreateAccountType(ctx, name, description, permissions)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create Sigma account type", err.Error())
 		return
 	}
 	setAccountType(&plan, value)
+	converted, convertDiags := stringSetValue(ctx, permissions)
+	resp.Diagnostics.Append(convertDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.Permissions = converted
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 func (r *accountTypeResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -77,8 +90,12 @@ func (r *accountTypeResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 	lookup := state.ID.ValueString()
-	if !state.Name.IsNull() && !state.Name.IsUnknown() && state.Name.ValueString() != "" {
-		lookup = state.Name.ValueString()
+	if name := optionalStringPtr(state.Name); name != nil && *name != "" {
+		lookup = *name
+	}
+	if lookup == "" {
+		resp.Diagnostics.AddError("Unable to read Sigma account type", "The account type ID or name is unknown.")
+		return
 	}
 	value, err := r.client.FindAccountType(ctx, lookup)
 	if sigma.IsNotFound(err) {
@@ -95,11 +112,16 @@ func (r *accountTypeResource) Read(ctx context.Context, req resource.ReadRequest
 		resp.Diagnostics.AddError("Unable to read Sigma account type permissions", err.Error())
 		return
 	}
-	names := make([]string, len(permissions))
+	names := make([]string, 0, len(permissions))
 	for i := range permissions {
-		names[i] = permissions[i].Permission
+		names = append(names, permissions[i].Permission)
 	}
-	state.Permissions, _ = types.SetValueFrom(ctx, types.StringType, names)
+	converted, convertDiags := stringSetValue(ctx, names)
+	resp.Diagnostics.Append(convertDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state.Permissions = converted
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 func (r *accountTypeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -114,10 +136,20 @@ func (r *accountTypeResource) Update(ctx context.Context, req resource.UpdateReq
 func (r *accountTypeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state accountTypeModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if !resp.Diagnostics.HasError() {
-		if err := r.client.DeleteAccountType(ctx, state.ID.ValueString(), state.ReassignToAccountTypeID.ValueString()); err != nil && !sigma.IsNotFound(err) {
-			resp.Diagnostics.AddError("Unable to delete Sigma account type", err.Error())
-		}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	id, diags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	reassign := ""
+	if value := optionalStringPtr(state.ReassignToAccountTypeID); value != nil {
+		reassign = *value
+	}
+	if err := r.client.DeleteAccountType(ctx, id, reassign); err != nil && !sigma.IsNotFound(err) {
+		resp.Diagnostics.AddError("Unable to delete Sigma account type", err.Error())
 	}
 }
 func (r *accountTypeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

@@ -75,6 +75,12 @@ func writeJSON(response http.ResponseWriter, value any) {
 	_ = json.NewEncoder(response).Encode(value)
 }
 
+func writeNotFound(response http.ResponseWriter) {
+	response.Header().Set("Content-Type", "application/json")
+	response.WriteHeader(http.StatusNotFound)
+	_ = json.NewEncoder(response).Encode(map[string]any{"message": "not found"})
+}
+
 func nullable(value string) any {
 	if value == "" {
 		return nil

@@ -74,4 +74,57 @@ resource "sigma_team_member" "test" {
 	}))
 }
 
+func TestTeamMemberResourceRead404RemovesState(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	var mu sync.Mutex
+	members := map[string]bool{"member-1": true}
+	gone := false
+	mock.Mux.HandleFunc("/v2/teams/team-1/members", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		mu.Lock()
+		defer mu.Unlock()
+		switch request.Method {
+		case http.MethodGet:
+			if gone {
+				writeNotFound(response)
+				return
+			}
+			entries := []map[string]any{}
+			for id := range members {
+				entries = append(entries, map[string]any{"userId": id, "isTeamAdmin": false})
+			}
+			writeJSON(response, map[string]any{"entries": entries, "nextPage": nil})
+		case http.MethodPatch:
+			var body struct {
+				Add    []string `json:"add"`
+				Remove []string `json:"remove"`
+			}
+			_ = json.NewDecoder(request.Body).Decode(&body)
+			for _, id := range body.Add {
+				members[id] = true
+			}
+			for _, id := range body.Remove {
+				delete(members, id)
+			}
+			writeJSON(response, map[string]any{})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	config := identityProviderConfig(mock) + `
+resource "sigma_team_member" "test" {
+  team_id   = "team-1"
+  member_id = "member-1"
+}
+`
+	resource.UnitTest(t, identityTestCase([]resource.TestStep{
+		{Config: config},
+		{
+			PreConfig:          func() { mu.Lock(); gone = true; mu.Unlock() },
+			RefreshState:       true,
+			ExpectNonEmptyPlan: true,
+		},
+	}))
+}
+
 func TestAccTeamMemberResource(t *testing.T) { requireAcceptance(t) }

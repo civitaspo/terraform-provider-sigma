@@ -63,4 +63,53 @@ resource "sigma_user_attribute_team_assignment" "test" {
 	}))
 }
 
+func TestUserAttributeTeamAssignmentResourceRead404RemovesState(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	gone := false
+	mock.Mux.HandleFunc("/v2/user-attributes/attribute-1/teams", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		switch request.Method {
+		case http.MethodPost:
+			writeJSON(response, map[string]any{})
+		case http.MethodGet:
+			if gone {
+				writeNotFound(response)
+				return
+			}
+			writeJSON(response, map[string]any{
+				"entries": []map[string]any{{
+					"teamId": "team-1",
+					"value":  map[string]string{"val": "americas", "type": "string"},
+				}},
+				"nextPage": nil,
+			})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	mock.Mux.HandleFunc("/v2/user-attributes/attribute-1/teams/team-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method != http.MethodDelete {
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSON(response, map[string]any{})
+	})
+	config := identityProviderConfig(mock) + `
+resource "sigma_user_attribute_team_assignment" "test" {
+  user_attribute_id = "attribute-1"
+  team_id           = "team-1"
+  value             = "americas"
+}
+`
+	resource.UnitTest(t, identityTestCase([]resource.TestStep{
+		{Config: config},
+		{
+			PreConfig:          func() { gone = true },
+			RefreshState:       true,
+			ExpectNonEmptyPlan: true,
+		},
+	}))
+}
+
 func TestAccUserAttributeTeamAssignmentResource(t *testing.T) { requireAcceptance(t) }

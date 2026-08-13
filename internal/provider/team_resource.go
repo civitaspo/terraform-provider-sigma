@@ -44,7 +44,12 @@ func (r *teamResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 			"id":          schema.StringAttribute{Computed: true, MarkdownDescription: "Team ID."},
 			"name":        schema.StringAttribute{Required: true, MarkdownDescription: "Team name."},
 			"description": schema.StringAttribute{Optional: true, MarkdownDescription: "Team description."},
-			"visibility":  schema.StringAttribute{Optional: true, Computed: true, MarkdownDescription: "Team visibility: `public` or `private`."},
+			"visibility": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Team visibility: `public` or `private`.",
+			},
 			"is_archived": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the team is archived."},
 			"create_team_folder": schema.BoolAttribute{
 				Optional:            true,
@@ -65,10 +70,20 @@ func (r *teamResource) Create(ctx context.Context, req resource.CreateRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	input := sigma.CreateTeamInput{Name: plan.Name.ValueString(), Description: plan.Description.ValueString(), Visibility: plan.Visibility.ValueString()}
-	if !plan.CreateTeamFolder.IsNull() && !plan.CreateTeamFolder.IsUnknown() {
-		createTeamFolder := plan.CreateTeamFolder.ValueBool()
-		input.CreateTeamFolder = &createTeamFolder
+	name, diags := knownString(plan.Name, "name")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	input := sigma.CreateTeamInput{Name: name}
+	if description := optionalStringPtr(plan.Description); description != nil {
+		input.Description = *description
+	}
+	if visibility := optionalStringPtr(plan.Visibility); visibility != nil {
+		input.Visibility = *visibility
+	}
+	if createTeamFolder := optionalBoolPtr(plan.CreateTeamFolder); createTeamFolder != nil {
+		input.CreateTeamFolder = createTeamFolder
 	}
 	team, err := r.client.CreateTeam(ctx, input)
 	if err != nil {
@@ -84,7 +99,12 @@ func (r *teamResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	team, err := r.client.GetTeam(ctx, state.ID.ValueString())
+	id, diags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	team, err := r.client.GetTeam(ctx, id)
 	if sigma.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -104,8 +124,16 @@ func (r *teamResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	name, description, visibility := plan.Name.ValueString(), plan.Description.ValueString(), plan.Visibility.ValueString()
-	team, err := r.client.UpdateTeam(ctx, state.ID.ValueString(), sigma.UpdateTeamInput{Name: &name, Description: &description, Visibility: &visibility})
+	id, diags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	team, err := r.client.UpdateTeam(ctx, id, sigma.UpdateTeamInput{
+		Name:        changedStringPtr(plan.Name, state.Name),
+		Description: changedStringPtr(plan.Description, state.Description),
+		Visibility:  changedStringPtr(plan.Visibility, state.Visibility),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Sigma team", err.Error())
 		return
@@ -119,7 +147,12 @@ func (r *teamResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteTeam(ctx, state.ID.ValueString()); err != nil && !sigma.IsNotFound(err) {
+	id, diags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.client.DeleteTeam(ctx, id); err != nil && !sigma.IsNotFound(err) {
 		resp.Diagnostics.AddError("Unable to delete Sigma team", err.Error())
 	}
 }
