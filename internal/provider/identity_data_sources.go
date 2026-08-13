@@ -94,6 +94,7 @@ func teamDataAttributes(requireID bool) map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"id": id, "name": schema.StringAttribute{Computed: true, MarkdownDescription: "Team name."}, "description": schema.StringAttribute{Computed: true, MarkdownDescription: "Description."},
 		"visibility": schema.StringAttribute{Computed: true, MarkdownDescription: "Visibility."}, "is_archived": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether archived."},
+		"workspace_id": schema.StringAttribute{Computed: true, MarkdownDescription: "ID of the team workspace when the API returns it."},
 	}
 }
 
@@ -118,6 +119,7 @@ type teamDataModel struct {
 	Description types.String `tfsdk:"description"`
 	Visibility  types.String `tfsdk:"visibility"`
 	IsArchived  types.Bool   `tfsdk:"is_archived"`
+	WorkspaceID types.String `tfsdk:"workspace_id"`
 }
 type teamsDataModel struct {
 	ID    types.String    `tfsdk:"id"`
@@ -226,7 +228,11 @@ func teamData(v *sigma.Team) teamDataModel {
 	if v.Description != nil {
 		d = types.StringValue(*v.Description)
 	}
-	return teamDataModel{ID: types.StringValue(v.TeamID), Name: types.StringValue(v.Name), Description: d, Visibility: types.StringValue(v.Visibility), IsArchived: types.BoolValue(v.IsArchived)}
+	workspaceID := types.StringNull()
+	if v.WorkspaceID != nil && *v.WorkspaceID != "" {
+		workspaceID = types.StringValue(*v.WorkspaceID)
+	}
+	return teamDataModel{ID: types.StringValue(v.TeamID), Name: types.StringValue(v.Name), Description: d, Visibility: types.StringValue(v.Visibility), IsArchived: types.BoolValue(v.IsArchived), WorkspaceID: workspaceID}
 }
 func userAttributeData(v *sigma.UserAttribute) userAttributeDataModel {
 	d, x := types.StringNull(), types.StringNull()

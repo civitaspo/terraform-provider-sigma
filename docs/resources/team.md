@@ -3,20 +3,21 @@
 page_title: "sigma_team Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a Sigma team.
+  Manages a Sigma team. create_team_folder is accepted only on create (POST /v2/teams); changing it forces replacement.
 ---
 
 # sigma_team (Resource)
 
-Manages a Sigma team.
+Manages a Sigma team. `create_team_folder` is accepted only on create (`POST /v2/teams`); changing it forces replacement.
 
 ## Example Usage
 
 ```terraform
 resource "sigma_team" "example" {
-  name        = "Analytics"
-  description = "Analytics team"
-  visibility  = "private"
+  name               = "Analytics"
+  description        = "Analytics team"
+  visibility         = "private"
+  create_team_folder = true
 }
 ```
 
@@ -29,6 +30,7 @@ resource "sigma_team" "example" {
 
 ### Optional
 
+- `create_team_folder` (Boolean) When true, Sigma creates a workspace associated with the team at create time. The API only accepts `createTeamFolder` on `POST /v2/teams`; changing this value forces replacement.
 - `description` (String) Team description.
 - `visibility` (String) Team visibility: `public` or `private`.
 
@@ -36,6 +38,7 @@ resource "sigma_team" "example" {
 
 - `id` (String) Team ID.
 - `is_archived` (Boolean) Whether the team is archived.
+- `workspace_id` (String) ID of the team workspace when one exists. Present on create responses; later GET and list responses may omit it, in which case Terraform keeps the last known value.
 
 ## Import
 

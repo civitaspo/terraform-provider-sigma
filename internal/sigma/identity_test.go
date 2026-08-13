@@ -18,7 +18,8 @@ func TestIdentityClientMethods(t *testing.T) {
 	}
 	member := sigma.Member{MemberID: "member-1", OrganizationID: "org-1", Email: "ada@example.com", FirstName: "Ada", LastName: "Lovelace", MemberType: "Creator", UserKind: "internal"}
 	teamDescription := "Analytics"
-	team := sigma.Team{TeamID: "team-1", Name: "Analytics", Description: &teamDescription, Visibility: "private"}
+	workspaceID := "workspace-1"
+	team := sigma.Team{TeamID: "team-1", Name: "Analytics", Description: &teamDescription, Visibility: "private", WorkspaceID: &workspaceID}
 	attributeDescription := "Region"
 	attribute := sigma.UserAttribute{UserAttributeID: "attribute-1", Name: "Region", Description: &attributeDescription, DefaultValue: &sigma.AttributeValue{Val: "global", Type: "string"}}
 
@@ -44,6 +45,14 @@ func TestIdentityClientMethods(t *testing.T) {
 	mock.Mux.HandleFunc("/v2/teams", func(response http.ResponseWriter, request *http.Request) {
 		if request.Method != http.MethodPost {
 			t.Errorf("unexpected teams method %s", request.Method)
+		}
+		var body sigma.CreateTeamInput
+		_ = json.NewDecoder(request.Body).Decode(&body)
+		if body.Name != team.Name {
+			t.Errorf("create team name = %q", body.Name)
+		}
+		if body.CreateTeamFolder == nil || !*body.CreateTeamFolder {
+			t.Errorf("createTeamFolder = %#v", body.CreateTeamFolder)
 		}
 		write(response, team)
 	})
@@ -133,11 +142,20 @@ func TestIdentityClientMethods(t *testing.T) {
 		t.Fatalf("GetMember(missing) error = %v", err)
 	}
 
-	if _, err = client.CreateTeam(ctx, sigma.CreateTeamInput{Name: team.Name}); err != nil {
+	createFolder := true
+	created, err := client.CreateTeam(ctx, sigma.CreateTeamInput{Name: team.Name, CreateTeamFolder: &createFolder})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = client.GetTeam(ctx, team.TeamID); err != nil {
+	if created.WorkspaceID == nil || *created.WorkspaceID != "workspace-1" {
+		t.Fatalf("CreateTeam workspaceId = %v", created.WorkspaceID)
+	}
+	got, err := client.GetTeam(ctx, team.TeamID)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if got.WorkspaceID == nil || *got.WorkspaceID != "workspace-1" {
+		t.Fatalf("GetTeam workspaceId = %v", got.WorkspaceID)
 	}
 	if _, err = client.UpdateTeam(ctx, team.TeamID, sigma.UpdateTeamInput{Name: &team.Name}); err != nil {
 		t.Fatal(err)
@@ -198,5 +216,64 @@ func TestIdentityClientMethods(t *testing.T) {
 	}
 	if err = client.DeleteUserAttribute(ctx, attribute.UserAttributeID); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCreateTeamInputJSON(t *testing.T) {
+	t.Parallel()
+	trueVal := true
+	encoded, err := json.Marshal(sigma.CreateTeamInput{Name: "Analytics", CreateTeamFolder: &trueVal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var withFolder map[string]any
+	if err := json.Unmarshal(encoded, &withFolder); err != nil {
+		t.Fatal(err)
+	}
+	if withFolder["createTeamFolder"] != true {
+		t.Fatalf("createTeamFolder = %#v", withFolder["createTeamFolder"])
+	}
+
+	falseVal := false
+	encoded, err = json.Marshal(sigma.CreateTeamInput{Name: "Analytics", CreateTeamFolder: &falseVal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var withFalse map[string]any
+	if err := json.Unmarshal(encoded, &withFalse); err != nil {
+		t.Fatal(err)
+	}
+	if withFalse["createTeamFolder"] != false {
+		t.Fatalf("createTeamFolder false = %#v", withFalse["createTeamFolder"])
+	}
+
+	encoded, err = json.Marshal(sigma.CreateTeamInput{Name: "Analytics"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var omitted map[string]any
+	if err := json.Unmarshal(encoded, &omitted); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := omitted["createTeamFolder"]; ok {
+		t.Fatalf("createTeamFolder unexpectedly present: %#v", omitted)
+	}
+}
+
+func TestTeamWorkspaceIDJSON(t *testing.T) {
+	t.Parallel()
+	var team sigma.Team
+	if err := json.Unmarshal([]byte(`{"teamId":"team-1","workspaceId":"workspace-1"}`), &team); err != nil {
+		t.Fatal(err)
+	}
+	if team.WorkspaceID == nil || *team.WorkspaceID != "workspace-1" {
+		t.Fatalf("workspaceId = %v", team.WorkspaceID)
+	}
+	var nullTeam sigma.Team
+	if err := json.Unmarshal([]byte(`{"teamId":"team-1","workspaceId":null}`), &nullTeam); err != nil {
+		t.Fatal(err)
+	}
+	if nullTeam.WorkspaceID != nil {
+		t.Fatalf("null workspaceId = %v", nullTeam.WorkspaceID)
 	}
 }
