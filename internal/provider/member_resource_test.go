@@ -507,3 +507,5 @@ resource "sigma_member" "test" {
 		t.Fatalf("PATCH calls = %d, want 0 on destroy without options", patchCalls)
 	}
 }
+
+func TestAccMemberResource(t *testing.T) { requireAcceptance(t) }

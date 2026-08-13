@@ -24,6 +24,47 @@ provider "sigma" {
 `
 }
 
+func TestFileResource(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	write := func(response http.ResponseWriter, value any) {
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(value)
+	}
+	file := map[string]any{
+		"id": "folder-1", "urlId": "folder-url-1", "name": "Managed", "type": "folder",
+		"parentId": "workspace-1", "parentUrlId": "workspace-url-1", "permission": "edit", "path": "Analytics/Managed",
+		"badge": nil, "isArchived": false, "description": "Terraform managed", "ownerId": "member-admin",
+		"createdBy": "member-admin", "updatedBy": "member-admin", "createdAt": "2026-01-01T00:00:00Z", "updatedAt": "2026-01-01T00:00:00Z",
+	}
+	mock.Mux.HandleFunc("/v2/files", func(response http.ResponseWriter, _ *http.Request) { write(response, file) })
+	mock.Mux.HandleFunc("/v2/files/folder-1", func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodDelete {
+			write(response, map[string]any{})
+			return
+		}
+		write(response, file)
+	})
+	config := fileProviderConfig(mock) + `
+resource "sigma_file" "test" {
+  name        = "Managed"
+  type        = "folder"
+  parent_id   = "workspace-1"
+  description = "Terraform managed"
+}
+`
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
+			"sigma": providerserver.NewProtocol6WithError(sigmaprovider.New("test")()),
+		},
+		Steps: []resource.TestStep{{
+			Config: config,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("sigma_file.test", "id", "folder-1"),
+			),
+		}},
+	})
+}
+
 func TestFileResourceWorkbookSourceAndRestore(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
 	file := map[string]any{
@@ -174,3 +215,5 @@ resource "sigma_file" "test" {
 		}},
 	})
 }
+
+func TestAccFileResource(t *testing.T) { requireAcceptance(t) }
