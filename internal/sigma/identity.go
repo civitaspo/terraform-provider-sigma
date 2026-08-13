@@ -249,9 +249,10 @@ func (c *Client) ListUserAttributes(ctx context.Context) ([]UserAttribute, error
 }
 
 type AttributeAssignment struct {
-	TeamID string         `json:"teamId,omitempty"`
-	UserID string         `json:"userId,omitempty"`
-	Value  AttributeValue `json:"value"`
+	TeamID               string         `json:"teamId,omitempty"`
+	UserID               string         `json:"userId,omitempty"`
+	TenantOrganizationID string         `json:"tenantOrganizationId,omitempty"`
+	Value                AttributeValue `json:"value"`
 }
 
 func (c *Client) SetUserAttributeTeam(ctx context.Context, a, t, v string) error {
@@ -271,4 +272,13 @@ func (c *Client) DeleteUserAttributeUser(ctx context.Context, a, u string) error
 }
 func (c *Client) ListUserAttributeUsers(ctx context.Context, a string) ([]AttributeAssignment, error) {
 	return ListAll[AttributeAssignment](ctx, c, "/v2/user-attributes/"+url.PathEscape(a)+"/users")
+}
+func (c *Client) SetUserAttributeTenant(ctx context.Context, a, t, v string) error {
+	return c.sendJSON(ctx, http.MethodPost, "/v2/user-attributes/"+url.PathEscape(a)+"/tenants", map[string]any{"assignments": []AttributeAssignment{{TenantOrganizationID: t, Value: AttributeValue{Val: v, Type: "string"}}}}, nil)
+}
+func (c *Client) DeleteUserAttributeTenant(ctx context.Context, a, t string) error {
+	return c.sendJSON(ctx, http.MethodDelete, "/v2/user-attributes/"+url.PathEscape(a)+"/tenants/"+url.PathEscape(t), nil, nil)
+}
+func (c *Client) ListUserAttributeTenants(ctx context.Context, a string) ([]AttributeAssignment, error) {
+	return ListAll[AttributeAssignment](ctx, c, "/v2/user-attributes/"+url.PathEscape(a)+"/tenants")
 }
