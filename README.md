@@ -138,6 +138,9 @@ The following Sigma capabilities are intentionally not managed by this provider:
 | Embed URL generation / JWT signing | Host-app concern; prefer JWT-signed URLs |
 | Workbook duplication / one-shot source swap actions | Imperative actions, not long-lived resources |
 | Organization API client keys (`/v2/credentials`) | Distinct from third-party `sigma_api_credential` |
+| Dedicated workbook/report resources | Short lifecycle and high AI change frequency are a poor Terraform fit. Data sources and grants remain; `sigma_file` can still create empty documents |
+| Applying version tags to documents | Short lifecycle and high AI change frequency are a poor Terraform fit. Tag definitions via `sigma_tag` remain |
+| Data model spec / as-code content | Short lifecycle and high AI change frequency are a poor Terraform fit |
 
 ## Acceptance tests
 
