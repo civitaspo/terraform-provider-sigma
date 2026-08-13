@@ -31,13 +31,15 @@ func NewTagResource() resource.Resource { return &tagResource{} }
 func (r *tagResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_tag"
 }
+
 func (r *tagResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.configure(req, resp)
 }
+
 func (r *tagResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Sigma version tag. The update API only accepts `description`; changing `name` or `color` forces replacement.",
+		MarkdownDescription: "Manages a Sigma version tag. The update API only accepts `description`; changing `name` or `color` forces replacement. Update sends `description` only when that attribute changes; null/omitted description is not converted to an empty string.",
 		Attributes: map[string]schema.Attribute{
 			"id":          schema.StringAttribute{Computed: true, MarkdownDescription: "Version tag ID (`versionTagId`)."},
 			"name":        schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Unique tag name."},
@@ -46,6 +48,7 @@ func (r *tagResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 		},
 	}
 }
+
 func setTag(state *tagModel, value *sigma.Tag) {
 	state.ID = types.StringValue(value.VersionTagID)
 	state.Name = types.StringValue(value.Name)
@@ -58,38 +61,51 @@ func setTag(state *tagModel, value *sigma.Tag) {
 		state.Description = types.StringNull()
 	}
 }
+
 func (r *tagResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan tagModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	name, diags := knownString(plan.Name, "name")
+	resp.Diagnostics.Append(diags...)
+	color, diags := knownString(plan.Color, "color")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	value, err := r.client.CreateTag(ctx, sigma.CreateTagInput{
-		Name: plan.Name.ValueString(), Color: plan.Color.ValueString(), Description: plan.Description.ValueString(),
+		Name: name, Color: color, Description: optionalStringPtr(plan.Description),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create Sigma tag", err.Error())
 		return
 	}
-	if refreshed, err := r.client.GetTag(ctx, value.VersionTagID); err == nil {
+	if refreshed, refreshErr := r.client.GetTag(ctx, value.VersionTagID); refreshErr == nil {
 		value = refreshed
 	} else {
-		value.Color = plan.Color.ValueString()
-		if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
-			desc := plan.Description.ValueString()
-			value.Description = &desc
+		value.Color = color
+		if description := optionalStringPtr(plan.Description); description != nil {
+			value.Description = description
 		}
 	}
 	setTag(&plan, value)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
+
 func (r *tagResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state tagModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	value, err := r.client.GetTag(ctx, state.ID.ValueString())
+	id, diags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	value, err := r.client.GetTag(ctx, id)
 	if sigma.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -101,13 +117,23 @@ func (r *tagResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	setTag(&state, value)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
+
 func (r *tagResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan tagModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	var state tagModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	value, err := r.client.UpdateTag(ctx, plan.ID.ValueString(), sigma.UpdateTagInput{Description: plan.Description.ValueString()})
+	id, diags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	value, err := r.client.UpdateTag(ctx, id, sigma.UpdateTagInput{
+		Description: changedStringPtr(plan.Description, state.Description),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Sigma tag", err.Error())
 		return
@@ -115,16 +141,23 @@ func (r *tagResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	setTag(&plan, value)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
+
 func (r *tagResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state tagModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteTag(ctx, state.ID.ValueString()); err != nil && !sigma.IsNotFound(err) {
+	id, diags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.client.DeleteTag(ctx, id); err != nil && !sigma.IsNotFound(err) {
 		resp.Diagnostics.AddError("Unable to delete Sigma tag", err.Error())
 	}
 }
+
 func (r *tagResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	importPassthrough(ctx, req, resp)
 }

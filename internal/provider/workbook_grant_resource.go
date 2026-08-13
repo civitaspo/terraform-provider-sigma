@@ -30,6 +30,7 @@ func (r *workbookGrantResource) Schema(_ context.Context, _ resource.SchemaReque
 		"Manages a Sigma workbook grant.",
 		"Workbook ID.",
 		"Workbook permission: `view`, `explore`, or `edit`.",
+		documentGrantTagMarkdown,
 	)
 }
 

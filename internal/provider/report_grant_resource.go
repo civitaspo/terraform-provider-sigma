@@ -31,6 +31,7 @@ func (r *reportGrantResource) Schema(_ context.Context, _ resource.SchemaRequest
 		"Manages a Sigma report grant.",
 		"Report ID.",
 		"Report permission: `view` or `edit`.",
+		documentGrantTagMarkdown,
 	)
 }
 
@@ -71,27 +72,41 @@ func createDocumentGrant(ctx context.Context, request resource.CreateRequest, re
 	if response.Diagnostics.HasError() || !validateGrant(&plan, allowed, true, &response.Diagnostics) {
 		return
 	}
-	grantee := sigma.Grantee{MemberID: plan.MemberID.ValueString(), TeamID: plan.TeamID.ValueString()}
-	tagID := plan.TagID.ValueString()
-	var value *sigma.Grant
-	var err error
-	// Prefer the generic grants API when a version tag is set so we receive the
-	// created grant ID. List responses do not reliably include tagId, so
-	// post-create lookups by grantee+permission alone are ambiguous.
-	if tagID != "" {
-		value, err = client.CreateGrant(ctx, sigma.CreateGrantInput{
-			Grantee: grantee, Permission: plan.Permission.ValueString(), InodeID: plan.InodeID.ValueString(), TagID: tagID,
-		})
-	} else {
-		err = client.CreateDocumentGrant(ctx, kind, plan.InodeID.ValueString(), grantee, plan.Permission.ValueString(), tagID)
-	}
-	if err != nil {
-		response.Diagnostics.AddError("Unable to create Sigma grant", err.Error())
+	inodeID, diags := knownString(plan.InodeID, "inode_id")
+	response.Diagnostics.Append(diags...)
+	permission, diags := knownString(plan.Permission, "permission")
+	response.Diagnostics.Append(diags...)
+	if response.Diagnostics.HasError() {
 		return
 	}
-	if value == nil {
+	grantee := grantGrantee(&plan)
+	var value *sigma.Grant
+	var err error
+	if taggedDocumentGrant(&plan) {
+		tagID, tagDiags := knownString(plan.TagID, "tag_id")
+		response.Diagnostics.Append(tagDiags...)
+		if response.Diagnostics.HasError() {
+			return
+		}
+		value, err = client.CreateGrant(ctx, sigma.CreateGrantInput{
+			Grantee: grantee, Permission: permission, InodeID: inodeID, TagID: tagID,
+		})
+		if err != nil {
+			response.Diagnostics.AddError("Unable to create Sigma grant", err.Error())
+			return
+		}
+		if value == nil || value.GrantID == "" {
+			response.Diagnostics.AddError("Unable to create Sigma grant", "Generic grant create returned an empty grant ID.")
+			return
+		}
+	} else {
+		err = client.CreateDocumentGrant(ctx, kind, inodeID, grantee, permission, "")
+		if err != nil {
+			response.Diagnostics.AddError("Unable to create Sigma grant", err.Error())
+			return
+		}
 		value, err = lookupListedGrant(func() ([]sigma.Grant, error) {
-			return client.ListGrants(ctx, plan.InodeID.ValueString())
+			return client.ListGrants(ctx, inodeID)
 		}, &plan, "")
 		if err != nil {
 			response.Diagnostics.AddError("Unable to locate created Sigma grant", err.Error())
@@ -108,9 +123,22 @@ func readDocumentGrant(ctx context.Context, request resource.ReadRequest, respon
 	if response.Diagnostics.HasError() {
 		return
 	}
-	value, err := lookupListedGrant(func() ([]sigma.Grant, error) {
-		return client.ListGrants(ctx, state.InodeID.ValueString())
-	}, &state, state.ID.ValueString())
+	grantID, diags := knownString(state.ID, "id")
+	response.Diagnostics.Append(diags...)
+	inodeID, diags := knownString(state.InodeID, "inode_id")
+	response.Diagnostics.Append(diags...)
+	if response.Diagnostics.HasError() {
+		return
+	}
+	var value *sigma.Grant
+	var err error
+	if taggedDocumentGrant(&state) {
+		value, err = client.GetGrant(ctx, grantID)
+	} else {
+		value, err = lookupListedGrant(func() ([]sigma.Grant, error) {
+			return client.ListGrants(ctx, inodeID)
+		}, &state, grantID)
+	}
 	if sigma.IsNotFound(err) {
 		response.State.RemoveResource(ctx)
 		return
@@ -129,7 +157,20 @@ func deleteDocumentGrant(ctx context.Context, request resource.DeleteRequest, re
 	if response.Diagnostics.HasError() {
 		return
 	}
-	if err := client.DeleteDocumentGrant(ctx, kind, state.InodeID.ValueString(), state.ID.ValueString()); err != nil && !sigma.IsNotFound(err) {
+	grantID, diags := knownString(state.ID, "id")
+	response.Diagnostics.Append(diags...)
+	inodeID, diags := knownString(state.InodeID, "inode_id")
+	response.Diagnostics.Append(diags...)
+	if response.Diagnostics.HasError() {
+		return
+	}
+	var err error
+	if taggedDocumentGrant(&state) {
+		err = client.DeleteGrant(ctx, grantID)
+	} else {
+		err = client.DeleteDocumentGrant(ctx, kind, inodeID, grantID)
+	}
+	if err != nil && !sigma.IsNotFound(err) {
 		response.Diagnostics.AddError("Unable to delete Sigma grant", err.Error())
 	}
 }

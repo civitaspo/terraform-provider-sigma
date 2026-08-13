@@ -24,13 +24,13 @@ type Tag struct {
 }
 
 type CreateTagInput struct {
-	Name        string `json:"name"`
-	Color       string `json:"color"`
-	Description string `json:"description,omitempty"`
+	Name        string  `json:"name"`
+	Color       string  `json:"color"`
+	Description *string `json:"description,omitempty"`
 }
 
 type UpdateTagInput struct {
-	Description string `json:"description"`
+	Description *string `json:"description,omitempty"`
 }
 
 func (c *Client) CreateTag(ctx context.Context, in CreateTagInput) (*Tag, error) {
@@ -279,7 +279,7 @@ type OrgTranslation struct {
 type CreateOrgTranslationInput struct {
 	Lng          string            `json:"lng"`
 	LngVariant   string            `json:"lng_variant,omitempty"`
-	Translations map[string]string `json:"translations,omitempty"`
+	Translations map[string]string `json:"translations"`
 }
 
 type UpdateOrgTranslationInput struct {

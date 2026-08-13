@@ -120,3 +120,27 @@ func stringSetValue(ctx context.Context, values []string) (types.Set, diag.Diagn
 	}
 	return types.SetValueFrom(ctx, types.StringType, values)
 }
+
+func knownStringMap(ctx context.Context, value types.Map, attribute string) (map[string]string, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if value.IsNull() || value.IsUnknown() {
+		diags.AddError("Invalid "+attribute, attribute+" must be a known, non-null map.")
+		return nil, diags
+	}
+	items := map[string]string{}
+	diags.Append(value.ElementsAs(ctx, &items, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	if items == nil {
+		items = map[string]string{}
+	}
+	return items, diags
+}
+
+func stringMapValue(ctx context.Context, values map[string]string) (types.Map, diag.Diagnostics) {
+	if values == nil {
+		values = map[string]string{}
+	}
+	return types.MapValueFrom(ctx, types.StringType, values)
+}

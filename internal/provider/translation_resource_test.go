@@ -18,19 +18,17 @@ func TestTranslationResource(t *testing.T) {
 			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
 			return
 		}
-		response.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(response).Encode(map[string]any{})
+		writeJSON(response, map[string]any{})
 	})
 	mock.Mux.HandleFunc("/v2/translations/organization/fr", func(response http.ResponseWriter, request *http.Request) {
 		mock.AssertBearer(t, request)
-		response.Header().Set("Content-Type", "application/json")
 		switch request.Method {
 		case http.MethodGet:
-			_ = json.NewEncoder(response).Encode(map[string]any{"translations": translations})
+			writeJSON(response, map[string]any{"translations": translations})
 		case http.MethodPut:
-			_ = json.NewEncoder(response).Encode(map[string]any{})
+			writeJSON(response, map[string]any{})
 		case http.MethodDelete:
-			_ = json.NewEncoder(response).Encode(map[string]any{})
+			writeJSON(response, map[string]any{})
 		default:
 			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
 		}
@@ -48,6 +46,50 @@ resource "sigma_translation" "test" {
 		Check: resource.ComposeAggregateTestCheckFunc(
 			resource.TestCheckResourceAttr("sigma_translation.test", "id", "fr"),
 			resource.TestCheckResourceAttr("sigma_translation.test", "translations.Hello", "Bonjour"),
+		),
+	}}))
+}
+
+func TestTranslationResourceEmptyMapIntent(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	mock.Mux.HandleFunc("/v2/translations/organization", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		var payload map[string]any
+		_ = json.NewDecoder(request.Body).Decode(&payload)
+		if _, ok := payload["translations"]; !ok {
+			t.Errorf("create omitted translations: %#v", payload)
+		}
+		writeJSON(response, map[string]any{})
+	})
+	mock.Mux.HandleFunc("/v2/translations/organization/fr", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		switch request.Method {
+		case http.MethodGet:
+			writeJSON(response, map[string]any{})
+		case http.MethodPut:
+			var payload map[string]any
+			_ = json.NewDecoder(request.Body).Decode(&payload)
+			if payload["translations"] == nil {
+				t.Errorf("update omitted translations: %#v", payload)
+			}
+			writeJSON(response, map[string]any{})
+		case http.MethodDelete:
+			writeJSON(response, map[string]any{})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	config := documentProviderConfig(mock) + `
+resource "sigma_translation" "test" {
+  lng          = "fr"
+  translations = {}
+}
+`
+	resource.UnitTest(t, documentTestCase([]resource.TestStep{{
+		Config: config,
+		Check: resource.ComposeAggregateTestCheckFunc(
+			resource.TestCheckResourceAttr("sigma_translation.test", "id", "fr"),
+			resource.TestCheckResourceAttr("sigma_translation.test", "translations.%", "0"),
 		),
 	}}))
 }
