@@ -56,6 +56,16 @@ jobs:
           tfplugindocs generate
           git diff --exit-code -- docs examples
 
+      - name: Check generated OpenAPI client is up to date
+        if: hashFiles('internal/sigma/openapi/generate.sh') != ''
+        run: |
+          bash internal/sigma/openapi/generate.sh
+          git diff --exit-code -- internal/sigma/openapi/generated.go
+          if git status --porcelain -- internal/sigma/openapi/generated.go | grep -q '^[^?]'; then
+            echo "generated OpenAPI client has uncommitted changes" >&2
+            exit 1
+          fi
+
       - name: Run ghalint
         run: ghalint run
 

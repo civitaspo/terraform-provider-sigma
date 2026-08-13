@@ -4,6 +4,7 @@ go = "1.26.5"
 "aqua:hashicorp/terraform" = "1.15.8"
 "aqua:goreleaser/goreleaser" = "2.17.1"
 "go:github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs" = "0.25.0"
+"go:github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen" = "2.8.0"
 "aqua:suzuki-shunsuke/pinact" = "4.1.1"
 "aqua:suzuki-shunsuke/ghalint" = "1.5.6"
 "aqua:suzuki-shunsuke/disable-checkout-persist-credentials" = "1.0.0"
@@ -18,6 +19,14 @@ if [ -f go.mod ]; then
   golangci-lint run ./...
   test -z "$(gofmt -l .)"
   go mod tidy -diff
+fi
+if [ -f internal/sigma/openapi/generate.sh ]; then
+  bash internal/sigma/openapi/generate.sh
+  git diff --exit-code -- internal/sigma/openapi/generated.go
+  if git status --porcelain -- internal/sigma/openapi/generated.go | grep -q '^[^?]'; then
+    echo "generated OpenAPI client has uncommitted changes" >&2
+    exit 1
+  fi
 fi
 if [ -d .github/workflows ]; then
   ghalint run
@@ -55,4 +64,37 @@ if [ ! -f go.mod ]; then
   exit 0
 fi
 go build ./...
+"""
+
+[tasks.openapi-generate]
+description = "Generate the OpenAPI client from the vendored snapshot"
+run = "bash internal/sigma/openapi/generate.sh"
+
+[tasks.openapi-update]
+description = "Fetch the live Sigma REST OpenAPI snapshot, normalize it, and regenerate. Manual only; never run in CI."
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+curl -fsSL -o specs/sigma-rest-api.openapi.json \\
+  https://help.sigmacomputing.com/openapi/sigma-rest-api.json
+python3 - <<'PY'
+import json
+from pathlib import Path
+path = Path("specs/sigma-rest-api.openapi.json")
+path.write_text(json.dumps(json.loads(path.read_text()), indent=2, ensure_ascii=False) + "\\n")
+PY
+bash internal/sigma/openapi/generate.sh
+"""
+
+[tasks.openapi-check]
+description = "Regenerate from the vendored snapshot and fail on generated drift"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+bash internal/sigma/openapi/generate.sh
+git diff --exit-code -- internal/sigma/openapi/generated.go
+if git status --porcelain -- internal/sigma/openapi/generated.go | grep -q '^[^?]'; then
+  echo "generated OpenAPI client has uncommitted changes" >&2
+  exit 1
+fi
 """

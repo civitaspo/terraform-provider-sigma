@@ -18,8 +18,11 @@ Useful tasks:
 | Unit tests | `mise run test` |
 | Build | `mise run build` |
 | Regenerate docs | `mise run docs` |
+| Generate OpenAPI client from the vendored snapshot | `mise run openapi-generate` |
+| Check generated OpenAPI client for drift | `mise run openapi-check` |
+| Fetch the live OpenAPI snapshot and regenerate (manual; never in CI) | `mise run openapi-update` |
 
-Never hand-edit generated files under `docs/` except `docs/securefix.md` and `docs/releasing.md`.
+Never hand-edit generated files under `docs/` except `docs/securefix.md` and `docs/releasing.md`. Never hand-edit `internal/sigma/openapi/generated.go` or `specs/sigma-rest-api.openapi.json`; apply generator corrections only through `internal/sigma/openapi/overlay.yaml` and refresh the snapshot with `mise run openapi-update`.
 
 ## Pull requests
 
