@@ -3,12 +3,12 @@
 page_title: "sigma_file Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages an empty Sigma workspace, folder, workbook, or report through the files API.
+  Manages an empty Sigma workspace, folder, workbook, or report through the files API. Workbooks may copy an existing inode version via source_inode_id and source_version. Set restore on update to unarchive a deleted file.
 ---
 
 # sigma_file (Resource)
 
-Manages an empty Sigma workspace, folder, workbook, or report through the files API.
+Manages an empty Sigma workspace, folder, workbook, or report through the files API. Workbooks may copy an existing inode version via `source_inode_id` and `source_version`. Set `restore` on update to unarchive a deleted file.
 
 ## Example Usage
 
@@ -18,6 +18,14 @@ resource "sigma_file" "example" {
   name        = "Terraform Managed"
   parent_id   = sigma_workspace.example.id
   description = "Managed by Terraform"
+}
+
+resource "sigma_file" "from_source" {
+  type            = "workbook"
+  name            = "Copied workbook"
+  parent_id       = sigma_workspace.example.id
+  source_inode_id = "workbook-source-id"
+  source_version  = 1
 }
 ```
 
@@ -34,6 +42,9 @@ resource "sigma_file" "example" {
 - `description` (String) File description.
 - `owner_id` (String) Member ID of the file owner.
 - `parent_id` (String) Parent folder ID.
+- `restore` (Boolean) When true, PATCH `restore=true` to unarchive a deleted folder or document. The files API only accepts this on update.
+- `source_inode_id` (String) Workbook source inode ID (`source.inodeId`). Only valid when `type` is `workbook`. Must be set together with `source_version`. Changing this value forces replacement.
+- `source_version` (Number) Workbook source version (`source.version`). Only valid when `type` is `workbook`. Must be set together with `source_inode_id`. Changing this value forces replacement.
 
 ### Read-Only
 

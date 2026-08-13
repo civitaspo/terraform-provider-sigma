@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -150,6 +151,9 @@ type fileModel struct {
 	UpdatedBy         types.String `tfsdk:"updated_by"`
 	CreatedAt         types.String `tfsdk:"created_at"`
 	UpdatedAt         types.String `tfsdk:"updated_at"`
+	SourceInodeID     types.String `tfsdk:"source_inode_id"`
+	SourceVersion     types.Int64  `tfsdk:"source_version"`
+	Restore           types.Bool   `tfsdk:"restore"`
 }
 
 func NewFileResource() resource.Resource { return &fileResource{} }
@@ -164,7 +168,7 @@ func (r *fileResource) Configure(_ context.Context, request resource.ConfigureRe
 
 func (r *fileResource) Schema(_ context.Context, _ resource.SchemaRequest, response *resource.SchemaResponse) {
 	response.Schema = schema.Schema{
-		MarkdownDescription: "Manages an empty Sigma workspace, folder, workbook, or report through the files API.",
+		MarkdownDescription: "Manages an empty Sigma workspace, folder, workbook, or report through the files API. Workbooks may copy an existing inode version via `source_inode_id` and `source_version`. Set `restore` on update to unarchive a deleted file.",
 		Attributes: map[string]schema.Attribute{
 			"id":                   schema.StringAttribute{Computed: true, MarkdownDescription: "Inode ID."},
 			"url_id":               schema.StringAttribute{Computed: true, MarkdownDescription: "Identifier used in Sigma URLs."},
@@ -183,6 +187,20 @@ func (r *fileResource) Schema(_ context.Context, _ resource.SchemaRequest, respo
 			"updated_by":           schema.StringAttribute{Computed: true, MarkdownDescription: "ID of the member who last updated the file."},
 			"created_at":           schema.StringAttribute{Computed: true, MarkdownDescription: "File creation timestamp."},
 			"updated_at":           schema.StringAttribute{Computed: true, MarkdownDescription: "File update timestamp."},
+			"source_inode_id": schema.StringAttribute{
+				Optional:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				MarkdownDescription: "Workbook source inode ID (`source.inodeId`). Only valid when `type` is `workbook`. Must be set together with `source_version`. Changing this value forces replacement.",
+			},
+			"source_version": schema.Int64Attribute{
+				Optional:            true,
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+				MarkdownDescription: "Workbook source version (`source.version`). Only valid when `type` is `workbook`. Must be set together with `source_inode_id`. Changing this value forces replacement.",
+			},
+			"restore": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "When true, PATCH `restore=true` to unarchive a deleted folder or document. The files API only accepts this on update.",
+			},
 		},
 	}
 }
@@ -196,6 +214,14 @@ func (r *fileResource) ValidateConfig(ctx context.Context, request resource.Vali
 	if !contains([]string{"workspace", "folder", "workbook", "report"}, config.Type.ValueString()) {
 		response.Diagnostics.AddAttributeError(path.Root("type"), "Invalid Sigma file type", "The type must be `workspace`, `folder`, `workbook`, or `report`.")
 	}
+	sourceSet := !config.SourceInodeID.IsNull() && !config.SourceInodeID.IsUnknown()
+	versionSet := !config.SourceVersion.IsNull() && !config.SourceVersion.IsUnknown()
+	if sourceSet != versionSet {
+		response.Diagnostics.AddError("Invalid Sigma file source", "`source_inode_id` and `source_version` must be set together.")
+	}
+	if (sourceSet || versionSet) && config.Type.ValueString() != "workbook" {
+		response.Diagnostics.AddError("Invalid Sigma file source", "`source_inode_id` and `source_version` are only valid when type is `workbook`.")
+	}
 }
 
 func (r *fileResource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
@@ -208,10 +234,14 @@ func (r *fileResource) Create(ctx context.Context, request resource.CreateReques
 		response.Diagnostics.AddError("Invalid Sigma file type", "The type must be `workspace`, `folder`, `workbook`, or `report`.")
 		return
 	}
-	value, err := r.client.CreateFile(ctx, sigma.CreateFileInput{
+	input := sigma.CreateFileInput{
 		Type: plan.Type.ValueString(), Name: plan.Name.ValueString(), Description: plan.Description.ValueString(),
 		OwnerID: plan.OwnerID.ValueString(), ParentID: plan.ParentID.ValueString(),
-	})
+	}
+	if !plan.SourceInodeID.IsNull() && !plan.SourceInodeID.IsUnknown() && !plan.SourceVersion.IsNull() && !plan.SourceVersion.IsUnknown() {
+		input.Source = &sigma.FileSourceInput{InodeID: plan.SourceInodeID.ValueString(), Version: plan.SourceVersion.ValueInt64()}
+	}
+	value, err := r.client.CreateFile(ctx, input)
 	if err != nil {
 		response.Diagnostics.AddError("Unable to create Sigma file", err.Error())
 		return
@@ -242,6 +272,8 @@ func (r *fileResource) Read(ctx context.Context, request resource.ReadRequest, r
 func (r *fileResource) Update(ctx context.Context, request resource.UpdateRequest, response *resource.UpdateResponse) {
 	var plan fileModel
 	response.Diagnostics.Append(request.Plan.Get(ctx, &plan)...)
+	var state fileModel
+	response.Diagnostics.Append(request.State.Get(ctx, &state)...)
 	if response.Diagnostics.HasError() {
 		return
 	}
@@ -255,7 +287,11 @@ func (r *fileResource) Update(ctx context.Context, request resource.UpdateReques
 		parentID := plan.ParentID.ValueString()
 		input.ParentID = &parentID
 	}
-	value, err := r.client.UpdateFile(ctx, plan.ID.ValueString(), input)
+	if !plan.Restore.IsNull() && !plan.Restore.IsUnknown() {
+		restore := plan.Restore.ValueBool()
+		input.Restore = &restore
+	}
+	value, err := r.client.UpdateFile(ctx, state.ID.ValueString(), input)
 	if err != nil {
 		response.Diagnostics.AddError("Unable to update Sigma file", err.Error())
 		return

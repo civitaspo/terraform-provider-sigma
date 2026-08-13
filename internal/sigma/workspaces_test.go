@@ -155,3 +155,61 @@ func TestWorkspaceFileAndGrantClientMethods(t *testing.T) {
 		}
 	}
 }
+
+func TestCreateFileSourceJSON(t *testing.T) {
+	t.Parallel()
+	encoded, err := json.Marshal(sigma.CreateFileInput{
+		Type: "workbook", Name: "Copied",
+		Source: &sigma.FileSourceInput{InodeID: "workbook-source", Version: 3},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(encoded, &body); err != nil {
+		t.Fatal(err)
+	}
+	source, _ := body["source"].(map[string]any)
+	if source["inodeId"] != "workbook-source" || source["version"] != float64(3) {
+		t.Fatalf("source = %#v", body["source"])
+	}
+
+	encoded, err = json.Marshal(sigma.CreateFileInput{Type: "folder", Name: "Managed"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var omitted map[string]any
+	if err := json.Unmarshal(encoded, &omitted); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := omitted["source"]; ok {
+		t.Fatalf("source unexpectedly present: %#v", omitted)
+	}
+}
+
+func TestUpdateFileRestoreJSON(t *testing.T) {
+	t.Parallel()
+	restore := true
+	encoded, err := json.Marshal(sigma.UpdateFileInput{Restore: &restore})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(encoded, &body); err != nil {
+		t.Fatal(err)
+	}
+	if body["restore"] != true {
+		t.Fatalf("restore = %#v", body["restore"])
+	}
+	encoded, err = json.Marshal(sigma.UpdateFileInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var omitted map[string]any
+	if err := json.Unmarshal(encoded, &omitted); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := omitted["restore"]; ok {
+		t.Fatalf("restore unexpectedly present: %#v", omitted)
+	}
+}

@@ -79,11 +79,18 @@ type File struct {
 
 // CreateFileInput contains fields common to creatable Sigma file types.
 type CreateFileInput struct {
-	Type        string `json:"type"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	OwnerID     string `json:"ownerId,omitempty"`
-	ParentID    string `json:"parentId,omitempty"`
+	Type        string           `json:"type"`
+	Name        string           `json:"name"`
+	Description string           `json:"description,omitempty"`
+	OwnerID     string           `json:"ownerId,omitempty"`
+	ParentID    string           `json:"parentId,omitempty"`
+	Source      *FileSourceInput `json:"source,omitempty"`
+}
+
+// FileSourceInput copies a workbook from an existing inode version on create.
+type FileSourceInput struct {
+	InodeID string `json:"inodeId"`
+	Version int64  `json:"version"`
 }
 
 // UpdateFileInput contains mutable file fields.
@@ -92,6 +99,7 @@ type UpdateFileInput struct {
 	Description *string `json:"description,omitempty"`
 	OwnerID     *string `json:"ownerId,omitempty"`
 	ParentID    *string `json:"parentId,omitempty"`
+	Restore     *bool   `json:"restore,omitempty"`
 }
 
 func (c *Client) CreateFile(ctx context.Context, input CreateFileInput) (*File, error) {
