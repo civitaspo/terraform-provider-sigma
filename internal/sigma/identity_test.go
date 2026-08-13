@@ -16,7 +16,7 @@ func TestIdentityClientMethods(t *testing.T) {
 		response.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(response).Encode(value)
 	}
-	member := sigma.Member{MemberID: "member-1", OrganizationID: "org-1", Email: "ada@example.com", FirstName: "Ada", LastName: "Lovelace", MemberType: "Creator", UserKind: "internal"}
+	member := sigma.Member{MemberID: "member-1", OrganizationID: "org-1", Email: "ada@example.com", FirstName: "Ada", LastName: "Lovelace", MemberType: "Creator", UserKind: "internal", HomeFolderID: "folder-1"}
 	teamDescription := "Analytics"
 	workspaceID := "workspace-1"
 	team := sigma.Team{TeamID: "team-1", Name: "Analytics", Description: &teamDescription, Visibility: "private", WorkspaceID: &workspaceID}
@@ -125,8 +125,12 @@ func TestIdentityClientMethods(t *testing.T) {
 	if _, err = client.CreateMember(ctx, sigma.CreateMemberInput{Email: member.Email, FirstName: member.FirstName, LastName: member.LastName}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = client.GetMember(ctx, member.MemberID); err != nil {
+	gotMember, err := client.GetMember(ctx, member.MemberID)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if gotMember.HomeFolderID != "folder-1" {
+		t.Fatalf("GetMember homeFolderId = %q", gotMember.HomeFolderID)
 	}
 	first := "Augusta"
 	if _, err = client.UpdateMember(ctx, member.MemberID, sigma.UpdateMemberInput{FirstName: &first}); err != nil {
@@ -275,5 +279,111 @@ func TestTeamWorkspaceIDJSON(t *testing.T) {
 	}
 	if nullTeam.WorkspaceID != nil {
 		t.Fatalf("null workspaceId = %v", nullTeam.WorkspaceID)
+	}
+}
+
+func TestCreateMemberInputJSON(t *testing.T) {
+	t.Parallel()
+	admin := true
+	encoded, err := json.Marshal(sigma.CreateMemberInput{
+		Email: "ada@example.com", FirstName: "Ada", LastName: "Lovelace",
+		AddToTeams: []sigma.AddToTeamInput{{TeamID: "team-1", IsTeamAdmin: &admin}},
+		SendInvite: &admin,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(encoded, &body); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := body["sendInvite"]; ok {
+		t.Fatalf("sendInvite should be a query parameter, not JSON: %#v", body)
+	}
+	teams, _ := body["addToTeams"].([]any)
+	if len(teams) != 1 {
+		t.Fatalf("addToTeams = %#v", body["addToTeams"])
+	}
+	team, _ := teams[0].(map[string]any)
+	if team["teamId"] != "team-1" || team["isTeamAdmin"] != true {
+		t.Fatalf("addToTeams[0] = %#v", team)
+	}
+
+	encoded, err = json.Marshal(sigma.CreateMemberInput{Email: "ada@example.com", FirstName: "Ada", LastName: "Lovelace"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var omitted map[string]any
+	if err := json.Unmarshal(encoded, &omitted); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := omitted["addToTeams"]; ok {
+		t.Fatalf("addToTeams unexpectedly present: %#v", omitted)
+	}
+}
+
+func TestCreateMemberSendInviteQuery(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	var gotQuery string
+	var gotBody map[string]any
+	mock.Mux.HandleFunc("/v2/members", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method != http.MethodPost {
+			t.Errorf("method = %s", request.Method)
+		}
+		gotQuery = request.URL.Query().Get("sendInvite")
+		_ = json.NewDecoder(request.Body).Decode(&gotBody)
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(sigma.Member{MemberID: "member-1", Email: "ada@example.com", HomeFolderID: "folder-1"})
+	})
+	client, err := sigma.NewClient(mock.URL(), mock.ClientID, mock.ClientSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sendInvite := false
+	admin := true
+	created, err := client.CreateMember(context.Background(), sigma.CreateMemberInput{
+		Email: "ada@example.com", FirstName: "Ada", LastName: "Lovelace",
+		SendInvite: &sendInvite,
+		AddToTeams: []sigma.AddToTeamInput{{TeamID: "team-1", IsTeamAdmin: &admin}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.HomeFolderID != "folder-1" {
+		t.Fatalf("homeFolderId = %q", created.HomeFolderID)
+	}
+	if gotQuery != "false" {
+		t.Fatalf("sendInvite query = %q", gotQuery)
+	}
+	if gotBody["email"] != "ada@example.com" {
+		t.Fatalf("body = %#v", gotBody)
+	}
+	teams, _ := gotBody["addToTeams"].([]any)
+	if len(teams) != 1 {
+		t.Fatalf("addToTeams = %#v", gotBody["addToTeams"])
+	}
+}
+
+func TestUpdateMemberDeactivateJSON(t *testing.T) {
+	t.Parallel()
+	archived := true
+	owner := "member-admin"
+	archiveDocs := true
+	encoded, err := json.Marshal(sigma.UpdateMemberInput{
+		IsArchived: &archived, NewOwnerID: &owner, ArchiveDocuments: &archiveDocs,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(encoded, &body); err != nil {
+		t.Fatal(err)
+	}
+	if body["isArchived"] != true || body["newOwnerId"] != "member-admin" || body["archiveDocuments"] != true {
+		t.Fatalf("deactivate PATCH = %#v", body)
+	}
+	if _, ok := body["archiveScheduledExports"]; ok {
+		t.Fatalf("archiveScheduledExports unexpectedly present: %#v", body)
 	}
 }
