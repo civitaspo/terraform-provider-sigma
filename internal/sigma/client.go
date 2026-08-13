@@ -11,12 +11,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/civitaspo/terraform-provider-sigma/internal/sigma/openapi"
 )
 
-const (
-	defaultMaxRetries = 5
-	defaultBackoff    = 100 * time.Millisecond
-)
+const defaultMaxRetries = 5
+const defaultBackoff = 100 * time.Millisecond
 
 // Client is a client for the Sigma REST API.
 type Client struct {
@@ -24,12 +24,15 @@ type Client struct {
 	clientID     string
 	clientSecret string
 	httpClient   *http.Client
+	userAgent    string
 	now          func() time.Time
 	sleep        func(context.Context, time.Duration) error
 	maxRetries   int
 	backoff      time.Duration
 
-	auth authState
+	auth      authState
+	transport *apiTransport
+	api       *openapi.Client
 }
 
 // Option configures a Client.
@@ -40,6 +43,15 @@ func WithHTTPClient(httpClient *http.Client) Option {
 	return func(client *Client) {
 		if httpClient != nil {
 			client.httpClient = httpClient
+		}
+	}
+}
+
+// WithUserAgent configures the User-Agent header sent with API requests.
+func WithUserAgent(userAgent string) Option {
+	return func(client *Client) {
+		if userAgent != "" {
+			client.userAgent = userAgent
 		}
 	}
 }
@@ -58,7 +70,8 @@ func NewClient(baseURL, clientID, clientSecret string, opts ...Option) (*Client,
 		baseURL:      parsedBaseURL,
 		clientID:     clientID,
 		clientSecret: clientSecret,
-		httpClient:   http.DefaultClient,
+		httpClient:   newHTTPClient(),
+		userAgent:    defaultUserAgent,
 		now:          time.Now,
 		sleep:        sleepContext,
 		maxRetries:   defaultMaxRetries,
@@ -67,6 +80,15 @@ func NewClient(baseURL, clientID, clientSecret string, opts ...Option) (*Client,
 	for _, opt := range opts {
 		opt(client)
 	}
+	client.httpClient.CheckRedirect = client.checkRedirect
+
+	transport := &apiTransport{client: client}
+	client.transport = transport
+	generated, err := openapi.NewClient(parsedBaseURL.String(), openapi.WithHTTPClient(transport))
+	if err != nil {
+		return nil, fmt.Errorf("create generated Sigma API client: %w", err)
+	}
+	client.api = generated
 
 	return client, nil
 }
@@ -78,87 +100,30 @@ func (client *Client) invalidateAccessToken() {
 	client.auth.expiresAt = time.Time{}
 }
 
-func (client *Client) do(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
-	retryable := isIdempotent(method)
-	attempts := 1
-	if retryable {
-		attempts += client.maxRetries
-	}
-
-	unauthorizedRetried := false
-	for attempt := 0; attempt < attempts; attempt++ {
-		token, err := client.accessToken(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		endpoint, err := client.resolveEndpoint(path)
-		if err != nil {
-			return nil, err
-		}
-		request, err := http.NewRequestWithContext(ctx, method, endpoint.String(), bytes.NewReader(body))
-		if err != nil {
-			return nil, fmt.Errorf("create Sigma API request: %w", err)
-		}
-		request.Header.Set("Authorization", "Bearer "+token)
-		request.Header.Set("Accept", "application/json")
-		if len(body) > 0 {
-			request.Header.Set("Content-Type", "application/json")
-		}
-
-		response, err := client.httpClient.Do(request)
-		if err != nil {
-			return nil, fmt.Errorf("send Sigma API request: %w", err)
-		}
-		if response.StatusCode == http.StatusUnauthorized && !unauthorizedRetried {
-			unauthorizedRetried = true
-			_, _ = io.Copy(io.Discard, response.Body)
-			_ = response.Body.Close()
-			client.invalidateAccessToken()
-			// Retry once after invalidating the cached token. This does not consume
-			// idempotent retry budget so POST/PATCH also recover from revoked tokens.
-			attempt--
-			continue
-		}
-		if !shouldRetry(response.StatusCode) || attempt == attempts-1 {
-			return response, nil
-		}
-
-		_, _ = io.Copy(io.Discard, response.Body)
-		_ = response.Body.Close()
-		delay := retryDelay(response, client.backoff, attempt)
-		if err := client.sleep(ctx, delay); err != nil {
-			return nil, err
-		}
-	}
-
-	panic("unreachable")
-}
-
-// resolveEndpoint joins an API path with the configured base URL, preserving any
-// path prefix on base_url (for reverse proxies such as https://proxy.example/sigma).
-func (client *Client) resolveEndpoint(rawURL string) (*url.URL, error) {
-	reference, err := url.Parse(rawURL)
+func (client *Client) doAPI(call func() (*http.Response, error), requireObject bool) ([]byte, error) {
+	response, err := call()
 	if err != nil {
-		return nil, fmt.Errorf("parse Sigma API path: %w", err)
+		return nil, err
 	}
-	if reference.IsAbs() {
-		return reference, nil
-	}
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
-	base := *client.baseURL
-	if base.Path == "" {
-		base.Path = "/"
-	} else if !strings.HasSuffix(base.Path, "/") {
-		base.Path += "/"
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read Sigma API response: %w", err)
 	}
-	// Root-absolute paths would replace base.Path; treat them as relative to the prefix.
-	reference.Path = strings.TrimPrefix(reference.Path, "/")
-	return base.ResolveReference(reference), nil
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return nil, apiErrorFrom(response, body)
+	}
+	if requireObject && len(bytes.TrimSpace(body)) == 0 {
+		return nil, fmt.Errorf("sigma API returned an empty body when a response object is required")
+	}
+	return body, nil
 }
 
-func (client *Client) getJSON(ctx context.Context, path string, target any) error {
-	body, err := client.getRaw(ctx, path)
+func (client *Client) doDecode(call func() (*http.Response, error), target any) error {
+	body, err := client.doAPI(call, true)
 	if err != nil {
 		return err
 	}
@@ -168,72 +133,23 @@ func (client *Client) getJSON(ctx context.Context, path string, target any) erro
 	return nil
 }
 
-func (client *Client) getRaw(ctx context.Context, path string) ([]byte, error) {
-	response, err := client.do(ctx, http.MethodGet, path, nil)
+func (client *Client) doVoid(call func() (*http.Response, error)) error {
+	_, err := client.doAPI(call, false)
+	return err
+}
+
+func encodeBody(payload any) (io.Reader, error) {
+	if payload == nil {
+		return http.NoBody, nil
+	}
+	if raw, ok := payload.(json.RawMessage); ok {
+		return bytes.NewReader(raw), nil
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encode Sigma API request: %w", err)
 	}
-	defer func() {
-		_ = response.Body.Close()
-	}()
-
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return nil, decodeAPIError(response)
-	}
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read Sigma API response: %w", err)
-	}
-	return body, nil
-}
-
-func (client *Client) sendJSON(ctx context.Context, method, path string, payload, target any) error {
-	var body []byte
-	var err error
-	if payload != nil {
-		body, err = json.Marshal(payload)
-		if err != nil {
-			return fmt.Errorf("encode Sigma API request: %w", err)
-		}
-	}
-	response, err := client.do(ctx, method, path, body)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return decodeAPIError(response)
-	}
-	if target == nil || response.StatusCode == http.StatusNoContent {
-		_, _ = io.Copy(io.Discard, response.Body)
-		return nil
-	}
-	if err := json.NewDecoder(response.Body).Decode(target); err != nil && err != io.EOF {
-		return fmt.Errorf("decode Sigma API response: %w", err)
-	}
-	return nil
-}
-
-func isIdempotent(method string) bool {
-	switch method {
-	case http.MethodGet, http.MethodHead, http.MethodPut, http.MethodDelete, http.MethodOptions:
-		return true
-	default:
-		return false
-	}
-}
-
-func shouldRetry(statusCode int) bool {
-	return statusCode == http.StatusTooManyRequests || statusCode >= http.StatusInternalServerError
-}
-
-func retryDelay(response *http.Response, base time.Duration, attempt int) time.Duration {
-	if response.StatusCode == http.StatusTooManyRequests {
-		if delay, ok := parseRetryAfter(response.Header.Get("Retry-After"), time.Now()); ok {
-			return delay
-		}
-	}
-	return base * time.Duration(1<<attempt)
+	return bytes.NewReader(body), nil
 }
 
 func parseRetryAfter(value string, now time.Time) (time.Duration, bool) {
@@ -251,6 +167,14 @@ func parseRetryAfter(value string, now time.Time) (time.Duration, bool) {
 }
 
 func sleepContext(ctx context.Context, delay time.Duration) error {
+	if delay <= 0 {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			return nil
+		}
+	}
 	timer := time.NewTimer(delay)
 	defer timer.Stop()
 	select {

@@ -72,7 +72,7 @@ func (p *SigmaProvider) Configure(ctx context.Context, request provider.Configur
 		return
 	}
 
-	client, err := sigma.NewClient(baseURL, clientID, clientSecret)
+	client, err := sigma.NewClient(baseURL, clientID, clientSecret, sigma.WithUserAgent("terraform-provider-sigma/"+p.version))
 	if err != nil {
 		response.Diagnostics.AddError("Invalid Sigma provider configuration", err.Error())
 		return

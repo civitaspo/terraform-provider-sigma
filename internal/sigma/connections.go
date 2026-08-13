@@ -4,24 +4,78 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"net/url"
+
+	"github.com/civitaspo/terraform-provider-sigma/internal/sigma/openapi"
 )
+
+// ConnectionTimeout is the GET response timeout object (default plus optional
+// worksheet/dashboard/download overrides). Request bodies use TimeoutSecs.
+type ConnectionTimeout struct {
+	Default   float64  `json:"default"`
+	Dashboard *float64 `json:"dashboard,omitempty"`
+	Download  *float64 `json:"download,omitempty"`
+	Worksheet *float64 `json:"worksheet,omitempty"`
+}
 
 // Connection is the stable projection returned by Sigma's connection APIs.
 // Warehouse-specific configuration is intentionally represented by the request
 // Details field because the get endpoint does not return that configuration.
 // UseOauth is returned by GET as useOauth and is not a request field on PUT.
+// TimeoutSecs is mapped from response timeout.default (and still accepted from
+// legacy timeoutSecs JSON). FriendlyName comes from response friendlyName.
 type Connection struct {
-	ConnectionID string          `json:"connectionId"`
-	Name         string          `json:"name"`
-	Type         string          `json:"type"`
-	Description  json.RawMessage `json:"description"`
-	PoolSizes    json.RawMessage `json:"poolSizes"`
-	TimeoutSecs  *float64        `json:"timeoutSecs"`
-	FriendlyName bool            `json:"friendlyName"`
-	UseOauth     *bool           `json:"useOauth"`
+	ConnectionID string             `json:"connectionId"`
+	Name         string             `json:"name"`
+	Type         string             `json:"type"`
+	Description  json.RawMessage    `json:"description"`
+	PoolSizes    json.RawMessage    `json:"poolSizes"`
+	TimeoutSecs  *float64           `json:"timeoutSecs"`
+	FriendlyName bool               `json:"friendlyName"`
+	UseOauth     *bool              `json:"useOauth"`
+	Timeout      *ConnectionTimeout `json:"timeout,omitempty"`
 }
 
+func (value *Connection) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		ConnectionID     string             `json:"connectionId"`
+		Name             string             `json:"name"`
+		Type             string             `json:"type"`
+		Description      json.RawMessage    `json:"description"`
+		PoolSizes        json.RawMessage    `json:"poolSizes"`
+		TimeoutSecs      *float64           `json:"timeoutSecs"`
+		FriendlyName     *bool              `json:"friendlyName"`
+		UseFriendlyNames *bool              `json:"useFriendlyNames"`
+		UseOauth         *bool              `json:"useOauth"`
+		Timeout          *ConnectionTimeout `json:"timeout"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	value.ConnectionID = raw.ConnectionID
+	value.Name = raw.Name
+	value.Type = raw.Type
+	value.Description = raw.Description
+	value.PoolSizes = raw.PoolSizes
+	value.UseOauth = raw.UseOauth
+	value.Timeout = raw.Timeout
+	switch {
+	case raw.TimeoutSecs != nil:
+		value.TimeoutSecs = raw.TimeoutSecs
+	case raw.Timeout != nil:
+		seconds := raw.Timeout.Default
+		value.TimeoutSecs = &seconds
+	}
+	switch {
+	case raw.FriendlyName != nil:
+		value.FriendlyName = *raw.FriendlyName
+	case raw.UseFriendlyNames != nil:
+		value.FriendlyName = *raw.UseFriendlyNames
+	}
+	return nil
+}
+
+// ConnectionInput is the create/update request body. TimeoutSecs and
+// UseFriendlyNames are request field names; they are not the GET response shape.
 type ConnectionInput struct {
 	Details          json.RawMessage `json:"details"`
 	Name             string          `json:"name"`
@@ -38,35 +92,57 @@ type ConnectionTest struct {
 }
 
 func (c *Client) CreateConnection(ctx context.Context, in ConnectionInput) (*Connection, error) {
+	body, err := encodeBody(in)
+	if err != nil {
+		return nil, err
+	}
 	var value Connection
-	err := c.sendJSON(ctx, http.MethodPost, "/v2/connections", in, &value)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.CreateConnectionWithBody(ctx, nil, jsonContentType, body)
+	}, &value)
 	return &value, err
 }
 
 func (c *Client) GetConnection(ctx context.Context, id string) (*Connection, error) {
 	var value Connection
-	err := c.getJSON(ctx, "/v2/connections/"+url.PathEscape(id), &value)
+	err := c.doDecode(func() (*http.Response, error) {
+		return c.api.GetConnection(ctx, id, nil)
+	}, &value)
 	return &value, err
 }
 
 func (c *Client) UpdateConnection(ctx context.Context, id string, in ConnectionInput) (*Connection, error) {
+	body, err := encodeBody(in)
+	if err != nil {
+		return nil, err
+	}
 	var value Connection
-	err := c.sendJSON(ctx, http.MethodPut, "/v2/connections/"+url.PathEscape(id), in, &value)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.UpdateConnectionWithBody(ctx, id, nil, jsonContentType, body)
+	}, &value)
 	return &value, err
 }
 
 func (c *Client) DeleteConnection(ctx context.Context, id string) error {
-	return c.sendJSON(ctx, http.MethodDelete, "/v2/connections/"+url.PathEscape(id), nil, nil)
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.DeleteConnection(ctx, id, nil)
+	})
 }
 
 func (c *Client) TestConnection(ctx context.Context, id string) (*ConnectionTest, error) {
 	var value ConnectionTest
-	err := c.getJSON(ctx, "/v2/connections/"+url.PathEscape(id)+"/test", &value)
+	err := c.doDecode(func() (*http.Response, error) {
+		return c.api.TestConnection(ctx, id, nil)
+	}, &value)
 	return &value, err
 }
 
 func (c *Client) ListConnections(ctx context.Context) ([]Connection, error) {
-	return ListAll[Connection](ctx, c, "/v2/connections")
+	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]Connection, *string, error) {
+		return fetchPage[Connection](c, func() (*http.Response, error) {
+			return c.api.ListConnections(ctx, &openapi.ListConnectionsParams{Page: page})
+		})
+	})
 }
 
 func (c *Client) CreateConnectionGrant(ctx context.Context, connectionID, memberID, teamID, permission string) error {
@@ -76,16 +152,27 @@ func (c *Client) CreateConnectionGrant(ctx context.Context, connectionID, member
 	} else {
 		grantee["teamId"] = teamID
 	}
-	payload := map[string]any{"grants": []any{map[string]any{"grantee": grantee, "permission": permission}}}
-	return c.sendJSON(ctx, http.MethodPost, "/v2/connections/"+url.PathEscape(connectionID)+"/grants", payload, nil)
+	body, err := encodeBody(map[string]any{"grants": []any{map[string]any{"grantee": grantee, "permission": permission}}})
+	if err != nil {
+		return err
+	}
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.CreateConnectionGrantWithBody(ctx, connectionID, nil, jsonContentType, body)
+	})
 }
 
 func (c *Client) ListConnectionGrants(ctx context.Context, connectionID string) ([]Grant, error) {
-	return ListAll[Grant](ctx, c, "/v2/connections/"+url.PathEscape(connectionID)+"/grants")
+	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]Grant, *string, error) {
+		return fetchPage[Grant](c, func() (*http.Response, error) {
+			return c.api.ListConnectionGrants(ctx, connectionID, &openapi.ListConnectionGrantsParams{Page: page})
+		})
+	})
 }
 
 func (c *Client) DeleteConnectionGrant(ctx context.Context, connectionID, grantID string) error {
-	return c.sendJSON(ctx, http.MethodDelete, "/v2/connections/"+url.PathEscape(connectionID)+"/grants/"+url.PathEscape(grantID), nil, nil)
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.DeleteConnectionGrant(ctx, connectionID, grantID, nil)
+	})
 }
 
 func (c *Client) CreateConnectionPathGrant(ctx context.Context, pathID, memberID, teamID, permission string) error {
@@ -95,16 +182,27 @@ func (c *Client) CreateConnectionPathGrant(ctx context.Context, pathID, memberID
 	} else {
 		grantee["teamId"] = teamID
 	}
-	payload := map[string]any{"grants": []any{map[string]any{"grantee": grantee, "permission": permission}}}
-	return c.sendJSON(ctx, http.MethodPost, "/v2/connections/paths/"+url.PathEscape(pathID)+"/grants", payload, nil)
+	body, err := encodeBody(map[string]any{"grants": []any{map[string]any{"grantee": grantee, "permission": permission}}})
+	if err != nil {
+		return err
+	}
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.CreateConnectionPathGrantWithBody(ctx, pathID, nil, jsonContentType, body)
+	})
 }
 
 func (c *Client) ListConnectionPathGrants(ctx context.Context, pathID string) ([]Grant, error) {
-	return ListAll[Grant](ctx, c, "/v2/connections/paths/"+url.PathEscape(pathID)+"/grants")
+	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]Grant, *string, error) {
+		return fetchPage[Grant](c, func() (*http.Response, error) {
+			return c.api.ListConnectionPathGrants(ctx, pathID, &openapi.ListConnectionPathGrantsParams{Page: page})
+		})
+	})
 }
 
 func (c *Client) DeleteConnectionPathGrant(ctx context.Context, pathID, grantID string) error {
-	return c.sendJSON(ctx, http.MethodDelete, "/v2/connections/paths/"+url.PathEscape(pathID)+"/grants/"+url.PathEscape(grantID), nil, nil)
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.DeleteConnectionPathGrant(ctx, pathID, grantID, nil)
+	})
 }
 
 type ConnectionPath struct {
@@ -114,11 +212,17 @@ type ConnectionPath struct {
 }
 
 func (c *Client) ListConnectionPaths(ctx context.Context, connectionID string) ([]ConnectionPath, error) {
-	path := "/v2/connections/paths"
+	base := &openapi.ListConnectionPathsParams{}
 	if connectionID != "" {
-		path += "?connectionId=" + url.QueryEscape(connectionID)
+		base.ConnectionId = &connectionID
 	}
-	return ListAll[ConnectionPath](ctx, c, path)
+	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]ConnectionPath, *string, error) {
+		params := *base
+		params.Page = page
+		return fetchPage[ConnectionPath](c, func() (*http.Response, error) {
+			return c.api.ListConnectionPaths(ctx, &params)
+		})
+	})
 }
 
 type ConnectionLookup struct {
@@ -128,8 +232,14 @@ type ConnectionLookup struct {
 }
 
 func (c *Client) LookupConnection(ctx context.Context, connectionID string, path []string) (*ConnectionLookup, error) {
+	body, err := encodeBody(map[string]any{"path": path})
+	if err != nil {
+		return nil, err
+	}
 	var value ConnectionLookup
-	err := c.sendJSON(ctx, http.MethodPost, "/v2/connection/"+url.PathEscape(connectionID)+"/lookup", map[string]any{"path": path}, &value)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.LookupConnectionWithBody(ctx, connectionID, nil, jsonContentType, body)
+	}, &value)
 	return &value, err
 }
 
@@ -151,40 +261,45 @@ type APIConnectorInput struct {
 }
 
 func (c *Client) CreateAPIConnector(ctx context.Context, in APIConnectorInput) (*APIConnector, error) {
+	body, err := encodeBody(in)
+	if err != nil {
+		return nil, err
+	}
 	var value APIConnector
-	err := c.sendJSON(ctx, http.MethodPost, "/v2/api-connectors", in, &value)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.CreateApiConnectorWithBody(ctx, nil, jsonContentType, body)
+	}, &value)
 	return &value, err
 }
 func (c *Client) GetAPIConnector(ctx context.Context, id string) (*APIConnector, error) {
 	var value APIConnector
-	err := c.getJSON(ctx, "/v2/api-connectors/"+url.PathEscape(id), &value)
+	err := c.doDecode(func() (*http.Response, error) {
+		return c.api.GetApiConnector(ctx, id, nil)
+	}, &value)
 	return &value, err
 }
 func (c *Client) UpdateAPIConnector(ctx context.Context, id string, in APIConnectorInput) (*APIConnector, error) {
+	body, err := encodeBody(in)
+	if err != nil {
+		return nil, err
+	}
 	var value APIConnector
-	err := c.sendJSON(ctx, http.MethodPatch, "/v2/api-connectors/"+url.PathEscape(id), in, &value)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.UpdateApiConnectorWithBody(ctx, id, nil, jsonContentType, body)
+	}, &value)
 	return &value, err
 }
 func (c *Client) DeleteAPIConnector(ctx context.Context, id string) error {
-	return c.sendJSON(ctx, http.MethodDelete, "/v2/api-connectors/"+url.PathEscape(id), nil, nil)
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.DeleteApiConnector(ctx, id, nil)
+	})
 }
 func (c *Client) ListAPIConnectors(ctx context.Context) ([]APIConnector, error) {
-	var all []APIConnector
-	path := "/v2/api-connectors"
-	for {
-		var page struct {
-			Entries []APIConnector `json:"entries"`
-			Next    string         `json:"nextPageToken"`
-		}
-		if err := c.getJSON(ctx, path, &page); err != nil {
-			return nil, err
-		}
-		all = append(all, page.Entries...)
-		if page.Next == "" {
-			return all, nil
-		}
-		path = "/v2/api-connectors?pageToken=" + url.QueryEscape(page.Next)
-	}
+	return listAllByPageToken(ctx, func(ctx context.Context, pageToken *string) ([]APIConnector, *string, error) {
+		return fetchPageToken[APIConnector](c, func() (*http.Response, error) {
+			return c.api.ListApiConnectors(ctx, &openapi.ListApiConnectorsParams{PageToken: pageToken})
+		})
+	})
 }
 
 type APICredential struct {
@@ -204,38 +319,43 @@ type APICredentialInput struct {
 }
 
 func (c *Client) CreateAPICredential(ctx context.Context, in APICredentialInput) (*APICredential, error) {
+	body, err := encodeBody(in)
+	if err != nil {
+		return nil, err
+	}
 	var value APICredential
-	err := c.sendJSON(ctx, http.MethodPost, "/v2/api-credentials", in, &value)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.CreateApiCredentialWithBody(ctx, nil, jsonContentType, body)
+	}, &value)
 	return &value, err
 }
 func (c *Client) GetAPICredential(ctx context.Context, id string) (*APICredential, error) {
 	var value APICredential
-	err := c.getJSON(ctx, "/v2/api-credentials/"+url.PathEscape(id), &value)
+	err := c.doDecode(func() (*http.Response, error) {
+		return c.api.GetApiCredential(ctx, id, nil)
+	}, &value)
 	return &value, err
 }
 func (c *Client) UpdateAPICredential(ctx context.Context, id string, in APICredentialInput) (*APICredential, error) {
+	body, err := encodeBody(in)
+	if err != nil {
+		return nil, err
+	}
 	var value APICredential
-	err := c.sendJSON(ctx, http.MethodPatch, "/v2/api-credentials/"+url.PathEscape(id), in, &value)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.UpdateApiCredentialWithBody(ctx, id, nil, jsonContentType, body)
+	}, &value)
 	return &value, err
 }
 func (c *Client) DeleteAPICredential(ctx context.Context, id string) error {
-	return c.sendJSON(ctx, http.MethodDelete, "/v2/api-credentials/"+url.PathEscape(id), nil, nil)
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.DeleteApiCredential(ctx, id, nil)
+	})
 }
 func (c *Client) ListAPICredentials(ctx context.Context) ([]APICredential, error) {
-	var all []APICredential
-	path := "/v2/api-credentials"
-	for {
-		var page struct {
-			Entries []APICredential `json:"entries"`
-			Next    string          `json:"nextPageToken"`
-		}
-		if err := c.getJSON(ctx, path, &page); err != nil {
-			return nil, err
-		}
-		all = append(all, page.Entries...)
-		if page.Next == "" {
-			return all, nil
-		}
-		path = "/v2/api-credentials?pageToken=" + url.QueryEscape(page.Next)
-	}
+	return listAllByPageToken(ctx, func(ctx context.Context, pageToken *string) ([]APICredential, *string, error) {
+		return fetchPageToken[APICredential](c, func() (*http.Response, error) {
+			return c.api.ListApiCredentials(ctx, &openapi.ListApiCredentialsParams{PageToken: pageToken})
+		})
+	})
 }
