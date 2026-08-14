@@ -3,6 +3,7 @@ package provider_test
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"testing"
 
 	"github.com/civitaspo/terraform-provider-sigma/internal/provider/testutil"
@@ -43,13 +44,27 @@ resource "sigma_connection_path_grant" "test" {
   permission = "usage"
 }
 `
-	resource.UnitTest(t, connectionTestCase([]resource.TestStep{{
-		Config: config,
-		Check: resource.ComposeAggregateTestCheckFunc(
-			resource.TestCheckResourceAttr(address, "id", "grant-1"),
-			resource.TestCheckResourceAttr(address, "permission", "usage"),
-		),
-	}}))
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{
+		{
+			Config: config,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr(address, "id", "grant-1"),
+				resource.TestCheckResourceAttr(address, "permission", "usage"),
+			),
+		},
+		{
+			ResourceName:      address,
+			ImportState:       true,
+			ImportStateId:     "path-1/grant-1",
+			ImportStateVerify: true,
+		},
+		{
+			ResourceName:  address,
+			ImportState:   true,
+			ImportStateId: "bad",
+			ExpectError:   regexp.MustCompile(`Invalid import ID`),
+		},
+	}))
 }
 
 func TestAccConnectionPathGrantResource(t *testing.T) { requireAcceptance(t) }

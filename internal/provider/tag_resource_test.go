@@ -75,6 +75,11 @@ resource "sigma_tag" "test" {
 			Config: update,
 			Check:  resource.TestCheckResourceAttr("sigma_tag.test", "description", "Updated"),
 		},
+		{
+			ResourceName:      "sigma_tag.test",
+			ImportState:       true,
+			ImportStateVerify: true,
+		},
 	}))
 }
 
@@ -120,4 +125,4 @@ resource "sigma_tag" "test" {
 	}}))
 }
 
-func TestAccTagResource(t *testing.T) { requireAcceptance(t) }
+func TestAccTagResource(t *testing.T) { runAccTag(t) }

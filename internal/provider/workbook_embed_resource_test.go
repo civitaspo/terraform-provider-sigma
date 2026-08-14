@@ -145,4 +145,4 @@ resource "sigma_workbook_embed" "test" {
 	}))
 }
 
-func TestAccWorkbookEmbedResource(t *testing.T) { requireAcceptance(t) }
+func TestAccWorkbookEmbedResource(t *testing.T) { runAccWorkbookEmbed(t) }

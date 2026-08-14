@@ -31,6 +31,13 @@ func TestDeploymentPolicyResource(t *testing.T) {
 		response.Header().Set("Content-Type", "application/json")
 		switch request.Method {
 		case http.MethodGet, http.MethodPatch:
+			if request.Method == http.MethodPatch {
+				var body map[string]any
+				_ = json.NewDecoder(request.Body).Decode(&body)
+				if name, ok := body["name"].(string); ok {
+					policy["name"] = name
+				}
+			}
 			_ = json.NewEncoder(response).Encode(policy)
 		case http.MethodDelete:
 			_ = json.NewEncoder(response).Encode(map[string]any{})
@@ -65,6 +72,16 @@ resource "sigma_deployment_policy" "test" {
 			ResourceName:      "sigma_deployment_policy.test",
 			ImportState:       true,
 			ImportStateVerify: true,
+		},
+		{
+			Config: betaProviderConfig(mock) + `
+resource "sigma_deployment_policy" "test" {
+  name                 = "Starter Renamed"
+  version_tag_id       = "tag-1"
+  source_swap_policies = ["swap-1"]
+}
+`,
+			Check: resource.TestCheckResourceAttr("sigma_deployment_policy.test", "name", "Starter Renamed"),
 		},
 	}))
 }

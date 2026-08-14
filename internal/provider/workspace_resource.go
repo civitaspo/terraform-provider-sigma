@@ -6,6 +6,8 @@ import (
 	"github.com/civitaspo/terraform-provider-sigma/internal/sigma"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -42,7 +44,11 @@ func (r *workspaceResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 	response.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Sigma workspace.",
 		Attributes: map[string]schema.Attribute{
-			"id":            schema.StringAttribute{Computed: true, MarkdownDescription: "Workspace ID."},
+			"id": schema.StringAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Workspace ID.",
+			},
 			"url_id":        schema.StringAttribute{Computed: true, MarkdownDescription: "Base62 identifier used in Sigma workspace URLs."},
 			"name":          schema.StringAttribute{Required: true, MarkdownDescription: "Workspace name."},
 			"no_duplicates": schema.BoolAttribute{Optional: true, MarkdownDescription: "Whether Sigma should reject duplicate workspace names."},
@@ -96,7 +102,12 @@ func (r *workspaceResource) Update(ctx context.Context, request resource.UpdateR
 	if response.Diagnostics.HasError() {
 		return
 	}
-	value, err := r.client.UpdateWorkspace(ctx, plan.ID.ValueString(), sigma.UpdateWorkspaceInput{
+	id, idDiags := knownString(plan.ID, "id")
+	response.Diagnostics.Append(idDiags...)
+	if response.Diagnostics.HasError() {
+		return
+	}
+	value, err := r.client.UpdateWorkspace(ctx, id, sigma.UpdateWorkspaceInput{
 		Name: plan.Name.ValueString(), NoDuplicates: plan.NoDuplicates.ValueBool(),
 	})
 	if err != nil {

@@ -2,9 +2,11 @@ package provider_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/civitaspo/terraform-provider-sigma/internal/provider/testutil"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -214,7 +216,24 @@ resource "sigma_folder" "test" {
 	}}))
 }
 
-func TestAccFolderResource(t *testing.T) { requireAcceptance(t) }
+func TestAccFolderResource(t *testing.T) {
+	requireAcceptance(t)
+	name := fmt.Sprintf("tf-acc-folder-%d", time.Now().UnixNano())
+	config := `
+provider "sigma" {}
+data "sigma_workspaces" "all" {}
+resource "sigma_folder" "test" {
+  name      = "` + name + `"
+  parent_id = data.sigma_workspaces.all.workspaces[0].id
+}
+`
+	resource.Test(t, providerTestCase([]resource.TestStep{
+		{
+			Config: config,
+			Check:  resource.TestCheckResourceAttrSet("sigma_folder.test", "id"),
+		},
+	}))
+}
 
 func folderFixture(name, description string) map[string]any {
 	return map[string]any{

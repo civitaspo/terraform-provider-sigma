@@ -475,4 +475,4 @@ resource "sigma_connection" "test" {
 	}
 }
 
-func TestAccConnectionResource(t *testing.T) { requireAcceptance(t) }
+func TestAccConnectionResource(t *testing.T) { runAccConnection(t) }

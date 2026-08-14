@@ -3,6 +3,7 @@ package provider_test
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"testing"
 
 	sigmaprovider "github.com/civitaspo/terraform-provider-sigma/internal/provider"
@@ -45,5 +46,29 @@ data "sigma_whoami" "test" {}
 				),
 			},
 		},
+	})
+}
+
+func TestWhoamiDataSourceAPIError(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	mock.Mux.HandleFunc("/v2/whoami", func(response http.ResponseWriter, request *http.Request) {
+		http.Error(response, "boom", http.StatusInternalServerError)
+	})
+	resource.UnitTest(t, resource.TestCase{
+		IsUnitTest: true,
+		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
+			"sigma": providerserver.NewProtocol6WithError(sigmaprovider.New("test")()),
+		},
+		Steps: []resource.TestStep{{
+			Config: `
+provider "sigma" {
+  base_url      = "` + mock.URL() + `"
+  client_id     = "` + mock.ClientID + `"
+  client_secret = "` + mock.ClientSecret + `"
+}
+data "sigma_whoami" "test" {}
+`,
+			ExpectError: regexp.MustCompile(`Unable to read Sigma identity`),
+		}},
 	})
 }

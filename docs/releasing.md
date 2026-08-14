@@ -53,6 +53,16 @@ After `v0.1.0` exists with signed assets:
 2. Settings → GPG Keys → add the provider release public key under namespace `civitaspo`.
 3. Publish → Provider → select `civitaspo/terraform-provider-sigma`.
 
+## v0.2.0 release criteria
+
+Do not tag `v0.2.0` until all of the following are true:
+
+- `mise run lint`, `mise run test`, and `mise run build` pass on `main`.
+- Handwritten `internal/provider` and `internal/sigma` statement coverage are each at least 80% (generated OpenAPI code is excluded).
+- Contract tests use the request recorder (unexpected method/path, query mismatch, JSON mismatch, unconsumed requests).
+- Live acceptance (`TF_ACC=1`) remains local/manual and is not part of PR CI.
+- git-cliff / the release PR records breaking v0.2 resource and attribute removals; do not hand-edit `CHANGELOG.md` on feature PRs.
+
 ## Credentials
 
 Repository secret `SECUREFIX_CLIENT_PRIVATE_KEY` only. See [securefix.md](securefix.md) and the [canonical client-releases doc](https://github.com/civitaspo/securefix-server/blob/main/docs/client-releases.md).

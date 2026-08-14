@@ -35,10 +35,18 @@ resource "sigma_workspace_grant" "test" {
   permission = "view"
 }
 `
-	resource.UnitTest(t, providerTestCase([]resource.TestStep{{
-		Config: config,
-		Check:  resource.TestCheckResourceAttr("sigma_workspace_grant.test", "id", "workspace-grant-1"),
-	}}))
+	resource.UnitTest(t, providerTestCase([]resource.TestStep{
+		{
+			Config: config,
+			Check:  resource.TestCheckResourceAttr("sigma_workspace_grant.test", "id", "workspace-grant-1"),
+		},
+		{
+			ResourceName:      "sigma_workspace_grant.test",
+			ImportState:       true,
+			ImportStateId:     "workspace-1/workspace-grant-1",
+			ImportStateVerify: true,
+		},
+	}))
 }
 
 func TestWorkspaceGrantResourceAmbiguity(t *testing.T) {
@@ -71,4 +79,4 @@ resource "sigma_workspace_grant" "test" {
 	}}))
 }
 
-func TestAccWorkspaceGrantResource(t *testing.T) { requireAcceptance(t) }
+func TestAccWorkspaceGrantResource(t *testing.T) { runAccWorkspaceGrant(t) }

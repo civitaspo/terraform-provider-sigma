@@ -125,13 +125,15 @@ func (r *accountTypeResource) Read(ctx context.Context, req resource.ReadRequest
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 func (r *accountTypeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan accountTypeModel
+	var plan, state accountTypeModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	// Only destroy-time reassign_to_account_type_id is mutable in place; other fields ForceNew.
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	state.ReassignToAccountTypeID = plan.ReassignToAccountTypeID
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 func (r *accountTypeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state accountTypeModel

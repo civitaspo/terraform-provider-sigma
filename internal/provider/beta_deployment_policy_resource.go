@@ -41,7 +41,11 @@ func (r *deploymentPolicyResource) Schema(_ context.Context, _ resource.SchemaRe
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Sigma deployment policy. Destroy archives the policy. Attach documents with `sigma_deployment_policy_document` and tenants with `sigma_deployment_policy_tenant`. " + betaAPINotice,
 		Attributes: map[string]schema.Attribute{
-			"id":   schema.StringAttribute{Computed: true, MarkdownDescription: "Deployment policy ID."},
+			"id": schema.StringAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Deployment policy ID.",
+			},
 			"name": schema.StringAttribute{Required: true, MarkdownDescription: "Deployment policy name."},
 			"name_in_tenant": schema.StringAttribute{
 				Optional: true, Computed: true,

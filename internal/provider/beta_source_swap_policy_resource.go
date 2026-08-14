@@ -42,7 +42,11 @@ func (r *sourceSwapPolicyResource) Schema(_ context.Context, _ resource.SchemaRe
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Sigma source swap policy. `swaps_json` is polymorphic by `type` (`connection` or `deployment`). " + betaAPINotice,
 		Attributes: map[string]schema.Attribute{
-			"id":                 schema.StringAttribute{Computed: true, MarkdownDescription: "Source swap policy ID."},
+			"id": schema.StringAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Source swap policy ID.",
+			},
 			"type":               schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Policy type: `connection` or `deployment`."},
 			"name":               schema.StringAttribute{Required: true, MarkdownDescription: "Source swap policy name."},
 			"from_connection_id": schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Connection ID to swap from."},

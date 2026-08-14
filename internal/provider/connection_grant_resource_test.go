@@ -106,6 +106,46 @@ resource "sigma_connection_grant" "test" {
 
 func TestAccConnectionGrantResource(t *testing.T) { requireAcceptance(t) }
 
+func TestConnectionGrantResourceInvalidImportID(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	mock.Mux.HandleFunc("/v2/connections/connection-1/grants", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		switch request.Method {
+		case http.MethodPost:
+			writeJSON(response, map[string]any{})
+		case http.MethodGet:
+			writeJSON(response, map[string]any{
+				"entries": []map[string]any{{
+					"grantId": "grant-1", "inodeId": "connection-1", "memberId": "member-1",
+					"teamId": nil, "permission": "usage",
+				}},
+				"nextPage": nil,
+			})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	mock.Mux.HandleFunc("/v2/connections/connection-1/grants/grant-1", func(response http.ResponseWriter, request *http.Request) {
+		writeJSON(response, map[string]any{})
+	})
+	config := connectionProviderConfig(mock) + `
+resource "sigma_connection_grant" "test" {
+  connection_id = "connection-1"
+  member_id     = "member-1"
+  permission    = "usage"
+}
+`
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{
+		{Config: config},
+		{
+			ResourceName:  "sigma_connection_grant.test",
+			ImportState:   true,
+			ImportStateId: "only-one-segment",
+			ExpectError:   regexp.MustCompile(`Invalid import ID`),
+		},
+	}))
+}
+
 func TestConnectionGrantResourceAmbiguousMatches(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
 	mock.Mux.HandleFunc("/v2/connections/connection-1/grants", func(response http.ResponseWriter, request *http.Request) {

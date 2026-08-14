@@ -53,10 +53,18 @@ resource "sigma_report_grant" "test" {
   permission = "edit"
 }
 `
-	resource.UnitTest(t, providerTestCase([]resource.TestStep{{
-		Config: config,
-		Check:  resource.TestCheckResourceAttr("sigma_report_grant.test", "id", "report-grant-1"),
-	}}))
+	resource.UnitTest(t, providerTestCase([]resource.TestStep{
+		{
+			Config: config,
+			Check:  resource.TestCheckResourceAttr("sigma_report_grant.test", "id", "report-grant-1"),
+		},
+		{
+			ResourceName:      "sigma_report_grant.test",
+			ImportState:       true,
+			ImportStateId:     "report-1/report-grant-1",
+			ImportStateVerify: true,
+		},
+	}))
 	mu.Lock()
 	defer mu.Unlock()
 	if got := methods["/v2/reports/report-1/grants"]; len(got) == 0 || got[0] != http.MethodPost {
@@ -151,4 +159,4 @@ resource "sigma_report_grant" "test" {
 	}}))
 }
 
-func TestAccReportGrantResource(t *testing.T) { requireAcceptance(t) }
+func TestAccReportGrantResource(t *testing.T) { runAccReportGrant(t) }

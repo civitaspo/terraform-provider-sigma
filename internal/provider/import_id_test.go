@@ -1,6 +1,11 @@
 package provider
 
-import "testing"
+import (
+	"context"
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+)
 
 func TestSplitCompositeImportID(t *testing.T) {
 	t.Parallel()
@@ -14,5 +19,14 @@ func TestSplitCompositeImportID(t *testing.T) {
 		if _, _, ok := splitCompositeImportID(id); ok {
 			t.Fatalf("splitCompositeImportID(%q) = true, want false", id)
 		}
+	}
+}
+
+func TestImportGrantCompositeIDRejectsInvalid(t *testing.T) {
+	t.Parallel()
+	var response resource.ImportStateResponse
+	importGrantCompositeID(context.Background(), resource.ImportStateRequest{ID: "only"}, &response)
+	if !response.Diagnostics.HasError() {
+		t.Fatal("expected invalid import ID diagnostics")
 	}
 }

@@ -25,19 +25,38 @@ func TestWorkspaceResource(t *testing.T) {
 			write(response, map[string]any{})
 			return
 		}
+		if request.Method == http.MethodPatch {
+			var body map[string]any
+			_ = json.NewDecoder(request.Body).Decode(&body)
+			if name, ok := body["name"].(string); ok {
+				workspace["name"] = name
+			}
+		}
 		write(response, workspace)
 	})
-	config := providerConfig(mock) + `
+	resource.UnitTest(t, providerTestCase([]resource.TestStep{
+		{
+			Config: providerConfig(mock) + `
 resource "sigma_workspace" "test" {
   name = "Analytics"
 }
-`
-	resource.UnitTest(t, providerTestCase([]resource.TestStep{{
-		Config: config,
-		Check: resource.ComposeAggregateTestCheckFunc(
-			resource.TestCheckResourceAttr("sigma_workspace.test", "id", "workspace-1"),
-		),
-	}}))
+`,
+			Check: resource.TestCheckResourceAttr("sigma_workspace.test", "id", "workspace-1"),
+		},
+		{
+			ResourceName:      "sigma_workspace.test",
+			ImportState:       true,
+			ImportStateVerify: true,
+		},
+		{
+			Config: providerConfig(mock) + `
+resource "sigma_workspace" "test" {
+  name = "Analytics Renamed"
+}
+`,
+			Check: resource.TestCheckResourceAttr("sigma_workspace.test", "name", "Analytics Renamed"),
+		},
+	}))
 }
 
 func TestAccWorkspaceResource(t *testing.T) { requireAcceptance(t) }

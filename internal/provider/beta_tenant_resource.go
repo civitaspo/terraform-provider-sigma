@@ -47,7 +47,11 @@ func (r *tenantResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Sigma tenant organization. " + betaAPINotice,
 		Attributes: map[string]schema.Attribute{
-			"id":                       schema.StringAttribute{Computed: true, MarkdownDescription: "Tenant organization ID."},
+			"id": schema.StringAttribute{
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				MarkdownDescription: "Tenant organization ID.",
+			},
 			"tenant_organization_name": schema.StringAttribute{Required: true, MarkdownDescription: "Display name of the tenant organization."},
 			"tenant_organization_slug": schema.StringAttribute{Required: true, MarkdownDescription: "URL identifier for the tenant organization."},
 			"cloud_provider": schema.StringAttribute{
@@ -124,9 +128,14 @@ func (r *tenantResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	id, idDiags := knownString(plan.ID, "id")
+	resp.Diagnostics.Append(idDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	name := plan.TenantOrganizationName.ValueString()
 	slug := plan.TenantOrganizationSlug.ValueString()
-	value, err := r.client.PatchTenant(ctx, plan.ID.ValueString(), sigma.PatchTenantInput{
+	value, err := r.client.PatchTenant(ctx, id, sigma.PatchTenantInput{
 		TenantOrganizationName: &name,
 		TenantOrganizationSlug: &slug,
 	})

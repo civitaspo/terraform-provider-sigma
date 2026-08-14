@@ -235,4 +235,4 @@ resource "sigma_workbook_schedule" "test" {
 	}))
 }
 
-func TestAccWorkbookScheduleResource(t *testing.T) { requireAcceptance(t) }
+func TestAccWorkbookScheduleResource(t *testing.T) { runAccWorkbookScheduleDrift(t) }

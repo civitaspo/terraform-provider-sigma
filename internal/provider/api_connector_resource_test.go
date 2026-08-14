@@ -133,6 +133,12 @@ resource "sigma_api_connector" "test" {
 			Config: updateConfig,
 			Check:  resource.TestCheckResourceAttr("sigma_api_connector.test", "description", "Updated"),
 		},
+		{
+			ResourceName:            "sigma_api_connector.test",
+			ImportState:             true,
+			ImportStateVerify:       true,
+			ImportStateVerifyIgnore: []string{"secrets_wo", "secrets_wo_version"},
+		},
 	}))
 }
 

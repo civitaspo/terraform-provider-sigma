@@ -35,7 +35,8 @@ func TestSourceSwapPolicyResource(t *testing.T) {
 		case http.MethodGet:
 			_ = json.NewEncoder(response).Encode(policy)
 		case http.MethodPatch:
-			_ = json.NewEncoder(response).Encode(map[string]any{"policyId": "swap-1"})
+			policy["name"] = "Swap Renamed"
+			_ = json.NewEncoder(response).Encode(policy)
 		case http.MethodDelete:
 			_ = json.NewEncoder(response).Encode(map[string]any{})
 		default:
@@ -56,13 +57,37 @@ resource "sigma_source_swap_policy" "test" {
   })
 }
 `
-	resource.UnitTest(t, betaTestCase([]resource.TestStep{{
-		Config: config,
-		Check: resource.ComposeAggregateTestCheckFunc(
-			resource.TestCheckResourceAttr("sigma_source_swap_policy.test", "id", "swap-1"),
-			resource.TestCheckResourceAttr("sigma_source_swap_policy.test", "type", "deployment"),
-		),
-	}}))
+	resource.UnitTest(t, betaTestCase([]resource.TestStep{
+		{
+			Config: config,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("sigma_source_swap_policy.test", "id", "swap-1"),
+				resource.TestCheckResourceAttr("sigma_source_swap_policy.test", "type", "deployment"),
+			),
+		},
+		{
+			ResourceName:      "sigma_source_swap_policy.test",
+			ImportState:       true,
+			ImportStateVerify: true,
+		},
+		{
+			Config: betaProviderConfig(mock) + `
+resource "sigma_source_swap_policy" "test" {
+  type               = "deployment"
+  name               = "Swap Renamed"
+  from_connection_id = "conn-1"
+  swaps_json = jsonencode({
+    toConnection = {
+      swapType        = "attribute"
+      userAttributeId = "attr-1"
+    }
+    deploymentSwaps = []
+  })
+}
+`,
+			Check: resource.TestCheckResourceAttr("sigma_source_swap_policy.test", "name", "Swap Renamed"),
+		},
+	}))
 }
 
 func TestAccSourceSwapPolicyResource(t *testing.T) { requireAcceptance(t) }
