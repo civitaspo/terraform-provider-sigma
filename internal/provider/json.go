@@ -18,25 +18,6 @@ func canonicalJSON(raw []byte) (string, error) {
 	return string(encoded), err
 }
 
-func rawJSON(value types.String) (json.RawMessage, error) {
-	if value.IsNull() || value.IsUnknown() || strings.TrimSpace(value.ValueString()) == "" {
-		return nil, nil
-	}
-	canonical, err := canonicalJSON([]byte(value.ValueString()))
-	return json.RawMessage(canonical), err
-}
-
-func jsonString(value json.RawMessage) types.String {
-	if len(value) == 0 || string(value) == "null" {
-		return types.StringNull()
-	}
-	canonical, err := canonicalJSON(value)
-	if err != nil {
-		return types.StringNull()
-	}
-	return types.StringValue(canonical)
-}
-
 func knownNormalizedObject(value jsontypes.Normalized, attribute string) (map[string]any, json.RawMessage, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if value.IsNull() || value.IsUnknown() {

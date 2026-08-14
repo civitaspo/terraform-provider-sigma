@@ -29,27 +29,6 @@ func contains(values []string, target string) bool {
 	return false
 }
 
-func stringSetDiff(desired, current []string) (add, remove []string) {
-	have, want := map[string]bool{}, map[string]bool{}
-	for _, id := range current {
-		have[id] = true
-	}
-	for _, id := range desired {
-		want[id] = true
-	}
-	for id := range want {
-		if !have[id] {
-			add = append(add, id)
-		}
-	}
-	for id := range have {
-		if !want[id] {
-			remove = append(remove, id)
-		}
-	}
-	return add, remove
-}
-
 func optionalStringPtr(value types.String) *string {
 	if value.IsNull() || value.IsUnknown() {
 		return nil

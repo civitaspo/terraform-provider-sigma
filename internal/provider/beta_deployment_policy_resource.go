@@ -2,9 +2,9 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/civitaspo/terraform-provider-sigma/internal/sigma"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -27,8 +27,6 @@ type deploymentPolicyModel struct {
 	VersionTagID       types.String `tfsdk:"version_tag_id"`
 	SourceSwapPolicies types.Set    `tfsdk:"source_swap_policies"`
 	CopyInputTableData types.Bool   `tfsdk:"copy_input_table_data"`
-	InodeIDs           types.Set    `tfsdk:"inode_ids"`
-	TenantIDs          types.Set    `tfsdk:"tenant_ids"`
 }
 
 func NewDeploymentPolicyResource() resource.Resource { return &deploymentPolicyResource{} }
@@ -41,7 +39,7 @@ func (r *deploymentPolicyResource) Configure(_ context.Context, req resource.Con
 }
 func (r *deploymentPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Sigma deployment policy. Destroy archives the policy. When set, `inode_ids` and `tenant_ids` are authoritative attachments (`[]` removes all). Omit either attribute to leave that attachment set unmanaged. " + betaAPINotice,
+		MarkdownDescription: "Manages a Sigma deployment policy. Destroy archives the policy. Attach documents with `sigma_deployment_policy_document` and tenants with `sigma_deployment_policy_tenant`. " + betaAPINotice,
 		Attributes: map[string]schema.Attribute{
 			"id":   schema.StringAttribute{Computed: true, MarkdownDescription: "Deployment policy ID."},
 			"name": schema.StringAttribute{Required: true, MarkdownDescription: "Deployment policy name."},
@@ -62,118 +60,52 @@ func (r *deploymentPolicyResource) Schema(_ context.Context, _ resource.SchemaRe
 				Optional: true, Computed: true,
 				MarkdownDescription: "Whether to copy editable draft input table data when deploying.",
 			},
-			"inode_ids": schema.SetAttribute{
-				Optional: true, ElementType: types.StringType,
-				MarkdownDescription: "Authoritative set of document inode IDs attached to the policy. Omit to leave document attachments unmanaged; set to `[]` to remove all.",
-			},
-			"tenant_ids": schema.SetAttribute{
-				Optional: true, ElementType: types.StringType,
-				MarkdownDescription: "Authoritative set of tenant organization IDs attached to the policy. Omit to leave tenant attachments unmanaged; set to `[]` to remove all.",
-			},
 		},
 	}
 }
-func setDeploymentPolicy(ctx context.Context, state *deploymentPolicyModel, value *sigma.DeploymentPolicy) {
+
+func setDeploymentPolicy(ctx context.Context, state *deploymentPolicyModel, value *sigma.DeploymentPolicy) diag.Diagnostics {
+	var diags diag.Diagnostics
 	state.ID = types.StringValue(value.DeploymentPolicyID)
 	state.Name = types.StringValue(value.Name)
 	state.NameInTenant = types.StringValue(value.NameInTenant)
 	state.VersionTagID = stringOrNull(value.VersionTagID)
 	state.CopyInputTableData = types.BoolValue(value.CopyInputTableData)
-	if value.SourceSwapPolicies == nil {
-		value.SourceSwapPolicies = []string{}
+	swaps := value.SourceSwapPolicies
+	if swaps == nil {
+		swaps = []string{}
 	}
-	state.SourceSwapPolicies, _ = types.SetValueFrom(ctx, types.StringType, value.SourceSwapPolicies)
+	set, setDiags := types.SetValueFrom(ctx, types.StringType, swaps)
+	diags.Append(setDiags...)
+	state.SourceSwapPolicies = set
+	return diags
 }
-func (r *deploymentPolicyResource) syncAttachments(ctx context.Context, id string, plan *deploymentPolicyModel, diagnostics interface{ AddError(string, string) }) bool {
-	if !plan.InodeIDs.IsNull() && !plan.InodeIDs.IsUnknown() {
-		desiredInodes := []string{}
-		plan.InodeIDs.ElementsAs(ctx, &desiredInodes, false)
-		currentFiles, err := r.client.ListDeploymentPolicyInodes(ctx, id)
-		if err != nil {
-			diagnostics.AddError("Unable to list Sigma deployment policy documents", err.Error())
-			return false
-		}
-		haveInodes := make([]string, 0, len(currentFiles))
-		for _, file := range currentFiles {
-			haveInodes = append(haveInodes, file.InodeID)
-		}
-		addInodes, removeInodes := stringSetDiff(desiredInodes, haveInodes)
-		if len(addInodes) > 0 {
-			if err := r.client.AddDeploymentPolicyInodes(ctx, id, addInodes); err != nil {
-				diagnostics.AddError("Unable to add Sigma deployment policy documents", err.Error())
-				return false
-			}
-		}
-		for _, inodeID := range removeInodes {
-			if err := r.client.RemoveDeploymentPolicyInode(ctx, id, inodeID); err != nil {
-				diagnostics.AddError("Unable to remove Sigma deployment policy document", err.Error())
-				return false
-			}
-		}
-		plan.InodeIDs, _ = types.SetValueFrom(ctx, types.StringType, desiredInodes)
-	}
 
-	if !plan.TenantIDs.IsNull() && !plan.TenantIDs.IsUnknown() {
-		desiredTenants := []string{}
-		plan.TenantIDs.ElementsAs(ctx, &desiredTenants, false)
-		haveTenants, err := r.client.ListDeploymentPolicyTenants(ctx, id)
-		if err != nil {
-			diagnostics.AddError("Unable to list Sigma deployment policy tenants", err.Error())
-			return false
-		}
-		addTenants, removeTenants := stringSetDiff(desiredTenants, haveTenants)
-		for _, tenantID := range addTenants {
-			if err := r.client.AddDeploymentPolicyTenant(ctx, id, tenantID); err != nil {
-				diagnostics.AddError("Unable to add Sigma deployment policy tenant", err.Error())
-				return false
-			}
-		}
-		for _, tenantID := range removeTenants {
-			if err := r.client.RemoveDeploymentPolicyTenant(ctx, id, tenantID); err != nil {
-				diagnostics.AddError("Unable to remove Sigma deployment policy tenant", err.Error())
-				return false
-			}
-		}
-		plan.TenantIDs, _ = types.SetValueFrom(ctx, types.StringType, desiredTenants)
+func sourceSwapPoliciesFromPlan(ctx context.Context, value types.Set) ([]string, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if value.IsNull() || value.IsUnknown() {
+		return nil, diags
 	}
-	return true
+	values := []string{}
+	diags.Append(value.ElementsAs(ctx, &values, false)...)
+	return values, diags
 }
-func (r *deploymentPolicyResource) readAttachments(ctx context.Context, state *deploymentPolicyModel) error {
-	if !state.InodeIDs.IsNull() {
-		files, err := r.client.ListDeploymentPolicyInodes(ctx, state.ID.ValueString())
-		if err != nil {
-			return fmt.Errorf("list documents: %w", err)
-		}
-		inodes := make([]string, 0, len(files))
-		for _, file := range files {
-			inodes = append(inodes, file.InodeID)
-		}
-		state.InodeIDs, _ = types.SetValueFrom(ctx, types.StringType, inodes)
-	}
-	if !state.TenantIDs.IsNull() {
-		tenants, err := r.client.ListDeploymentPolicyTenants(ctx, state.ID.ValueString())
-		if err != nil {
-			return fmt.Errorf("list tenants: %w", err)
-		}
-		if tenants == nil {
-			tenants = []string{}
-		}
-		state.TenantIDs, _ = types.SetValueFrom(ctx, types.StringType, tenants)
-	}
-	return nil
-}
+
 func (r *deploymentPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan deploymentPolicyModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	var sourceSwapPolicies []string
-	if !plan.SourceSwapPolicies.IsNull() && !plan.SourceSwapPolicies.IsUnknown() {
-		plan.SourceSwapPolicies.ElementsAs(ctx, &sourceSwapPolicies, false)
+	name, nameDiags := knownString(plan.Name, "name")
+	resp.Diagnostics.Append(nameDiags...)
+	sourceSwapPolicies, swapDiags := sourceSwapPoliciesFromPlan(ctx, plan.SourceSwapPolicies)
+	resp.Diagnostics.Append(swapDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 	value, err := r.client.CreateDeploymentPolicy(ctx, sigma.CreateDeploymentPolicyInput{
-		Name:               plan.Name.ValueString(),
+		Name:               name,
 		VersionTagID:       optionalStringPtr(plan.VersionTagID),
 		SourceSwapPolicies: sourceSwapPolicies,
 		NameInTenant:       optionalStringPtr(plan.NameInTenant),
@@ -183,8 +115,8 @@ func (r *deploymentPolicyResource) Create(ctx context.Context, req resource.Crea
 		resp.Diagnostics.AddError("Unable to create Sigma deployment policy", err.Error())
 		return
 	}
-	setDeploymentPolicy(ctx, &plan, value)
-	if !r.syncAttachments(ctx, value.DeploymentPolicyID, &plan, &resp.Diagnostics) {
+	resp.Diagnostics.Append(setDeploymentPolicy(ctx, &plan, value)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -195,7 +127,12 @@ func (r *deploymentPolicyResource) Read(ctx context.Context, req resource.ReadRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	value, err := r.client.GetDeploymentPolicy(ctx, state.ID.ValueString())
+	id, idDiags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(idDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	value, err := r.client.GetDeploymentPolicy(ctx, id)
 	if sigma.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -204,9 +141,8 @@ func (r *deploymentPolicyResource) Read(ctx context.Context, req resource.ReadRe
 		resp.Diagnostics.AddError("Unable to read Sigma deployment policy", err.Error())
 		return
 	}
-	setDeploymentPolicy(ctx, &state, value)
-	if err := r.readAttachments(ctx, &state); err != nil {
-		resp.Diagnostics.AddError("Unable to read Sigma deployment policy attachments", err.Error())
+	resp.Diagnostics.Append(setDeploymentPolicy(ctx, &state, value)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -217,26 +153,31 @@ func (r *deploymentPolicyResource) Update(ctx context.Context, req resource.Upda
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	id, idDiags := knownString(plan.ID, "id")
+	name, nameDiags := knownString(plan.Name, "name")
+	resp.Diagnostics.Append(idDiags...)
+	resp.Diagnostics.Append(nameDiags...)
 	var sourceSwapPolicies *[]string
 	if !plan.SourceSwapPolicies.IsNull() && !plan.SourceSwapPolicies.IsUnknown() {
-		values := []string{}
-		plan.SourceSwapPolicies.ElementsAs(ctx, &values, false)
+		values, swapDiags := sourceSwapPoliciesFromPlan(ctx, plan.SourceSwapPolicies)
+		resp.Diagnostics.Append(swapDiags...)
 		sourceSwapPolicies = &values
 	}
-	name := plan.Name.ValueString()
-	in := sigma.UpdateDeploymentPolicyInput{
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	value, err := r.client.UpdateDeploymentPolicy(ctx, id, sigma.UpdateDeploymentPolicyInput{
 		Name:               &name,
 		NameInTenant:       optionalStringPtr(plan.NameInTenant),
 		SourceSwapPolicies: sourceSwapPolicies,
 		CopyInputTableData: optionalBoolPtr(plan.CopyInputTableData),
-	}
-	value, err := r.client.UpdateDeploymentPolicy(ctx, plan.ID.ValueString(), in)
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Sigma deployment policy", err.Error())
 		return
 	}
-	setDeploymentPolicy(ctx, &plan, value)
-	if !r.syncAttachments(ctx, plan.ID.ValueString(), &plan, &resp.Diagnostics) {
+	resp.Diagnostics.Append(setDeploymentPolicy(ctx, &plan, value)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -247,7 +188,12 @@ func (r *deploymentPolicyResource) Delete(ctx context.Context, req resource.Dele
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.ArchiveDeploymentPolicy(ctx, state.ID.ValueString()); err != nil && !sigma.IsNotFound(err) {
+	id, idDiags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(idDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.client.ArchiveDeploymentPolicy(ctx, id); err != nil && !sigma.IsNotFound(err) {
 		resp.Diagnostics.AddError("Unable to archive Sigma deployment policy", err.Error())
 	}
 }
