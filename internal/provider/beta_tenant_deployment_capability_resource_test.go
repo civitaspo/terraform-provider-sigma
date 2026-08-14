@@ -119,6 +119,7 @@ resource "sigma_tenant_deployment_capability" "test" {
 
 func TestTenantDeploymentCapabilityResourceDuplicateAdd(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
+	var mu sync.Mutex
 	adds := 0
 	mock.Mux.HandleFunc("/v2/tenants/tenant-1/capabilities/deployments", func(response http.ResponseWriter, request *http.Request) {
 		writeJSON(response, map[string]any{
@@ -127,8 +128,11 @@ func TestTenantDeploymentCapabilityResourceDuplicateAdd(t *testing.T) {
 		})
 	})
 	mock.Mux.HandleFunc("/v2/tenants/tenant-1/capabilities/deployments:batchAdd", func(response http.ResponseWriter, request *http.Request) {
+		mu.Lock()
 		adds++
-		if adds > 1 {
+		n := adds
+		mu.Unlock()
+		if n > 1 {
 			http.Error(response, "capability already exists", http.StatusConflict)
 			return
 		}

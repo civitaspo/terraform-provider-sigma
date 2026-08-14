@@ -121,12 +121,16 @@ resource "sigma_deployment_policy_document" "test" {
 
 func TestDeploymentPolicyDocumentResourceDuplicateAdd(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
+	var mu sync.Mutex
 	adds := 0
 	mock.Mux.HandleFunc("/v2/deploymentPolicies/policy-1/files", func(response http.ResponseWriter, request *http.Request) {
 		switch request.Method {
 		case http.MethodPost:
+			mu.Lock()
 			adds++
-			if adds > 1 {
+			n := adds
+			mu.Unlock()
+			if n > 1 {
 				http.Error(response, "inode already attached", http.StatusConflict)
 				return
 			}

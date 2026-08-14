@@ -118,12 +118,16 @@ resource "sigma_deployment_policy_tenant" "test" {
 
 func TestDeploymentPolicyTenantResourceDuplicateAdd(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
+	var mu sync.Mutex
 	adds := 0
 	mock.Mux.HandleFunc("/v2/deploymentPolicies/policy-1/tenants", func(response http.ResponseWriter, request *http.Request) {
 		switch request.Method {
 		case http.MethodPost:
+			mu.Lock()
 			adds++
-			if adds > 1 {
+			n := adds
+			mu.Unlock()
+			if n > 1 {
 				http.Error(response, "tenant already attached", http.StatusConflict)
 				return
 			}
