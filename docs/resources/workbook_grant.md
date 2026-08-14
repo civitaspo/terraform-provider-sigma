@@ -31,7 +31,7 @@ resource "sigma_workbook_grant" "example" {
 ### Optional
 
 - `member_id` (String) Member ID receiving the grant. Exactly one of `member_id` or `team_id` must be set.
-- `tag_id` (String) Optional version tag ID. Supported by generic, workbook, and report grants. Changing this forces a new resource. Tagged workbook/report grants are created through the generic grants API so Terraform receives a stable grant ID.
+- `tag_id` (String) Optional version tag ID. Changing this forces a new resource. Tagged workbook and report grants use generic `POST /v2/grants`, `GET /v2/grants/{grantId}`, and `DELETE /v2/grants/{grantId}` because the dedicated POST returns `{}` and list/get responses omit `tagId`. Terraform preserves the configured `tag_id` after refresh; import cannot reconstruct it from the API.
 - `team_id` (String) Team ID receiving the grant. Exactly one of `member_id` or `team_id` must be set.
 
 ### Read-Only

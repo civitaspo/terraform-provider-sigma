@@ -3,12 +3,12 @@
 page_title: "sigma_translation Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a Sigma organization translation file. When lng_variant is set, the provider uses the variant translation endpoints.
+  Manages a Sigma organization translation file. translations is required and authoritative. When lng_variant is set, the provider uses the variant translation endpoints.
 ---
 
 # sigma_translation (Resource)
 
-Manages a Sigma organization translation file. When `lng_variant` is set, the provider uses the variant translation endpoints.
+Manages a Sigma organization translation file. `translations` is required and authoritative. When `lng_variant` is set, the provider uses the variant translation endpoints.
 
 ## Example Usage
 
@@ -28,11 +28,11 @@ resource "sigma_translation" "example" {
 ### Required
 
 - `lng` (String) Locale identifier.
+- `translations` (Map of String) Authoritative map of phrases to translated strings. An empty map clears stored phrases. A missing API map is stored as an empty map, not null.
 
 ### Optional
 
 - `lng_variant` (String) Optional custom translation variant.
-- `translations` (Map of String) Map of phrases to translated strings.
 
 ### Read-Only
 

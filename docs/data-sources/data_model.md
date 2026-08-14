@@ -25,6 +25,10 @@ data "sigma_data_model" "example" {
 
 - `id` (String) Data model ID.
 
+### Optional
+
+- `exclude_tags` (Boolean) Whether to exclude tags (`excludeTags`). Explicit `false` is sent; null omits the parameter.
+
 ### Read-Only
 
 - `created_at` (String) Creation timestamp.
@@ -34,7 +38,18 @@ data "sigma_data_model" "example" {
 - `name` (String) Data model name.
 - `owner_id` (String) Owner member ID.
 - `path` (String) Data model path.
+- `tags` (Attributes List) Version tags on the data model. (see [below for nested schema](#nestedatt--tags))
 - `updated_at` (String) Update timestamp.
 - `updated_by` (String) Last updater member ID.
 - `url` (String) Data model URL.
 - `url_id` (String) Data model URL ID.
+
+<a id="nestedatt--tags"></a>
+### Nested Schema for `tags`
+
+Read-Only:
+
+- `source_version` (Number) Source version.
+- `tag_name` (String) Tag name.
+- `tagged_at` (String) When the data model was tagged.
+- `version_tag_id` (String) Version tag ID.

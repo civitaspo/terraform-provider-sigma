@@ -3,21 +3,24 @@
 page_title: "sigma_member Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible. Destroy refuses members marked inactive through SCIM (is_inactive); deactivate those users in your identity provider, or remove the resource from state with terraform state rm. The API does not expose a SCIM-provisioned flag for still-active members.
+  Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a member with the same email does not reactivate an archived account; import the archived member and set is_archived = false instead. send_invite is create-only and cannot be changed after create. Destroy refuses members marked inactive through SCIM (is_inactive); deactivate those users in your identity provider, or remove the resource from state with terraform state rm. The API does not expose a SCIM-provisioned flag for still-active members. Team membership is managed with sigma_team_member.
 ---
 
 # sigma_member (Resource)
 
-Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a deactivated member reactivates the archived account with the same email when possible. Destroy refuses members marked inactive through SCIM (`is_inactive`); deactivate those users in your identity provider, or remove the resource from state with `terraform state rm`. The API does not expose a SCIM-provisioned flag for still-active members.
+Manages a Sigma member. Destroy deactivates the member; Sigma does not permanently delete users. Recreating a member with the same email does not reactivate an archived account; import the archived member and set `is_archived = false` instead. `send_invite` is create-only and cannot be changed after create. Destroy refuses members marked inactive through SCIM (`is_inactive`); deactivate those users in your identity provider, or remove the resource from state with `terraform state rm`. The API does not expose a SCIM-provisioned flag for still-active members. Team membership is managed with `sigma_team_member`.
 
 ## Example Usage
 
 ```terraform
 resource "sigma_member" "example" {
-  email      = "ada@example.com"
-  first_name = "Ada"
-  last_name  = "Lovelace"
-  user_kind  = "internal"
+  email       = "ada@example.com"
+  first_name  = "Ada"
+  last_name   = "Lovelace"
+  user_kind   = "internal"
+  send_invite = true
+
+  new_owner_id = "member-admin"
 }
 ```
 
@@ -32,13 +35,18 @@ resource "sigma_member" "example" {
 
 ### Optional
 
+- `archive_documents` (Boolean) On destroy, PATCH `archiveDocuments` with `isArchived=true` before DELETE. Archives the member's documents instead of transferring them, and also archives scheduled exports. Cannot be true when `new_owner_id` is set.
+- `archive_scheduled_exports` (Boolean) On destroy, PATCH `archiveScheduledExports` with `isArchived=true` before DELETE. Archives scheduled exports instead of transferring them. Can be combined with `new_owner_id`.
+- `is_archived` (Boolean) Whether the member is deactivated. Create supports omitting this attribute or setting `false`. An imported archived member can be reactivated by setting `is_archived = false`.
 - `member_type` (String) Account type name.
+- `new_owner_id` (String) On destroy, PATCH `newOwnerId` with `isArchived=true` before DELETE so documents transfer to this member instead of the API credential owner. Do not set together with `archive_documents = true`.
+- `send_invite` (Boolean) When set, passed as the `sendInvite` query parameter on `POST /v2/members`. Create-only; changing this value after create is an error and does not replace the member.
 - `user_kind` (String) Member kind: `internal`, `guest`, or `embed`.
 
 ### Read-Only
 
+- `home_folder_id` (String) ID of the member's My Documents folder (`homeFolderId`).
 - `id` (String) Member ID.
-- `is_archived` (Boolean) Whether the member is deactivated.
 - `is_inactive` (Boolean) Whether the member is archived by SCIM. Destroy refuses when this is true.
 - `organization_id` (String) Organization ID.
 

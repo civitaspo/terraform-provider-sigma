@@ -3,12 +3,12 @@
 page_title: "sigma_report_schedule Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a Sigma report export schedule. Schedule payloads are polymorphic, so configure them with config_json. Sigma list responses omit target, so Terraform preserves config_json from configuration after create.
+  Manages a Sigma report export schedule. Schedule payloads are polymorphic, so configure them with config_json. Sigma list responses omit target, so Terraform retains request-only fields from prior state. Import is not supported because Read cannot reconstruct target.
 ---
 
 # sigma_report_schedule (Resource)
 
-Manages a Sigma report export schedule. Schedule payloads are polymorphic, so configure them with `config_json`. Sigma list responses omit `target`, so Terraform preserves `config_json` from configuration after create.
+Manages a Sigma report export schedule. Schedule payloads are polymorphic, so configure them with `config_json`. Sigma list responses omit `target`, so Terraform retains request-only fields from prior state. Import is not supported because Read cannot reconstruct `target`.
 
 ## Example Usage
 
@@ -35,20 +35,13 @@ resource "sigma_report_schedule" "example" {
 
 ### Required
 
-- `config_json` (String) JSON body accepted by the report schedule create/update API.
+- `config_json` (String) JSON body accepted by the Sigma schedule create/update API. Must be a JSON object. Do not set top-level `suspensionAction`; use `is_suspended` instead. List/get responses omit `target`, so Terraform retains the configured `target` (and other request-only fields) from prior state.
 - `report_id` (String) Report ID.
+
+### Optional
+
+- `is_suspended` (Boolean) Whether the schedule is paused. On update, Terraform sends `pause` or `resume` only when this value changes.
 
 ### Read-Only
 
 - `id` (String) Scheduled notification ID.
-
-## Import
-
-Import is supported using the following syntax:
-
-The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
-
-```shell
-#!/usr/bin/env sh
-terraform import sigma_report_schedule.example report-id/schedule-id
-```

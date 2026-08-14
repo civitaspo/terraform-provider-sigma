@@ -3,12 +3,12 @@
 page_title: "sigma_team_member Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages one member of a Sigma team. Do not use with sigma_team_members for the same team; the authoritative resource will remove members managed elsewhere.
+  Manages one member of a Sigma team. team_id and member_id force replacement because PATCH /v2/teams/{teamId}/members only adds or removes members. is_team_admin is read-only; the update-members API cannot change it.
 ---
 
 # sigma_team_member (Resource)
 
-Manages one member of a Sigma team. Do not use with `sigma_team_members` for the same team; the authoritative resource will remove members managed elsewhere.
+Manages one member of a Sigma team. `team_id` and `member_id` force replacement because `PATCH /v2/teams/{teamId}/members` only adds or removes members. `is_team_admin` is read-only; the update-members API cannot change it.
 
 ## Example Usage
 
@@ -30,7 +30,7 @@ resource "sigma_team_member" "example" {
 ### Read-Only
 
 - `id` (String) Composite ID in `teamId/memberId` form.
-- `is_team_admin` (Boolean) Whether the member is a team administrator. The update-members API cannot modify this value.
+- `is_team_admin` (Boolean) Whether the member is a team administrator. The update-members API cannot modify this value; Terraform refreshes it from the team members list.
 
 ## Import
 

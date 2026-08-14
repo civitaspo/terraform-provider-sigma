@@ -14,7 +14,8 @@ Retrieves a Sigma workbook by ID.
 
 ```terraform
 data "sigma_workbook" "example" {
-  id = "workbook-id"
+  id                           = "workbook-id"
+  include_tagged_source_url_id = true
 }
 ```
 
@@ -25,16 +26,34 @@ data "sigma_workbook" "example" {
 
 - `id` (String) Workbook ID.
 
+### Optional
+
+- `include_tagged_source_url_id` (Boolean) When true, GET includes `includeTaggedSourceUrlId=true` so Sigma may return `taggedSourceUrlId`. List workbooks has no equivalent query parameter.
+
 ### Read-Only
 
 - `created_at` (String) Creation timestamp.
 - `created_by` (String) Creator member ID.
+- `description` (String) Workbook description.
 - `is_archived` (Boolean) Whether the workbook is archived.
 - `latest_version` (Number) Latest workbook version.
 - `name` (String) Workbook name.
 - `owner_id` (String) Owner member ID.
 - `path` (String) Workbook path.
+- `tagged_source_url_id` (String) Source workbook URL ID for a tenant-deployed workbook. Present when Sigma returns `taggedSourceUrlId`.
+- `tags` (Attributes List) Version tags on the workbook. (see [below for nested schema](#nestedatt--tags))
 - `updated_at` (String) Update timestamp.
 - `updated_by` (String) Last updater member ID.
 - `url` (String) Workbook URL.
 - `url_id` (String) Workbook URL ID.
+
+<a id="nestedatt--tags"></a>
+### Nested Schema for `tags`
+
+Read-Only:
+
+- `name` (String) Tag name.
+- `source_workbook_version` (Number) Source workbook version.
+- `tagged_workbook_id` (String) Tagged workbook ID.
+- `version_tag_id` (String) Version tag ID.
+- `workbook_tagged_at` (String) When the workbook was tagged.

@@ -1,6 +1,6 @@
 # terraform-provider-sigma
 
-[![CI](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/ci.yml/badge.svg)](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/ci.yml)
+[![CI](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/pull_request.yml/badge.svg)](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/pull_request.yml)
 [![Release](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/release-tag.yml/badge.svg)](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/release-tag.yml)
 [![Terraform Registry](https://img.shields.io/badge/registry-civitaspo%2Fsigma-purple.svg)](https://registry.terraform.io/providers/civitaspo/sigma/latest)
 
@@ -72,22 +72,19 @@ Always set `base_url` explicitly for the cloud where your organization is hosted
 |-----------|--------------|
 | `sigma_member` | `sigma_member`, `sigma_members` |
 | `sigma_team` | `sigma_team`, `sigma_teams` |
-| `sigma_team_member`, `sigma_team_members` | |
-| `sigma_account_type` | `sigma_account_types` |
-| `sigma_user_attribute` | `sigma_user_attributes` |
+| `sigma_team_member` | |
+| `sigma_account_type` | `sigma_account_types`, `sigma_account_type_permissions` |
+| `sigma_user_attribute` | `sigma_user_attribute`, `sigma_user_attributes` |
 | `sigma_user_attribute_team_assignment` | |
 | `sigma_user_attribute_user_assignment` | |
-
-Do not combine fine-grained `sigma_team_member` and authoritative `sigma_team_members` for the same team. `sigma_team_members` removes any member absent from `member_ids` and removes every tracked member on destroy.
 
 ### Workspaces, files, and grants
 
 | Resources | Data sources |
 |-----------|--------------|
 | `sigma_workspace` | `sigma_workspace`, `sigma_workspaces` |
-| `sigma_file` | `sigma_files` |
+| `sigma_folder` | `sigma_file`, `sigma_files` |
 | `sigma_workspace_grant` | |
-| `sigma_grant` | |
 | `sigma_workbook_grant`, `sigma_report_grant` | |
 
 ### Connections
@@ -95,21 +92,21 @@ Do not combine fine-grained `sigma_team_member` and authoritative `sigma_team_me
 | Resources | Data sources |
 |-----------|--------------|
 | `sigma_connection` | `sigma_connection`, `sigma_connections` |
-| `sigma_connection_grant`, `sigma_connection_path_grant` | `sigma_connection_paths` |
+| `sigma_connection_grant`, `sigma_connection_path_grant` | `sigma_connection_path`, `sigma_connection_paths` |
 | `sigma_api_connector`, `sigma_api_credential` | |
 
-Warehouse credentials use write-only attributes (`credentials_wo` + `credentials_wo_version`). Because Sigma's connection update replaces warehouse details entirely, any update after credentials were managed requires bumping `credentials_wo_version` and resupplying `credentials_wo`. Connection tests after create/update are warnings, not hard errors.
+Warehouse credentials use write-only attributes (`credentials_wo` + `credentials_wo_version`). Because Sigma's connection update replaces warehouse details entirely, any update after credentials were managed requires bumping `credentials_wo_version` and resupplying `credentials_wo`. Connection restore is not a Terraform attribute. Connection tests after create/update are warnings, not hard errors.
 
 ### Documents and schedules
 
 | Resources | Data sources |
 |-----------|--------------|
 | `sigma_tag` | `sigma_tags` |
-| `sigma_workbook_schedule`, `sigma_report_schedule` | `sigma_workbook`, `sigma_workbooks` |
+| `sigma_workbook_schedule`, `sigma_report_schedule` | `sigma_workbook`, `sigma_workbooks`, `sigma_workbook_materialization_schedules` |
 | `sigma_workbook_embed` | `sigma_report`, `sigma_reports` |
-| `sigma_translation` | `sigma_data_model`, `sigma_data_models` |
+| `sigma_translation` | `sigma_data_model`, `sigma_data_models`, `sigma_data_model_materialization_schedules` |
 | | `sigma_dataset`, `sigma_datasets` (deprecated) |
-| | `sigma_templates` |
+| | `sigma_template`, `sigma_templates` |
 | | `sigma_whoami` |
 
 ### Beta
@@ -118,9 +115,12 @@ These use Sigma Beta APIs and may change without notice.
 
 | Resources | Data sources |
 |-----------|--------------|
-| `sigma_tenant` | `sigma_tenants` |
-| `sigma_tenant_deployment_capabilities` | |
-| `sigma_deployment_policy` | `sigma_deployment_policies` |
+| `sigma_tenant` | `sigma_tenant`, `sigma_tenants` |
+| `sigma_tenant_deployment_capability` | |
+| `sigma_user_attribute_tenant_assignment` | |
+| `sigma_deployment_policy` | `sigma_deployment_policy`, `sigma_deployment_policies` |
+| `sigma_deployment_policy_document` | |
+| `sigma_deployment_policy_tenant` | |
 | `sigma_source_swap_policy` | |
 
 ## Out of scope
@@ -137,10 +137,22 @@ The following Sigma capabilities are intentionally not managed by this provider:
 | Embed URL generation / JWT signing | Host-app concern; prefer JWT-signed URLs |
 | Workbook duplication / one-shot source swap actions | Imperative actions, not long-lived resources |
 | Organization API client keys (`/v2/credentials`) | Distinct from third-party `sigma_api_credential` |
+| Dedicated workbook/report resources | Short lifecycle and high AI change frequency are a poor Terraform fit. Data sources and specialized grants remain; folders use `sigma_folder` and workspaces use `sigma_workspace` |
+| Generic inode grants (`sigma_grant`) | Overlapping ownership; use `sigma_workspace_grant`, `sigma_workbook_grant`, or `sigma_report_grant` |
+| Aggregate team membership (`sigma_team_members`) | Overlapping ownership; use singular `sigma_team_member` |
+| Applying version tags to documents | Short lifecycle and high AI change frequency are a poor Terraform fit. Tag definitions via `sigma_tag` remain |
+| Data model spec / as-code content | Short lifecycle and high AI change frequency are a poor Terraform fit |
+| Workbook bookmarks | Create requires a UI-session `exploreKey` plus `workbookVersion`; not declaratively authorable |
+| Webhooks | Send-only Beta action, not durable infrastructure |
+| Cross-org template shares | Imperative accept/delete lifecycle |
+| Member-scoped listings | Teams, schedules, and recents are per-member operational lists; favorites are already excluded |
+| Connection dbt artifacts | Push-only operational artifact, not a long-lived resource |
+| Warehouse table-column listing | Read-heavy catalog surface; poor Terraform fit |
+| Generic grants read surface | Deferred until a real use case; write tagged grants via `sigma_workbook_grant` and `sigma_report_grant` |
 
 ## Acceptance tests
 
-Unit tests use a mock Sigma HTTP server:
+Unit tests use a mock Sigma HTTP server and fail if handwritten `internal/provider` or `internal/sigma` coverage is below 80%:
 
 ```bash
 mise run test

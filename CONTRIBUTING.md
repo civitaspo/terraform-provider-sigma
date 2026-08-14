@@ -18,8 +18,11 @@ Useful tasks:
 | Unit tests | `mise run test` |
 | Build | `mise run build` |
 | Regenerate docs | `mise run docs` |
+| Generate OpenAPI client from the vendored snapshot | `mise run openapi-generate` |
+| Check generated OpenAPI client for drift | `mise run openapi-check` |
+| Fetch the live OpenAPI snapshot and regenerate (manual; never in CI) | `mise run openapi-update` |
 
-Never hand-edit generated files under `docs/` except `docs/securefix.md` and `docs/releasing.md`.
+Never hand-edit generated files under `docs/` except `docs/securefix.md` and `docs/releasing.md`. Never hand-edit `internal/sigma/openapi/generated.go` or `specs/sigma-rest-api.openapi.json`; apply generator corrections only through `internal/sigma/openapi/overlay.yaml` and refresh the snapshot with `mise run openapi-update`.
 
 ## Pull requests
 
@@ -28,6 +31,7 @@ Never hand-edit generated files under `docs/` except `docs/securefix.md` and `do
 - Never push directly to `main`. Open a PR and squash-merge after required checks pass.
 - Keep changes small, reviewable, and focused on one meaningful unit of work.
 - Sign commits (SSH signing is configured for maintainers and coding agents committing as `civitaspo`).
+- Do **not** edit `CHANGELOG.md` on feature PRs. git-cliff regenerates it on the `release/next` Release PR from Conventional Commit subjects (see [docs/releasing.md](docs/releasing.md)).
 
 Before opening a PR:
 
@@ -66,7 +70,7 @@ Do not invent API field names; verify against `https://help.sigmacomputing.com/r
 
 ## Release flow (summary)
 
-1. Merges to `main` trigger the Release PR workflow, which prepares a changelog and version bump PR.
+1. Merges to `main` trigger the Release PR workflow, which runs git-cliff and opens or updates the changelog / version bump PR on `release/next`.
 2. Merging the release PR creates a tag and requests a server-side goreleaser run in `civitaspo/securefix-server`.
 3. Signed artifacts are published as a GitHub Release for Terraform Registry consumption.
 

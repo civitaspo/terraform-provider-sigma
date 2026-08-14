@@ -1,0 +1,10 @@
+# Generator-only OpenAPI Overlay (https://spec.openapis.org/overlay/latest.html).
+# Add an action only when the vendored specification prevents generation.
+# Each action must name the affected operation or schema, link the Sigma
+# reference page, and explain the mismatch. Never hand-edit generated.go.
+overlay: 1.0.0
+info:
+  title: Sigma REST API generator overlays
+  version: 0.0.0
+  description: Minimal corrections applied before oapi-codegen. Empty until generation requires a documented overlay.
+actions: []

@@ -3,12 +3,12 @@
 page_title: "sigma_workbook_embed Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a Sigma workbook embed. Embeds are immutable after create; Sigma's list API returns public instead of embed_type.
+  Manages a public Sigma workbook embed. Only embed_type = public is supported. Deprecated secure and application embeds cannot round-trip because list responses expose public rather than embed_type.
 ---
 
 # sigma_workbook_embed (Resource)
 
-Manages a Sigma workbook embed. Embeds are immutable after create; Sigma's list API returns `public` instead of `embed_type`.
+Manages a public Sigma workbook embed. Only `embed_type = public` is supported. Deprecated `secure` and `application` embeds cannot round-trip because list responses expose `public` rather than `embed_type`.
 
 ## Example Usage
 
@@ -25,7 +25,7 @@ resource "sigma_workbook_embed" "example" {
 
 ### Required
 
-- `embed_type` (String) Embed type: `public`, `secure`, or `application`. `secure` and `application` are deprecated by Sigma.
+- `embed_type` (String) Embed type. Only `public` is supported.
 - `source_type` (String) Source scope: `workbook`, `page`, or `element`.
 - `workbook_id` (String) Workbook ID.
 

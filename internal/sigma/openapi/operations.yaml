@@ -1,0 +1,752 @@
+# Selected Sigma REST OpenAPI operation IDs for terraform-provider-sigma.
+# This inventory is the source of truth for mise run openapi-generate.
+#
+# Include retained public Terraform types plus internal generic grant
+# operations needed by tagged workbook/report grants. Keep files create
+# (operation ID `create`) because sigma_folder uses the folder variant of
+# that union. Do not select removed surfaces solely for compatibility:
+# public sigma_grant, aggregate sigma_team_members, or dedicated workbook/
+# report/workspace create via POST /v2/files beyond the shared create op.
+#
+# OAuth token acquisition (postToken) is omitted: the live token endpoint
+# is form-urlencoded while the snapshot models JSON, and transport keeps a
+# dedicated token flow.
+#
+# Each entry records Terraform type, method/path, operation ID, and the
+# Sigma Markdown reference.
+
+operations:
+  # --- data.sigma_whoami ---
+  - operation_id: whoami
+    terraform_types: [data.sigma_whoami]
+    method: GET
+    path: /v2/whoami
+    reference: https://help.sigmacomputing.com/reference/whoami.md
+
+  # --- resource.sigma_member / data.sigma_member / data.sigma_members ---
+  - operation_id: createMember
+    terraform_types: [resource.sigma_member]
+    method: POST
+    path: /v2/members
+    reference: https://help.sigmacomputing.com/reference/create-member.md
+  - operation_id: getMember
+    terraform_types: [resource.sigma_member, data.sigma_member]
+    method: GET
+    path: /v2/members/{memberId}
+    reference: https://help.sigmacomputing.com/reference/get-member.md
+  - operation_id: updateMember
+    terraform_types: [resource.sigma_member]
+    method: PATCH
+    path: /v2/members/{memberId}
+    reference: https://help.sigmacomputing.com/reference/update-member.md
+  - operation_id: deleteMember
+    terraform_types: [resource.sigma_member]
+    method: DELETE
+    path: /v2/members/{memberId}
+    reference: https://help.sigmacomputing.com/reference/delete-member.md
+  - operation_id: listMembers
+    terraform_types: [resource.sigma_member, data.sigma_member, data.sigma_members]
+    method: GET
+    path: /v2/members
+    reference: https://help.sigmacomputing.com/reference/list-members.md
+
+  # --- resource.sigma_team / data.sigma_team / data.sigma_teams ---
+  - operation_id: createTeam
+    terraform_types: [resource.sigma_team]
+    method: POST
+    path: /v2/teams
+    reference: https://help.sigmacomputing.com/reference/create-team.md
+  - operation_id: getTeam
+    terraform_types: [resource.sigma_team, data.sigma_team]
+    method: GET
+    path: /v2/teams/{teamId}
+    reference: https://help.sigmacomputing.com/reference/get-team.md
+  - operation_id: updateTeam
+    terraform_types: [resource.sigma_team]
+    method: PATCH
+    path: /v2/teams/{teamId}
+    reference: https://help.sigmacomputing.com/reference/update-team.md
+  - operation_id: deleteTeam
+    terraform_types: [resource.sigma_team]
+    method: DELETE
+    path: /v2/teams/{teamId}
+    reference: https://help.sigmacomputing.com/reference/delete-team.md
+  - operation_id: v2_1_listTeams
+    terraform_types: [data.sigma_teams]
+    method: GET
+    path: /v2.1/teams
+    reference: https://help.sigmacomputing.com/reference/v-2-1-list-teams.md
+
+  # --- resource.sigma_team_member (singular only; not aggregate sigma_team_members) ---
+  - operation_id: getTeamMembers
+    terraform_types: [resource.sigma_team_member]
+    method: GET
+    path: /v2/teams/{teamId}/members
+    reference: https://help.sigmacomputing.com/reference/get-team-members.md
+  - operation_id: updateTeamMembers
+    terraform_types: [resource.sigma_team_member]
+    method: PATCH
+    path: /v2/teams/{teamId}/members
+    reference: https://help.sigmacomputing.com/reference/update-team-members.md
+
+  # --- resource.sigma_account_type / data.sigma_account_types ---
+  - operation_id: createAccountType
+    terraform_types: [resource.sigma_account_type]
+    method: POST
+    path: /v2/accountTypes
+    reference: https://help.sigmacomputing.com/reference/create-account-type.md
+  - operation_id: deleteAccountType
+    terraform_types: [resource.sigma_account_type]
+    method: DELETE
+    path: /v2/accountTypes/{accountTypeId}
+    reference: https://help.sigmacomputing.com/reference/delete-account-type.md
+  - operation_id: listAccountTypes
+    terraform_types: [resource.sigma_account_type, data.sigma_account_types]
+    method: GET
+    path: /v2/accountTypes
+    reference: https://help.sigmacomputing.com/reference/list-account-types.md
+  - operation_id: listAccountTypePermissions
+    terraform_types: [resource.sigma_account_type, data.sigma_account_type_permissions]
+    method: GET
+    path: /v2/accountTypes/{accountTypeId}/permissions
+    reference: https://help.sigmacomputing.com/reference/list-account-type-permissions.md
+
+  # --- resource.sigma_user_attribute / data.sigma_user_attributes ---
+  - operation_id: createUserAttribute
+    terraform_types: [resource.sigma_user_attribute]
+    method: POST
+    path: /v2/user-attributes
+    reference: https://help.sigmacomputing.com/reference/create-user-attribute.md
+  - operation_id: getUserAttribute
+    terraform_types: [resource.sigma_user_attribute, data.sigma_user_attribute]
+    method: GET
+    path: /v2/user-attributes/{userAttributeId}
+    reference: https://help.sigmacomputing.com/reference/get-user-attribute.md
+  - operation_id: deleteUserAttribute
+    terraform_types: [resource.sigma_user_attribute]
+    method: DELETE
+    path: /v2/user-attributes/{userAttributeId}
+    reference: https://help.sigmacomputing.com/reference/delete-user-attribute.md
+  - operation_id: listUserAttributes
+    terraform_types: [resource.sigma_user_attribute, data.sigma_user_attributes]
+    method: GET
+    path: /v2/user-attributes
+    reference: https://help.sigmacomputing.com/reference/list-user-attributes.md
+
+  # --- resource.sigma_user_attribute_team_assignment ---
+  - operation_id: setUserAttributeForTeams
+    terraform_types: [resource.sigma_user_attribute_team_assignment]
+    method: POST
+    path: /v2/user-attributes/{userAttributeId}/teams
+    reference: https://help.sigmacomputing.com/reference/set-user-attribute-for-teams.md
+  - operation_id: getUserAttributeTeamAssignments
+    terraform_types: [resource.sigma_user_attribute_team_assignment]
+    method: GET
+    path: /v2/user-attributes/{userAttributeId}/teams
+    reference: https://help.sigmacomputing.com/reference/get-user-attribute-team-assignments.md
+  - operation_id: deleteUserAttributeForTeam
+    terraform_types: [resource.sigma_user_attribute_team_assignment]
+    method: DELETE
+    path: /v2/user-attributes/{userAttributeId}/teams/{teamId}
+    reference: https://help.sigmacomputing.com/reference/delete-user-attribute-for-team.md
+
+  # --- resource.sigma_user_attribute_user_assignment ---
+  - operation_id: setUserAttributeForUsers
+    terraform_types: [resource.sigma_user_attribute_user_assignment]
+    method: POST
+    path: /v2/user-attributes/{userAttributeId}/users
+    reference: https://help.sigmacomputing.com/reference/set-user-attribute-for-users.md
+  - operation_id: getUserAttributeUserAssignments
+    terraform_types: [resource.sigma_user_attribute_user_assignment]
+    method: GET
+    path: /v2/user-attributes/{userAttributeId}/users
+    reference: https://help.sigmacomputing.com/reference/get-user-attribute-user-assignments.md
+  - operation_id: deleteUserAttributeForUser
+    terraform_types: [resource.sigma_user_attribute_user_assignment]
+    method: DELETE
+    path: /v2/user-attributes/{userAttributeId}/users/{userId}
+    reference: https://help.sigmacomputing.com/reference/delete-user-attribute-for-user.md
+
+  # --- resource.sigma_user_attribute_tenant_assignment ---
+  - operation_id: setUserAttributeForTenants
+    terraform_types: [resource.sigma_user_attribute_tenant_assignment]
+    method: POST
+    path: /v2/user-attributes/{userAttributeId}/tenants
+    reference: https://help.sigmacomputing.com/reference/set-user-attribute-for-tenants.md
+  - operation_id: getUserAttributeTenantAssignments
+    terraform_types: [resource.sigma_user_attribute_tenant_assignment]
+    method: GET
+    path: /v2/user-attributes/{userAttributeId}/tenants
+    reference: https://help.sigmacomputing.com/reference/get-user-attribute-tenant-assignments.md
+  - operation_id: deleteUserAttributeForTenant
+    terraform_types: [resource.sigma_user_attribute_tenant_assignment]
+    method: DELETE
+    path: /v2/user-attributes/{userAttributeId}/tenants/{tenantOrganizationId}
+    reference: https://help.sigmacomputing.com/reference/delete-user-attribute-for-tenant.md
+
+  # --- resource.sigma_workspace / data.sigma_workspace / data.sigma_workspaces ---
+  - operation_id: createWorkspace
+    terraform_types: [resource.sigma_workspace]
+    method: POST
+    path: /v2/workspaces
+    reference: https://help.sigmacomputing.com/reference/create-workspace.md
+  - operation_id: getWorkspace
+    terraform_types: [resource.sigma_workspace, data.sigma_workspace]
+    method: GET
+    path: /v2/workspaces/{workspaceId}
+    reference: https://help.sigmacomputing.com/reference/get-workspace.md
+  - operation_id: updateWorkspace
+    terraform_types: [resource.sigma_workspace]
+    method: PATCH
+    path: /v2/workspaces/{workspaceId}
+    reference: https://help.sigmacomputing.com/reference/update-workspace.md
+  - operation_id: deleteWorkspace
+    terraform_types: [resource.sigma_workspace]
+    method: DELETE
+    path: /v2/workspaces/{workspaceId}
+    reference: https://help.sigmacomputing.com/reference/delete-workspace.md
+  - operation_id: v2_1_listWorkspaces
+    terraform_types: [data.sigma_workspaces]
+    method: GET
+    path: /v2.1/workspaces
+    reference: https://help.sigmacomputing.com/reference/v-2-1-list-workspaces.md
+
+  # --- resource.sigma_folder / data.sigma_files ---
+  # OpenAPI operation ID is `create`, not createFile. Folder is one variant of the request union.
+  - operation_id: create
+    terraform_types: [resource.sigma_folder]
+    method: POST
+    path: /v2/files
+    reference: https://help.sigmacomputing.com/reference/create-file.md
+  - operation_id: get
+    terraform_types: [resource.sigma_folder, data.sigma_file]
+    method: GET
+    path: /v2/files/{inodeId}
+    reference: https://help.sigmacomputing.com/reference/get-file.md
+  - operation_id: update
+    terraform_types: [resource.sigma_folder]
+    method: PATCH
+    path: /v2/files/{inodeId}
+    reference: https://help.sigmacomputing.com/reference/update-file.md
+  - operation_id: delete
+    terraform_types: [resource.sigma_folder]
+    method: DELETE
+    path: /v2/files/{inodeId}
+    reference: https://help.sigmacomputing.com/reference/delete-file.md
+  - operation_id: list
+    terraform_types: [data.sigma_files]
+    method: GET
+    path: /v2/files
+    reference: https://help.sigmacomputing.com/reference/list-files.md
+
+  # --- resource.sigma_workspace_grant ---
+  - operation_id: createWorkspaceGrant
+    terraform_types: [resource.sigma_workspace_grant]
+    method: POST
+    path: /v2/workspaces/{workspaceId}/grants
+    reference: https://help.sigmacomputing.com/reference/create-workspace-grant.md
+  - operation_id: listWorkspaceGrants
+    terraform_types: [resource.sigma_workspace_grant]
+    method: GET
+    path: /v2/workspaces/{workspaceId}/grants
+    reference: https://help.sigmacomputing.com/reference/list-workspace-grants.md
+  - operation_id: deleteWorkspaceGrant
+    terraform_types: [resource.sigma_workspace_grant]
+    method: DELETE
+    path: /v2/workspaces/{workspaceId}/grants/{grantId}
+    reference: https://help.sigmacomputing.com/reference/delete-workspace-grant.md
+
+  # --- resource.sigma_workbook_grant (untagged dedicated + tagged generic) ---
+  - operation_id: createWorkbookGrant
+    terraform_types: [resource.sigma_workbook_grant]
+    method: POST
+    path: /v2/workbooks/{workbookId}/grants
+    reference: https://help.sigmacomputing.com/reference/create-workbook-grant.md
+  - operation_id: deleteWorkbookGrant
+    terraform_types: [resource.sigma_workbook_grant]
+    method: DELETE
+    path: /v2/workbooks/{workbookId}/grants/{grantId}
+    reference: https://help.sigmacomputing.com/reference/delete-workbook-grant.md
+
+  # --- resource.sigma_report_grant (untagged dedicated + tagged generic) ---
+  - operation_id: createReportGrant
+    terraform_types: [resource.sigma_report_grant]
+    method: POST
+    path: /v2/reports/{reportId}/grants
+    reference: https://help.sigmacomputing.com/reference/create-report-grant.md
+  - operation_id: deleteReportGrant
+    terraform_types: [resource.sigma_report_grant]
+    method: DELETE
+    path: /v2/reports/{reportId}/grants/{grantId}
+    reference: https://help.sigmacomputing.com/reference/delete-report-grant.md
+
+  # --- internal generic grants (tagged workbook/report grants; not public sigma_grant) ---
+  - operation_id: createGrant
+    terraform_types: [internal.tagged_document_grant]
+    method: POST
+    path: /v2/grants
+    reference: https://help.sigmacomputing.com/reference/create-grant.md
+  - operation_id: getGrant
+    terraform_types: [internal.tagged_document_grant]
+    method: GET
+    path: /v2/grants/{grantId}
+    reference: https://help.sigmacomputing.com/reference/get-grant.md
+  - operation_id: deleteGrant
+    terraform_types: [internal.tagged_document_grant]
+    method: DELETE
+    path: /v2/grants/{grantId}
+    reference: https://help.sigmacomputing.com/reference/delete-grant.md
+  - operation_id: listGrants
+    terraform_types: [resource.sigma_workbook_grant, resource.sigma_report_grant]
+    method: GET
+    path: /v2/grants
+    reference: https://help.sigmacomputing.com/reference/list-grants.md
+
+  # --- resource.sigma_connection / data.sigma_connection / data.sigma_connections ---
+  - operation_id: createConnection
+    terraform_types: [resource.sigma_connection]
+    method: POST
+    path: /v2/connections
+    reference: https://help.sigmacomputing.com/reference/create-connection.md
+  - operation_id: getConnection
+    terraform_types: [resource.sigma_connection, data.sigma_connection]
+    method: GET
+    path: /v2/connections/{connectionId}
+    reference: https://help.sigmacomputing.com/reference/get-connection.md
+  - operation_id: updateConnection
+    terraform_types: [resource.sigma_connection]
+    method: PUT
+    path: /v2/connections/{connectionId}
+    reference: https://help.sigmacomputing.com/reference/update-connection.md
+  - operation_id: deleteConnection
+    terraform_types: [resource.sigma_connection]
+    method: DELETE
+    path: /v2/connections/{connectionId}
+    reference: https://help.sigmacomputing.com/reference/delete-connection.md
+  - operation_id: listConnections
+    terraform_types: [data.sigma_connections]
+    method: GET
+    path: /v2/connections
+    reference: https://help.sigmacomputing.com/reference/list-connections.md
+  - operation_id: testConnection
+    terraform_types: [resource.sigma_connection]
+    method: GET
+    path: /v2/connections/{connectionId}/test
+    reference: https://help.sigmacomputing.com/reference/test-connection.md
+
+  # --- resource.sigma_connection_grant ---
+  - operation_id: createConnectionGrant
+    terraform_types: [resource.sigma_connection_grant]
+    method: POST
+    path: /v2/connections/{connectionId}/grants
+    reference: https://help.sigmacomputing.com/reference/create-connection-grant.md
+  - operation_id: listConnectionGrants
+    terraform_types: [resource.sigma_connection_grant]
+    method: GET
+    path: /v2/connections/{connectionId}/grants
+    reference: https://help.sigmacomputing.com/reference/list-connection-grants.md
+  - operation_id: deleteConnectionGrant
+    terraform_types: [resource.sigma_connection_grant]
+    method: DELETE
+    path: /v2/connections/{connectionId}/grants/{grantId}
+    reference: https://help.sigmacomputing.com/reference/delete-connection-grant.md
+
+  # --- resource.sigma_connection_path_grant ---
+  - operation_id: createConnectionPathGrant
+    terraform_types: [resource.sigma_connection_path_grant]
+    method: POST
+    path: /v2/connections/paths/{connectionPathId}/grants
+    reference: https://help.sigmacomputing.com/reference/create-connection-path-grant.md
+  - operation_id: listConnectionPathGrants
+    terraform_types: [resource.sigma_connection_path_grant]
+    method: GET
+    path: /v2/connections/paths/{connectionPathId}/grants
+    reference: https://help.sigmacomputing.com/reference/list-connection-path-grants.md
+  - operation_id: deleteConnectionPathGrant
+    terraform_types: [resource.sigma_connection_path_grant]
+    method: DELETE
+    path: /v2/connections/paths/{connectionPathId}/grants/{grantId}
+    reference: https://help.sigmacomputing.com/reference/delete-connection-path-grant.md
+
+  # --- data.sigma_connection_paths / data.sigma_connection_path ---
+  - operation_id: listConnectionPaths
+    terraform_types: [data.sigma_connection_paths]
+    method: GET
+    path: /v2/connections/paths
+    reference: https://help.sigmacomputing.com/reference/list-connection-paths.md
+  - operation_id: lookupConnection
+    terraform_types: [data.sigma_connection_path]
+    method: POST
+    path: /v2/connection/{connectionId}/lookup
+    reference: https://help.sigmacomputing.com/reference/lookup-connection.md
+
+  # --- resource.sigma_api_connector ---
+  - operation_id: createApiConnector
+    terraform_types: [resource.sigma_api_connector]
+    method: POST
+    path: /v2/api-connectors
+    reference: https://help.sigmacomputing.com/reference/create-api-connector.md
+  - operation_id: getApiConnector
+    terraform_types: [resource.sigma_api_connector]
+    method: GET
+    path: /v2/api-connectors/{apiConnectorId}
+    reference: https://help.sigmacomputing.com/reference/get-api-connector.md
+  - operation_id: updateApiConnector
+    terraform_types: [resource.sigma_api_connector]
+    method: PATCH
+    path: /v2/api-connectors/{apiConnectorId}
+    reference: https://help.sigmacomputing.com/reference/update-api-connector.md
+  - operation_id: deleteApiConnector
+    terraform_types: [resource.sigma_api_connector]
+    method: DELETE
+    path: /v2/api-connectors/{apiConnectorId}
+    reference: https://help.sigmacomputing.com/reference/delete-api-connector.md
+  - operation_id: listApiConnectors
+    terraform_types: [resource.sigma_api_connector]
+    method: GET
+    path: /v2/api-connectors
+    reference: https://help.sigmacomputing.com/reference/list-api-connectors.md
+
+  # --- resource.sigma_api_credential ---
+  - operation_id: createApiCredential
+    terraform_types: [resource.sigma_api_credential]
+    method: POST
+    path: /v2/api-credentials
+    reference: https://help.sigmacomputing.com/reference/create-api-credential.md
+  - operation_id: getApiCredential
+    terraform_types: [resource.sigma_api_credential]
+    method: GET
+    path: /v2/api-credentials/{apiCredentialId}
+    reference: https://help.sigmacomputing.com/reference/get-api-credential.md
+  - operation_id: updateApiCredential
+    terraform_types: [resource.sigma_api_credential]
+    method: PATCH
+    path: /v2/api-credentials/{apiCredentialId}
+    reference: https://help.sigmacomputing.com/reference/update-api-credential.md
+  - operation_id: deleteApiCredential
+    terraform_types: [resource.sigma_api_credential]
+    method: DELETE
+    path: /v2/api-credentials/{apiCredentialId}
+    reference: https://help.sigmacomputing.com/reference/delete-api-credential.md
+  - operation_id: listApiCredentials
+    terraform_types: [resource.sigma_api_credential]
+    method: GET
+    path: /v2/api-credentials
+    reference: https://help.sigmacomputing.com/reference/list-api-credentials.md
+
+  # --- resource.sigma_tag / data.sigma_tags ---
+  - operation_id: createVersionTag
+    terraform_types: [resource.sigma_tag]
+    method: POST
+    path: /v2/tags
+    reference: https://help.sigmacomputing.com/reference/create-version-tag.md
+  - operation_id: listVersionTag
+    terraform_types: [resource.sigma_tag, data.sigma_tags]
+    method: GET
+    path: /v2/tags
+    reference: https://help.sigmacomputing.com/reference/list-version-tag.md
+  - operation_id: updateVersionTag
+    terraform_types: [resource.sigma_tag]
+    method: PATCH
+    path: /v2/tags/{tagId}
+    reference: https://help.sigmacomputing.com/reference/update-version-tag.md
+  - operation_id: deleteVersionTag
+    terraform_types: [resource.sigma_tag]
+    method: DELETE
+    path: /v2/tags/{tagId}
+    reference: https://help.sigmacomputing.com/reference/delete-version-tag.md
+
+  # --- resource.sigma_workbook_schedule ---
+  - operation_id: postWorkbookSchedule
+    terraform_types: [resource.sigma_workbook_schedule]
+    method: POST
+    path: /v2/workbooks/{workbookId}/schedules
+    reference: https://help.sigmacomputing.com/reference/post-workbook-schedule.md
+  - operation_id: v2_1_listWorkbookSchedules
+    terraform_types: [resource.sigma_workbook_schedule]
+    method: GET
+    path: /v2.1/workbooks/{workbookId}/schedules
+    reference: https://help.sigmacomputing.com/reference/v-2-1-list-workbook-schedules.md
+  - operation_id: updateWorkbookSchedule
+    terraform_types: [resource.sigma_workbook_schedule]
+    method: PATCH
+    path: /v2/workbooks/{workbookId}/schedules/{scheduleId}
+    reference: https://help.sigmacomputing.com/reference/update-workbook-schedule.md
+  - operation_id: deleteWorkbookSchedule
+    terraform_types: [resource.sigma_workbook_schedule]
+    method: DELETE
+    path: /v2/workbooks/{workbookId}/schedules/{scheduleId}
+    reference: https://help.sigmacomputing.com/reference/delete-workbook-schedule.md
+
+  # --- resource.sigma_report_schedule ---
+  - operation_id: createReportSchedule
+    terraform_types: [resource.sigma_report_schedule]
+    method: POST
+    path: /v2/reports/{reportId}/schedules
+    reference: https://help.sigmacomputing.com/reference/create-report-schedule.md
+  - operation_id: listReportSchedules
+    terraform_types: [resource.sigma_report_schedule]
+    method: GET
+    path: /v2/reports/{reportId}/schedules
+    reference: https://help.sigmacomputing.com/reference/list-report-schedules.md
+  - operation_id: updateReportSchedule
+    terraform_types: [resource.sigma_report_schedule]
+    method: PATCH
+    path: /v2/reports/{reportId}/schedules/{scheduleId}
+    reference: https://help.sigmacomputing.com/reference/update-report-schedule.md
+  - operation_id: deleteReportSchedule
+    terraform_types: [resource.sigma_report_schedule]
+    method: DELETE
+    path: /v2/reports/{reportId}/schedules/{scheduleId}
+    reference: https://help.sigmacomputing.com/reference/delete-report-schedule.md
+
+  # --- resource.sigma_workbook_embed ---
+  - operation_id: createWorkbookEmbed
+    terraform_types: [resource.sigma_workbook_embed]
+    method: POST
+    path: /v2/workbooks/{workbookId}/embeds
+    reference: https://help.sigmacomputing.com/reference/create-workbook-embed.md
+  - operation_id: listWorkbookEmbeds
+    terraform_types: [resource.sigma_workbook_embed]
+    method: GET
+    path: /v2/workbooks/{workbookId}/embeds
+    reference: https://help.sigmacomputing.com/reference/list-workbook-embeds.md
+  - operation_id: deleteWorkbookEmbeds
+    terraform_types: [resource.sigma_workbook_embed]
+    method: DELETE
+    path: /v2/workbooks/{workbookId}/embeds/{embedId}
+    reference: https://help.sigmacomputing.com/reference/delete-workbook-embeds.md
+
+  # --- resource.sigma_translation ---
+  - operation_id: createOrgTranslation
+    terraform_types: [resource.sigma_translation]
+    method: POST
+    path: /v2/translations/organization
+    reference: https://help.sigmacomputing.com/reference/create-org-translation.md
+  - operation_id: getOrgTranslations
+    terraform_types: [resource.sigma_translation]
+    method: GET
+    path: /v2/translations/organization/{lng}
+    reference: https://help.sigmacomputing.com/reference/get-org-translations.md
+  - operation_id: updateOrgTranslation
+    terraform_types: [resource.sigma_translation]
+    method: PUT
+    path: /v2/translations/organization/{lng}
+    reference: https://help.sigmacomputing.com/reference/update-org-translation.md
+  - operation_id: deleteOrgTranslation
+    terraform_types: [resource.sigma_translation]
+    method: DELETE
+    path: /v2/translations/organization/{lng}
+    reference: https://help.sigmacomputing.com/reference/delete-org-translation.md
+  - operation_id: getOrgTranslationsWithVariant
+    terraform_types: [resource.sigma_translation]
+    method: GET
+    path: /v2/translations/organization/{lng}/{lng_variant}
+    reference: https://help.sigmacomputing.com/reference/get-org-translations-with-variant.md
+  - operation_id: updateOrgTranslationWithVariant
+    terraform_types: [resource.sigma_translation]
+    method: PUT
+    path: /v2/translations/organization/{lng}/{lng_variant}
+    reference: https://help.sigmacomputing.com/reference/update-org-translation-with-variant.md
+  - operation_id: deleteOrgTranslationWithVariant
+    terraform_types: [resource.sigma_translation]
+    method: DELETE
+    path: /v2/translations/organization/{lng}/{lng_variant}
+    reference: https://help.sigmacomputing.com/reference/delete-org-translation-with-variant.md
+
+  # --- data.sigma_workbook / data.sigma_workbooks ---
+  - operation_id: getWorkbook
+    terraform_types: [data.sigma_workbook]
+    method: GET
+    path: /v2/workbooks/{workbookId}
+    reference: https://help.sigmacomputing.com/reference/get-workbook.md
+  - operation_id: listWorkbooks
+    terraform_types: [data.sigma_workbooks]
+    method: GET
+    path: /v2/workbooks
+    reference: https://help.sigmacomputing.com/reference/list-workbooks.md
+  - operation_id: v2_1_listMaterializationSchedules
+    terraform_types: [data.sigma_workbook_materialization_schedules]
+    method: GET
+    path: /v2.1/workbooks/{workbookId}/materialization-schedules
+    reference: https://help.sigmacomputing.com/reference/v-2-1-list-materialization-schedules.md
+
+  # --- data.sigma_report / data.sigma_reports ---
+  - operation_id: getReport
+    terraform_types: [data.sigma_report]
+    method: GET
+    path: /v2/reports/{reportId}
+    reference: https://help.sigmacomputing.com/reference/get-report.md
+  - operation_id: listReports
+    terraform_types: [data.sigma_reports]
+    method: GET
+    path: /v2/reports
+    reference: https://help.sigmacomputing.com/reference/list-reports.md
+
+  # --- data.sigma_data_model / data.sigma_data_models ---
+  - operation_id: getDataModel
+    terraform_types: [data.sigma_data_model]
+    method: GET
+    path: /v2/dataModels/{dataModelId}
+    reference: https://help.sigmacomputing.com/reference/get-data-model.md
+  - operation_id: listDataModels
+    terraform_types: [data.sigma_data_models]
+    method: GET
+    path: /v2/dataModels
+    reference: https://help.sigmacomputing.com/reference/list-data-models.md
+  - operation_id: listDataModelMaterializationSchedules
+    terraform_types: [data.sigma_data_model_materialization_schedules]
+    method: GET
+    path: /v2/dataModels/{dataModelId}/materializationSchedules
+    reference: https://help.sigmacomputing.com/reference/list-data-model-materialization-schedules.md
+
+  # --- data.sigma_dataset / data.sigma_datasets ---
+  - operation_id: getDataset
+    terraform_types: [data.sigma_dataset]
+    method: GET
+    path: /v2/datasets/{datasetId}
+    reference: https://help.sigmacomputing.com/reference/get-dataset.md
+  - operation_id: listDatasets
+    terraform_types: [data.sigma_datasets]
+    method: GET
+    path: /v2/datasets
+    reference: https://help.sigmacomputing.com/reference/list-datasets.md
+
+  # --- data.sigma_template / data.sigma_templates ---
+  - operation_id: getTemplate
+    terraform_types: [data.sigma_template]
+    method: GET
+    path: /v2/templates/{templateId}
+    reference: https://help.sigmacomputing.com/reference/get-template.md
+  - operation_id: listTemplates
+    terraform_types: [data.sigma_templates]
+    method: GET
+    path: /v2/templates
+    reference: https://help.sigmacomputing.com/reference/list-templates.md
+
+  # --- resource.sigma_tenant / data.sigma_tenants ---
+  - operation_id: createTenant
+    terraform_types: [resource.sigma_tenant]
+    method: POST
+    path: /v2/tenants
+    reference: https://help.sigmacomputing.com/reference/create-tenant.md
+  - operation_id: getTenant
+    terraform_types: [resource.sigma_tenant, data.sigma_tenant]
+    method: GET
+    path: /v2/tenants/{tenantOrganizationId}
+    reference: https://help.sigmacomputing.com/reference/get-tenant.md
+  - operation_id: patchTenant
+    terraform_types: [resource.sigma_tenant]
+    method: PATCH
+    path: /v2/tenants/{tenantOrganizationId}
+    reference: https://help.sigmacomputing.com/reference/patch-tenant.md
+  - operation_id: deleteTenant
+    terraform_types: [resource.sigma_tenant]
+    method: DELETE
+    path: /v2/tenants/{tenantOrganizationId}
+    reference: https://help.sigmacomputing.com/reference/delete-tenant.md
+  - operation_id: listTenants
+    terraform_types: [data.sigma_tenants]
+    method: GET
+    path: /v2/tenants
+    reference: https://help.sigmacomputing.com/reference/list-tenants.md
+
+  # --- resource.sigma_tenant_deployment_capability ---
+  - operation_id: listTenantDeploymentCapabilities
+    terraform_types: [resource.sigma_tenant_deployment_capability]
+    method: GET
+    path: /v2/tenants/{tenantOrganizationId}/capabilities/deployments
+    reference: https://help.sigmacomputing.com/reference/list-tenant-deployment-capabilities.md
+  - operation_id: addTenantDeploymentCapabilities
+    terraform_types: [resource.sigma_tenant_deployment_capability]
+    method: POST
+    path: /v2/tenants/{tenantOrganizationId}/capabilities/deployments:batchAdd
+    reference: https://help.sigmacomputing.com/reference/add-tenant-deployment-capabilities.md
+  - operation_id: removeTenantDeploymentCapabilities
+    terraform_types: [resource.sigma_tenant_deployment_capability]
+    method: POST
+    path: /v2/tenants/{tenantOrganizationId}/capabilities/deployments:batchRemove
+    reference: https://help.sigmacomputing.com/reference/remove-tenant-deployment-capabilities.md
+
+  # --- resource.sigma_deployment_policy / data.sigma_deployment_policies ---
+  - operation_id: createDeployment
+    terraform_types: [resource.sigma_deployment_policy]
+    method: POST
+    path: /v2/deploymentPolicies
+    reference: https://help.sigmacomputing.com/reference/create-deployment.md
+  - operation_id: getDeployment
+    terraform_types: [resource.sigma_deployment_policy, data.sigma_deployment_policy]
+    method: GET
+    path: /v2/deploymentPolicies/{deploymentPolicyId}
+    reference: https://help.sigmacomputing.com/reference/get-deployment.md
+  - operation_id: updateDeployment
+    terraform_types: [resource.sigma_deployment_policy]
+    method: PATCH
+    path: /v2/deploymentPolicies/{deploymentPolicyId}
+    reference: https://help.sigmacomputing.com/reference/update-deployment.md
+  - operation_id: archiveDeployment
+    terraform_types: [resource.sigma_deployment_policy]
+    method: DELETE
+    path: /v2/deploymentPolicies/{deploymentPolicyId}
+    reference: https://help.sigmacomputing.com/reference/archive-deployment.md
+  - operation_id: listDeployments
+    terraform_types: [data.sigma_deployment_policies]
+    method: GET
+    path: /v2/deploymentPolicies
+    reference: https://help.sigmacomputing.com/reference/list-deployments.md
+
+  # --- resource.sigma_deployment_policy_document ---
+  - operation_id: addInodesToDeployment
+    terraform_types: [resource.sigma_deployment_policy_document]
+    method: POST
+    path: /v2/deploymentPolicies/{deploymentPolicyId}/files
+    reference: https://help.sigmacomputing.com/reference/add-inodes-to-deployment.md
+  - operation_id: listInodesForDeployment
+    terraform_types: [resource.sigma_deployment_policy_document]
+    method: GET
+    path: /v2/deploymentPolicies/{deploymentPolicyId}/files
+    reference: https://help.sigmacomputing.com/reference/list-inodes-for-deployment.md
+  - operation_id: removeInodesFromDeployment
+    terraform_types: [resource.sigma_deployment_policy_document]
+    method: DELETE
+    path: /v2/deploymentPolicies/{deploymentPolicyId}/files/{inodeId}
+    reference: https://help.sigmacomputing.com/reference/remove-inodes-from-deployment.md
+
+  # --- resource.sigma_deployment_policy_tenant ---
+  - operation_id: addTenantToDeployment
+    terraform_types: [resource.sigma_deployment_policy_tenant]
+    method: POST
+    path: /v2/deploymentPolicies/{deploymentPolicyId}/tenants
+    reference: https://help.sigmacomputing.com/reference/add-tenant-to-deployment.md
+  - operation_id: listTenantsForDeployment
+    terraform_types: [resource.sigma_deployment_policy_tenant]
+    method: GET
+    path: /v2/deploymentPolicies/{deploymentPolicyId}/tenants
+    reference: https://help.sigmacomputing.com/reference/list-tenants-for-deployment.md
+  - operation_id: removeTenantFromDeployment
+    terraform_types: [resource.sigma_deployment_policy_tenant]
+    method: DELETE
+    path: /v2/deploymentPolicies/{deploymentPolicyId}/tenants/{tenantOrganizationId}
+    reference: https://help.sigmacomputing.com/reference/remove-tenant-from-deployment.md
+
+  # --- resource.sigma_source_swap_policy ---
+  - operation_id: createSourceSwapPolicy
+    terraform_types: [resource.sigma_source_swap_policy]
+    method: POST
+    path: /v2/sourceSwapPolicies
+    reference: https://help.sigmacomputing.com/reference/create-source-swap-policy.md
+  - operation_id: getSourceSwapPolicy
+    terraform_types: [resource.sigma_source_swap_policy]
+    method: GET
+    path: /v2/sourceSwapPolicies/{policyId}
+    reference: https://help.sigmacomputing.com/reference/get-source-swap-policy.md
+  - operation_id: updateSourceSwapPolicy
+    terraform_types: [resource.sigma_source_swap_policy]
+    method: PATCH
+    path: /v2/sourceSwapPolicies/{policyId}
+    reference: https://help.sigmacomputing.com/reference/update-source-swap-policy.md
+  - operation_id: deleteSourceSwapPolicy
+    terraform_types: [resource.sigma_source_swap_policy]
+    method: DELETE
+    path: /v2/sourceSwapPolicies/{policyId}
+    reference: https://help.sigmacomputing.com/reference/delete-source-swap-policy.md

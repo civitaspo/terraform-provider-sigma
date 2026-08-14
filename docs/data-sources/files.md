@@ -3,12 +3,12 @@
 page_title: "sigma_files Data Source - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Lists Sigma files with optional API filters.
+  Lists Sigma files with optional API filters. Results preserve Sigma API order; key collections by returned IDs rather than positional indices. Pagination cursors and page sizes are not exposed; this data source retrieves every page.
 ---
 
 # sigma_files (Data Source)
 
-Lists Sigma files with optional API filters.
+Lists Sigma files with optional API filters. Results preserve Sigma API order; key collections by returned IDs rather than positional indices. Pagination cursors and page sizes are not exposed; this data source retrieves every page.
 
 ## Example Usage
 
@@ -25,15 +25,15 @@ data "sigma_files" "example" {
 
 ### Optional
 
-- `direct_children_only` (Boolean) Whether to return only direct children of the parent.
-- `name` (String) File name filter.
-- `parent_id` (String) Parent folder ID.
-- `permission` (String) Permission filter: `view`, `explore`, `organize`, or `edit`.
-- `type_filters` (Set of String) File type filters supported by the Sigma files API.
+- `direct_children_only` (Boolean) Whether to return only direct children of the parent (`directChildFilter`). Explicit `false` is sent; null omits the parameter.
+- `name` (String) File name filter (`name`).
+- `parent_id` (String) Parent folder ID (`parentId`).
+- `permission` (String) Permission filter (`permissionFilter`): `view`, `explore`, `organize`, or `edit`.
+- `type_filters` (Set of String) File type filters (`typeFilters`) supported by the Sigma files API. Null omits the parameter; an empty set sends an empty filter list.
 
 ### Read-Only
 
-- `files` (Attributes List) Files. (see [below for nested schema](#nestedatt--files))
+- `files` (Attributes List) Files in API order. (see [below for nested schema](#nestedatt--files))
 - `id` (String) Stable identifier for this data source.
 
 <a id="nestedatt--files"></a>

@@ -71,24 +71,19 @@ provider "sigma" {
 |-----------|--------------|
 | `sigma_member` | `sigma_member`, `sigma_members` |
 | `sigma_team` | `sigma_team`, `sigma_teams` |
-| `sigma_team_member`, `sigma_team_members` | |
+| `sigma_team_member` | |
 | `sigma_account_type` | `sigma_account_types` |
 | `sigma_user_attribute` | `sigma_user_attributes` |
 | `sigma_user_attribute_team_assignment` | |
 | `sigma_user_attribute_user_assignment` | |
-
-Do not combine fine-grained `sigma_team_member` and authoritative
-`sigma_team_members` for the same team. `sigma_team_members` removes any
-member absent from `member_ids` and removes every tracked member on destroy.
 
 ### Workspaces, files, and grants
 
 | Resources | Data sources |
 |-----------|--------------|
 | `sigma_workspace` | `sigma_workspace`, `sigma_workspaces` |
-| `sigma_file` | `sigma_files` |
+| `sigma_folder` | `sigma_files` |
 | `sigma_workspace_grant` | |
-| `sigma_grant` | |
 | `sigma_workbook_grant`, `sigma_report_grant` | |
 
 ### Connections
@@ -124,9 +119,32 @@ These use Sigma Beta APIs and may change without notice.
 | Resources | Data sources |
 |-----------|--------------|
 | `sigma_tenant` | `sigma_tenants` |
-| `sigma_tenant_deployment_capabilities` | |
+| `sigma_tenant_deployment_capability` | |
+| `sigma_user_attribute_tenant_assignment` | |
 | `sigma_deployment_policy` | `sigma_deployment_policies` |
+| `sigma_deployment_policy_document` | |
+| `sigma_deployment_policy_tenant` | |
 | `sigma_source_swap_policy` | |
+
+## Out of scope
+
+The following Sigma capabilities are intentionally not managed by this provider:
+
+| Area | Rationale |
+|------|-----------|
+| Query execution / exports | Operational, not durable infrastructure |
+| Lineage | Read-heavy analytics surface; poor Terraform fit |
+| Materialization runs | Ephemeral job orchestration |
+| Favorites | Per-user preferences |
+| SAML certificate management | Excluded by design |
+| Embed URL generation / JWT signing | Host-app concern; prefer JWT-signed URLs |
+| Workbook duplication / one-shot source swap actions | Imperative actions, not long-lived resources |
+| Organization API client keys (`/v2/credentials`) | Distinct from third-party `sigma_api_credential` |
+| Dedicated workbook/report resources | Short lifecycle and high AI change frequency are a poor Terraform fit. Data sources and specialized grants remain; folders use `sigma_folder` and workspaces use `sigma_workspace` |
+| Generic inode grants (`sigma_grant`) | Overlapping ownership; use `sigma_workspace_grant`, `sigma_workbook_grant`, or `sigma_report_grant` |
+| Aggregate team membership (`sigma_team_members`) | Overlapping ownership; use singular `sigma_team_member` |
+| Applying version tags to documents | Short lifecycle and high AI change frequency are a poor Terraform fit. Tag definitions via `sigma_tag` remain |
+| Data model spec / as-code content | Short lifecycle and high AI change frequency are a poor Terraform fit |
 
 ## Requirements
 

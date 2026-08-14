@@ -2,12 +2,9 @@ package provider
 
 import (
 	"context"
-	"fmt"
-	"os"
 
 	"github.com/civitaspo/terraform-provider-sigma/internal/sigma"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -75,7 +72,7 @@ func (p *SigmaProvider) Configure(ctx context.Context, request provider.Configur
 		return
 	}
 
-	client, err := sigma.NewClient(baseURL, clientID, clientSecret)
+	client, err := sigma.NewClient(baseURL, clientID, clientSecret, sigma.WithUserAgent("terraform-provider-sigma/"+p.version))
 	if err != nil {
 		response.Diagnostics.AddError("Invalid Sigma provider configuration", err.Error())
 		return
@@ -92,25 +89,34 @@ func (p *SigmaProvider) DataSources(_ context.Context) []func() datasource.DataS
 		NewTeamDataSource,
 		NewTeamsDataSource,
 		NewAccountTypesDataSource,
+		NewAccountTypePermissionsDataSource,
 		NewUserAttributesDataSource,
+		NewUserAttributeDataSource,
 		NewWorkspaceDataSource,
 		NewWorkspacesDataSource,
 		NewFilesDataSource,
+		NewFileDataSource,
 		NewConnectionDataSource,
 		NewConnectionsDataSource,
 		NewConnectionPathsDataSource,
+		NewConnectionPathDataSource,
 		NewWorkbookDataSource,
 		NewWorkbooksDataSource,
+		NewWorkbookMaterializationSchedulesDataSource,
 		NewReportDataSource,
 		NewReportsDataSource,
 		NewDataModelDataSource,
 		NewDataModelsDataSource,
+		NewDataModelMaterializationSchedulesDataSource,
 		NewDatasetDataSource,
 		NewDatasetsDataSource,
 		NewTemplatesDataSource,
+		NewTemplateDataSource,
 		NewTagsDataSource,
 		NewTenantsDataSource,
+		NewTenantDataSource,
 		NewDeploymentPoliciesDataSource,
+		NewDeploymentPolicyDataSource,
 	}
 }
 
@@ -119,15 +125,14 @@ func (p *SigmaProvider) Resources(context.Context) []func() resource.Resource {
 		NewMemberResource,
 		NewTeamResource,
 		NewTeamMemberResource,
-		NewTeamMembersResource,
 		NewAccountTypeResource,
 		NewUserAttributeResource,
 		NewUserAttributeTeamAssignmentResource,
 		NewUserAttributeUserAssignmentResource,
+		NewUserAttributeTenantAssignmentResource,
 		NewWorkspaceResource,
 		NewWorkspaceGrantResource,
-		NewFileResource,
-		NewGrantResource,
+		NewFolderResource,
 		NewWorkbookGrantResource,
 		NewReportGrantResource,
 		NewConnectionResource,
@@ -141,29 +146,10 @@ func (p *SigmaProvider) Resources(context.Context) []func() resource.Resource {
 		NewWorkbookEmbedResource,
 		NewTranslationResource,
 		NewTenantResource,
-		NewTenantDeploymentCapabilitiesResource,
+		NewTenantDeploymentCapabilityResource,
 		NewDeploymentPolicyResource,
+		NewDeploymentPolicyDocumentResource,
+		NewDeploymentPolicyTenantResource,
 		NewSourceSwapPolicyResource,
 	}
-}
-
-func configuredValue(value types.String, environment, attribute string, diagnostics *diag.Diagnostics) string {
-	if value.IsUnknown() {
-		diagnostics.AddError(
-			fmt.Sprintf("Unknown %s", attribute),
-			fmt.Sprintf("The %s provider attribute must be known during configuration.", attribute),
-		)
-		return ""
-	}
-	if !value.IsNull() && value.ValueString() != "" {
-		return value.ValueString()
-	}
-	if environmentValue := os.Getenv(environment); environmentValue != "" {
-		return environmentValue
-	}
-	diagnostics.AddError(
-		fmt.Sprintf("Missing %s", attribute),
-		fmt.Sprintf("Set the %s provider attribute or the %s environment variable.", attribute, environment),
-	)
-	return ""
 }

@@ -3,23 +3,18 @@
 page_title: "sigma_connection_paths Data Source - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Lists Sigma connection paths, or looks up one fully qualified path when path is configured.
+  Lists Sigma connection paths using GET /v2/connections/paths. Results preserve Sigma API order; key collections by returned IDs rather than positional indices. Pagination cursors and page sizes are not exposed; this data source retrieves every page.
 ---
 
 # sigma_connection_paths (Data Source)
 
-Lists Sigma connection paths, or looks up one fully qualified path when `path` is configured.
+Lists Sigma connection paths using GET `/v2/connections/paths`. Results preserve Sigma API order; key collections by returned IDs rather than positional indices. Pagination cursors and page sizes are not exposed; this data source retrieves every page.
 
 ## Example Usage
 
 ```terraform
 data "sigma_connection_paths" "example" {
   connection_id = "connection-id"
-}
-
-data "sigma_connection_paths" "lookup" {
-  connection_id = "connection-id"
-  path          = ["DATABASE", "SCHEMA", "TABLE"]
 }
 ```
 
@@ -28,16 +23,12 @@ data "sigma_connection_paths" "lookup" {
 
 ### Optional
 
-- `connection_id` (String) Optional connection filter; required with `path`.
-- `path` (List of String) Fully qualified path components to look up.
+- `connection_id` (String) Optional connection filter (`connectionId`).
 
 ### Read-Only
 
-- `id` (String) Stable identifier for this data source.
-- `inode_id` (String) Connection path ID returned by lookup.
-- `kind` (String) Object kind returned by lookup.
-- `paths` (Attributes List) Connection paths returned by list. (see [below for nested schema](#nestedatt--paths))
-- `url` (String) Connection URL returned by lookup.
+- `id` (String) Stable list identifier. Includes the optional connection filter when set.
+- `paths` (Attributes List) Connection paths in API order. (see [below for nested schema](#nestedatt--paths))
 
 <a id="nestedatt--paths"></a>
 ### Nested Schema for `paths`

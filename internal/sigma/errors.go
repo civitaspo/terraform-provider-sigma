@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 )
@@ -18,10 +17,19 @@ type APIError struct {
 }
 
 func (err *APIError) Error() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Sigma API error (%d", err.StatusCode)
 	if err.Code != "" {
-		return fmt.Sprintf("Sigma API error (%d, %s): %s", err.StatusCode, err.Code, err.Message)
+		fmt.Fprintf(&b, ", %s", err.Code)
 	}
-	return fmt.Sprintf("Sigma API error (%d): %s", err.StatusCode, err.Message)
+	if err.RequestID != "" {
+		fmt.Fprintf(&b, ", request_id=%s", err.RequestID)
+	}
+	b.WriteByte(')')
+	if err.Message != "" {
+		fmt.Fprintf(&b, ": %s", err.Message)
+	}
+	return b.String()
 }
 
 // IsNotFound reports whether err indicates a missing Sigma resource.
@@ -55,12 +63,7 @@ func isResourceNotFoundAPIError(apiError *APIError) bool {
 	return true
 }
 
-func decodeAPIError(response *http.Response) error {
-	body, readErr := io.ReadAll(response.Body)
-	if readErr != nil {
-		return fmt.Errorf("read Sigma API error response: %w", readErr)
-	}
-
+func apiErrorFrom(response *http.Response, body []byte) error {
 	var payload struct {
 		Code      string `json:"code"`
 		Message   string `json:"message"`

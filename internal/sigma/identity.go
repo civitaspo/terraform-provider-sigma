@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
+
+	"github.com/civitaspo/terraform-provider-sigma/internal/sigma/openapi"
 )
 
 type Member struct {
@@ -16,55 +17,96 @@ type Member struct {
 	LastName       string `json:"lastName"`
 	Email          string `json:"email"`
 	UserKind       string `json:"userKind"`
+	HomeFolderID   string `json:"homeFolderId"`
 	IsArchived     bool   `json:"isArchived"`
 	IsInactive     bool   `json:"isInactive"`
 }
+type AddToTeamInput struct {
+	TeamID      string `json:"teamId"`
+	IsTeamAdmin *bool  `json:"isTeamAdmin,omitempty"`
+}
 type CreateMemberInput struct {
-	Email      string `json:"email"`
-	FirstName  string `json:"firstName"`
-	LastName   string `json:"lastName"`
-	MemberType string `json:"memberType,omitempty"`
-	UserKind   string `json:"userKind,omitempty"`
+	Email      string           `json:"email"`
+	FirstName  string           `json:"firstName"`
+	LastName   string           `json:"lastName"`
+	MemberType string           `json:"memberType,omitempty"`
+	UserKind   string           `json:"userKind,omitempty"`
+	AddToTeams []AddToTeamInput `json:"addToTeams,omitempty"`
+	SendInvite *bool            `json:"-"`
 }
 type UpdateMemberInput struct {
-	FirstName  *string `json:"firstName,omitempty"`
-	LastName   *string `json:"lastName,omitempty"`
-	Email      *string `json:"email,omitempty"`
-	MemberType *string `json:"memberType,omitempty"`
-	UserKind   *string `json:"userKind,omitempty"`
-	IsArchived *bool   `json:"isArchived,omitempty"`
+	FirstName               *string `json:"firstName,omitempty"`
+	LastName                *string `json:"lastName,omitempty"`
+	Email                   *string `json:"email,omitempty"`
+	MemberType              *string `json:"memberType,omitempty"`
+	UserKind                *string `json:"userKind,omitempty"`
+	IsArchived              *bool   `json:"isArchived,omitempty"`
+	NewOwnerID              *string `json:"newOwnerId,omitempty"`
+	ArchiveDocuments        *bool   `json:"archiveDocuments,omitempty"`
+	ArchiveScheduledExports *bool   `json:"archiveScheduledExports,omitempty"`
 }
 
 func (c *Client) CreateMember(ctx context.Context, in CreateMemberInput) (*Member, error) {
+	body, err := encodeBody(in)
+	if err != nil {
+		return nil, err
+	}
 	var v Member
-	err := c.sendJSON(ctx, http.MethodPost, "/v2/members", in, &v)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.CreateMemberWithBody(ctx, &openapi.CreateMemberParams{SendInvite: in.SendInvite}, jsonContentType, body)
+	}, &v)
 	return &v, err
 }
 func (c *Client) GetMember(ctx context.Context, id string) (*Member, error) {
 	var v Member
-	err := c.getJSON(ctx, "/v2/members/"+url.PathEscape(id), &v)
+	err := c.doDecode(func() (*http.Response, error) {
+		return c.api.GetMember(ctx, id, nil)
+	}, &v)
 	return &v, err
 }
 func (c *Client) UpdateMember(ctx context.Context, id string, in UpdateMemberInput) (*Member, error) {
+	body, err := encodeBody(in)
+	if err != nil {
+		return nil, err
+	}
 	var v Member
-	err := c.sendJSON(ctx, http.MethodPatch, "/v2/members/"+url.PathEscape(id), in, &v)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.UpdateMemberWithBody(ctx, id, nil, jsonContentType, body)
+	}, &v)
 	return &v, err
 }
 func (c *Client) DeleteMember(ctx context.Context, id string) error {
-	return c.sendJSON(ctx, http.MethodDelete, "/v2/members/"+url.PathEscape(id), nil, nil)
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.DeleteMember(ctx, id, nil)
+	})
 }
-func (c *Client) ListMembers(ctx context.Context) ([]Member, error) {
-	return ListAll[Member](ctx, c, "/v2/members")
+
+// ListMembersOptions are documented listMembers query filters except pagination.
+type ListMembersOptions struct {
+	Search          *string
+	Email           *string
+	IncludeArchived *bool
+	IncludeInactive *bool
+}
+
+func (c *Client) ListMembers(ctx context.Context, opts ListMembersOptions) ([]Member, error) {
+	return c.listMembers(ctx, &openapi.ListMembersParams{
+		Search:          opts.Search,
+		Email:           opts.Email,
+		IncludeArchived: opts.IncludeArchived,
+		IncludeInactive: opts.IncludeInactive,
+	})
 }
 
 // FindMemberByEmail looks up a member by email. When includeArchived is true, archived
-// members are included so callers can reactivate deactivated accounts.
+// members are included in the list filter.
 func (c *Client) FindMemberByEmail(ctx context.Context, email string, includeArchived bool) (*Member, error) {
-	path := "/v2/members?email=" + url.QueryEscape(email)
+	params := &openapi.ListMembersParams{Email: &email}
 	if includeArchived {
-		path += "&includeArchived=true"
+		include := true
+		params.IncludeArchived = &include
 	}
-	members, err := ListAll[Member](ctx, c, path)
+	members, err := c.listMembers(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +118,16 @@ func (c *Client) FindMemberByEmail(ctx context.Context, email string, includeArc
 	return nil, &APIError{StatusCode: http.StatusNotFound, Message: "member not found"}
 }
 
+func (c *Client) listMembers(ctx context.Context, base *openapi.ListMembersParams) ([]Member, error) {
+	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]Member, *string, error) {
+		params := *base
+		params.Page = page
+		return fetchPage[Member](c, func() (*http.Response, error) {
+			return c.api.ListMembers(ctx, &params)
+		})
+	})
+}
+
 type Team struct {
 	TeamID      string   `json:"teamId"`
 	Name        string   `json:"name"`
@@ -83,12 +135,14 @@ type Team struct {
 	Visibility  string   `json:"visibility"`
 	IsArchived  bool     `json:"isArchived"`
 	Members     []string `json:"members"`
+	WorkspaceID *string  `json:"workspaceId"`
 }
 type CreateTeamInput struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description,omitempty"`
-	Visibility  string   `json:"visibility,omitempty"`
-	Members     []string `json:"members,omitempty"`
+	Name             string   `json:"name"`
+	Description      string   `json:"description,omitempty"`
+	Visibility       string   `json:"visibility,omitempty"`
+	Members          []string `json:"members,omitempty"`
+	CreateTeamFolder *bool    `json:"createTeamFolder,omitempty"`
 }
 type UpdateTeamInput struct {
 	Name        *string `json:"name,omitempty"`
@@ -97,25 +151,60 @@ type UpdateTeamInput struct {
 }
 
 func (c *Client) CreateTeam(ctx context.Context, in CreateTeamInput) (*Team, error) {
+	body, err := encodeBody(in)
+	if err != nil {
+		return nil, err
+	}
 	var v Team
-	err := c.sendJSON(ctx, http.MethodPost, "/v2/teams", in, &v)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.CreateTeamWithBody(ctx, nil, jsonContentType, body)
+	}, &v)
 	return &v, err
 }
 func (c *Client) GetTeam(ctx context.Context, id string) (*Team, error) {
 	var v Team
-	err := c.getJSON(ctx, "/v2/teams/"+url.PathEscape(id), &v)
+	err := c.doDecode(func() (*http.Response, error) {
+		return c.api.GetTeam(ctx, id, nil)
+	}, &v)
 	return &v, err
 }
 func (c *Client) UpdateTeam(ctx context.Context, id string, in UpdateTeamInput) (*Team, error) {
+	body, err := encodeBody(in)
+	if err != nil {
+		return nil, err
+	}
 	var v Team
-	err := c.sendJSON(ctx, http.MethodPatch, "/v2/teams/"+url.PathEscape(id), in, &v)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.UpdateTeamWithBody(ctx, id, nil, jsonContentType, body)
+	}, &v)
 	return &v, err
 }
 func (c *Client) DeleteTeam(ctx context.Context, id string) error {
-	return c.sendJSON(ctx, http.MethodDelete, "/v2/teams/"+url.PathEscape(id), nil, nil)
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.DeleteTeam(ctx, id, nil)
+	})
 }
-func (c *Client) ListTeams(ctx context.Context) ([]Team, error) {
-	return ListAll[Team](ctx, c, "/v2.1/teams")
+
+// ListTeamsOptions are documented v2.1 list teams query filters except pagination.
+type ListTeamsOptions struct {
+	Name        *string
+	Description *string
+	Visibility  *string
+}
+
+func (c *Client) ListTeams(ctx context.Context, opts ListTeamsOptions) ([]Team, error) {
+	base := &openapi.V21ListTeamsParams{Name: opts.Name, Description: opts.Description}
+	if opts.Visibility != nil {
+		visibility := openapi.V21TeamsGetParametersVisibility(*opts.Visibility)
+		base.Visibility = &visibility
+	}
+	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]Team, *string, error) {
+		params := *base
+		params.Page = page
+		return fetchPage[Team](c, func() (*http.Response, error) {
+			return c.api.V21ListTeams(ctx, &params)
+		})
+	})
 }
 
 type TeamMember struct {
@@ -125,10 +214,21 @@ type TeamMember struct {
 }
 
 func (c *Client) ListTeamMembers(ctx context.Context, id string) ([]TeamMember, error) {
-	return ListAll[TeamMember](ctx, c, "/v2/teams/"+url.PathEscape(id)+"/members")
+	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]TeamMember, *string, error) {
+		return fetchPage[TeamMember](c, func() (*http.Response, error) {
+			return c.api.GetTeamMembers(ctx, id, &openapi.GetTeamMembersParams{Page: page})
+		})
+	})
 }
 func (c *Client) UpdateTeamMembers(ctx context.Context, id string, add, remove []string) error {
-	return c.sendJSON(ctx, http.MethodPatch, "/v2/teams/"+url.PathEscape(id)+"/members", map[string]any{"add": add, "remove": remove}, nil)
+	payload := map[string]any{"add": add, "remove": remove}
+	body, err := encodeBody(payload)
+	if err != nil {
+		return err
+	}
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.UpdateTeamMembersWithBody(ctx, id, nil, jsonContentType, body)
+	})
 }
 
 type AccountType struct {
@@ -143,45 +243,44 @@ type AccountTypePermission struct {
 }
 
 func (c *Client) ListAccountTypes(ctx context.Context) ([]AccountType, error) {
-	var all []AccountType
-	p := "/v2/accountTypes"
-	seen := map[string]struct{}{}
-	for pageNum := 0; pageNum < maxListPages; pageNum++ {
-		var page struct {
-			Entries []AccountType `json:"entries"`
-			Next    string        `json:"nextPageToken"`
-		}
-		if err := c.getJSON(ctx, p, &page); err != nil {
-			return nil, err
-		}
-		all = append(all, page.Entries...)
-		if page.Next == "" {
-			return all, nil
-		}
-		if _, ok := seen[page.Next]; ok {
-			return nil, fmt.Errorf("sigma pagination cycle detected: nextPageToken %q repeated", page.Next)
-		}
-		seen[page.Next] = struct{}{}
-		p = "/v2/accountTypes?pageToken=" + url.QueryEscape(page.Next)
-	}
-	return nil, fmt.Errorf("sigma pagination exceeded %d pages for /v2/accountTypes", maxListPages)
+	return listAllByPageToken(ctx, func(ctx context.Context, pageToken *string) ([]AccountType, *string, error) {
+		return fetchPageToken[AccountType](c, func() (*http.Response, error) {
+			return c.api.ListAccountTypes(ctx, &openapi.ListAccountTypesParams{PageToken: pageToken})
+		})
+	})
 }
 func (c *Client) CreateAccountType(ctx context.Context, n, d string, p []string) (*AccountType, error) {
+	body, err := encodeBody(map[string]any{"name": n, "description": d, "permissions": p})
+	if err != nil {
+		return nil, err
+	}
 	var v AccountType
-	err := c.sendJSON(ctx, http.MethodPost, "/v2/accountTypes", map[string]any{"name": n, "description": d, "permissions": p}, &v)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.CreateAccountTypeWithBody(ctx, nil, jsonContentType, body)
+	}, &v)
 	return &v, err
 }
 func (c *Client) DeleteAccountType(ctx context.Context, id, reassign string) error {
-	p := "/v2/accountTypes/" + url.PathEscape(id)
+	params := &openapi.DeleteAccountTypeParams{}
 	if reassign != "" {
-		p += "?reassignToAccountTypeId=" + url.QueryEscape(reassign)
+		params.ReassignToAccountTypeId = &reassign
 	}
-	return c.sendJSON(ctx, http.MethodDelete, p, nil, nil)
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.DeleteAccountType(ctx, id, params)
+	})
 }
 func (c *Client) ListAccountTypePermissions(ctx context.Context, id string) ([]AccountTypePermission, error) {
 	var v []AccountTypePermission
-	err := c.getJSON(ctx, "/v2/accountTypes/"+url.PathEscape(id)+"/permissions", &v)
-	return v, err
+	err := c.doDecode(func() (*http.Response, error) {
+		return c.api.ListAccountTypePermissions(ctx, id, nil)
+	}, &v)
+	if err != nil {
+		return nil, err
+	}
+	if v == nil {
+		v = []AccountTypePermission{}
+	}
+	return v, nil
 }
 func (c *Client) FindAccountType(ctx context.Context, key string) (*AccountType, error) {
 	v, err := c.ListAccountTypes(ctx)
@@ -205,6 +304,10 @@ type UserAttribute struct {
 	Name            string          `json:"name"`
 	Description     *string         `json:"description"`
 	DefaultValue    *AttributeValue `json:"defaultValue"`
+	CreatedBy       string          `json:"createdBy"`
+	UpdatedBy       string          `json:"updatedBy"`
+	CreatedAt       string          `json:"createdAt"`
+	UpdatedAt       string          `json:"updatedAt"`
 }
 
 func (c *Client) CreateUserAttribute(ctx context.Context, n, d string, def *AttributeValue) (*UserAttribute, error) {
@@ -215,43 +318,112 @@ func (c *Client) CreateUserAttribute(ctx context.Context, n, d string, def *Attr
 	if def != nil {
 		in["defaultValue"] = def
 	}
+	body, err := encodeBody(in)
+	if err != nil {
+		return nil, err
+	}
 	var v UserAttribute
-	err := c.sendJSON(ctx, http.MethodPost, "/v2/user-attributes", in, &v)
+	err = c.doDecode(func() (*http.Response, error) {
+		return c.api.CreateUserAttributeWithBody(ctx, nil, jsonContentType, body)
+	}, &v)
 	return &v, err
 }
 func (c *Client) GetUserAttribute(ctx context.Context, id string) (*UserAttribute, error) {
 	var v UserAttribute
-	err := c.getJSON(ctx, "/v2/user-attributes/"+url.PathEscape(id), &v)
+	err := c.doDecode(func() (*http.Response, error) {
+		return c.api.GetUserAttribute(ctx, id, nil)
+	}, &v)
 	return &v, err
 }
 func (c *Client) DeleteUserAttribute(ctx context.Context, id string) error {
-	return c.sendJSON(ctx, http.MethodDelete, "/v2/user-attributes/"+url.PathEscape(id), nil, nil)
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.DeleteUserAttribute(ctx, id, nil)
+	})
 }
-func (c *Client) ListUserAttributes(ctx context.Context) ([]UserAttribute, error) {
-	return ListAll[UserAttribute](ctx, c, "/v2/user-attributes")
+
+// ListUserAttributesOptions are documented list user-attribute filters except pagination.
+type ListUserAttributesOptions struct {
+	Name *string
+}
+
+func (c *Client) ListUserAttributes(ctx context.Context, opts ListUserAttributesOptions) ([]UserAttribute, error) {
+	base := &openapi.ListUserAttributesParams{Name: opts.Name}
+	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]UserAttribute, *string, error) {
+		params := *base
+		params.Page = page
+		return fetchPage[UserAttribute](c, func() (*http.Response, error) {
+			return c.api.ListUserAttributes(ctx, &params)
+		})
+	})
 }
 
 type AttributeAssignment struct {
-	TeamID string         `json:"teamId,omitempty"`
-	UserID string         `json:"userId,omitempty"`
-	Value  AttributeValue `json:"value"`
+	TeamID               string         `json:"teamId,omitempty"`
+	UserID               string         `json:"userId,omitempty"`
+	TenantOrganizationID string         `json:"tenantOrganizationId,omitempty"`
+	Value                AttributeValue `json:"value"`
 }
 
 func (c *Client) SetUserAttributeTeam(ctx context.Context, a, t, v string) error {
-	return c.sendJSON(ctx, http.MethodPost, "/v2/user-attributes/"+url.PathEscape(a)+"/teams", map[string]any{"assignments": []AttributeAssignment{{TeamID: t, Value: AttributeValue{Val: v, Type: "string"}}}}, nil)
+	body, err := encodeBody(map[string]any{"assignments": []AttributeAssignment{{TeamID: t, Value: AttributeValue{Val: v, Type: "string"}}}})
+	if err != nil {
+		return err
+	}
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.SetUserAttributeForTeamsWithBody(ctx, a, nil, jsonContentType, body)
+	})
 }
 func (c *Client) DeleteUserAttributeTeam(ctx context.Context, a, t string) error {
-	return c.sendJSON(ctx, http.MethodDelete, "/v2/user-attributes/"+url.PathEscape(a)+"/teams/"+url.PathEscape(t), nil, nil)
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.DeleteUserAttributeForTeam(ctx, a, t, nil)
+	})
 }
 func (c *Client) ListUserAttributeTeams(ctx context.Context, a string) ([]AttributeAssignment, error) {
-	return ListAll[AttributeAssignment](ctx, c, "/v2/user-attributes/"+url.PathEscape(a)+"/teams")
+	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]AttributeAssignment, *string, error) {
+		return fetchPage[AttributeAssignment](c, func() (*http.Response, error) {
+			return c.api.GetUserAttributeTeamAssignments(ctx, a, &openapi.GetUserAttributeTeamAssignmentsParams{Page: page})
+		})
+	})
 }
 func (c *Client) SetUserAttributeUser(ctx context.Context, a, u, v string) error {
-	return c.sendJSON(ctx, http.MethodPost, "/v2/user-attributes/"+url.PathEscape(a)+"/users", map[string]any{"assignments": []AttributeAssignment{{UserID: u, Value: AttributeValue{Val: v, Type: "string"}}}}, nil)
+	body, err := encodeBody(map[string]any{"assignments": []AttributeAssignment{{UserID: u, Value: AttributeValue{Val: v, Type: "string"}}}})
+	if err != nil {
+		return err
+	}
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.SetUserAttributeForUsersWithBody(ctx, a, nil, jsonContentType, body)
+	})
 }
 func (c *Client) DeleteUserAttributeUser(ctx context.Context, a, u string) error {
-	return c.sendJSON(ctx, http.MethodDelete, "/v2/user-attributes/"+url.PathEscape(a)+"/users/"+url.PathEscape(u), nil, nil)
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.DeleteUserAttributeForUser(ctx, a, u, nil)
+	})
 }
 func (c *Client) ListUserAttributeUsers(ctx context.Context, a string) ([]AttributeAssignment, error) {
-	return ListAll[AttributeAssignment](ctx, c, "/v2/user-attributes/"+url.PathEscape(a)+"/users")
+	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]AttributeAssignment, *string, error) {
+		return fetchPage[AttributeAssignment](c, func() (*http.Response, error) {
+			return c.api.GetUserAttributeUserAssignments(ctx, a, &openapi.GetUserAttributeUserAssignmentsParams{Page: page})
+		})
+	})
+}
+func (c *Client) SetUserAttributeTenant(ctx context.Context, a, t, v string) error {
+	body, err := encodeBody(map[string]any{"assignments": []AttributeAssignment{{TenantOrganizationID: t, Value: AttributeValue{Val: v, Type: "string"}}}})
+	if err != nil {
+		return err
+	}
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.SetUserAttributeForTenantsWithBody(ctx, a, nil, jsonContentType, body)
+	})
+}
+func (c *Client) DeleteUserAttributeTenant(ctx context.Context, a, t string) error {
+	return c.doVoid(func() (*http.Response, error) {
+		return c.api.DeleteUserAttributeForTenant(ctx, a, t, nil)
+	})
+}
+func (c *Client) ListUserAttributeTenants(ctx context.Context, a string) ([]AttributeAssignment, error) {
+	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]AttributeAssignment, *string, error) {
+		return fetchPage[AttributeAssignment](c, func() (*http.Response, error) {
+			return c.api.GetUserAttributeTenantAssignments(ctx, a, &openapi.GetUserAttributeTenantAssignmentsParams{Page: page})
+		})
+	})
 }

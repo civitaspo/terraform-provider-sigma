@@ -31,9 +31,22 @@ data "sigma_dataset" "example" {
 - `created_by` (String) Creator member ID.
 - `description` (String) Dataset description.
 - `is_archived` (Boolean) Whether the dataset is archived.
+- `migration_status` (String) Migration status: `migrated`, `not-migrated`, or `not-required`.
+- `migration_to_data_model` (Attributes List) Migration-to-data-model details when present. Empty when Sigma returns null. (see [below for nested schema](#nestedatt--migration_to_data_model))
 - `name` (String) Dataset name.
 - `owner` (String) Owner identifier.
 - `path` (String) Dataset path.
+- `reference_count` (Number) Count of inbound references to the dataset.
 - `updated_at` (String) Update timestamp.
 - `updated_by` (String) Last updater member ID.
 - `url` (String) Dataset URL.
+
+<a id="nestedatt--migration_to_data_model"></a>
+### Nested Schema for `migration_to_data_model`
+
+Read-Only:
+
+- `data_model_id` (String) Migrated data model ID.
+- `data_model_url` (String) Migrated data model URL.
+- `migrated_at` (String) Migration timestamp.
+- `migrated_by` (String) Member who migrated the dataset.
