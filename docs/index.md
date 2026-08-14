@@ -119,9 +119,11 @@ These use Sigma Beta APIs and may change without notice.
 | Resources | Data sources |
 |-----------|--------------|
 | `sigma_tenant` | `sigma_tenants` |
-| `sigma_tenant_deployment_capabilities` | |
+| `sigma_tenant_deployment_capability` | |
 | `sigma_user_attribute_tenant_assignment` | |
 | `sigma_deployment_policy` | `sigma_deployment_policies` |
+| `sigma_deployment_policy_document` | |
+| `sigma_deployment_policy_tenant` | |
 | `sigma_source_swap_policy` | |
 
 ## Out of scope

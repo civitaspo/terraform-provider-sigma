@@ -138,8 +138,10 @@ func (p *SigmaProvider) Resources(context.Context) []func() resource.Resource {
 		NewWorkbookEmbedResource,
 		NewTranslationResource,
 		NewTenantResource,
-		NewTenantDeploymentCapabilitiesResource,
+		NewTenantDeploymentCapabilityResource,
 		NewDeploymentPolicyResource,
+		NewDeploymentPolicyDocumentResource,
+		NewDeploymentPolicyTenantResource,
 		NewSourceSwapPolicyResource,
 	}
 }

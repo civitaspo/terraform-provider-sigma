@@ -2,9 +2,10 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/civitaspo/terraform-provider-sigma/internal/sigma"
+	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -21,11 +22,11 @@ var (
 )
 
 type sourceSwapPolicyModel struct {
-	ID               types.String `tfsdk:"id"`
-	Type             types.String `tfsdk:"type"`
-	Name             types.String `tfsdk:"name"`
-	FromConnectionID types.String `tfsdk:"from_connection_id"`
-	SwapsJSON        types.String `tfsdk:"swaps_json"`
+	ID               types.String         `tfsdk:"id"`
+	Type             types.String         `tfsdk:"type"`
+	Name             types.String         `tfsdk:"name"`
+	FromConnectionID types.String         `tfsdk:"from_connection_id"`
+	SwapsJSON        jsontypes.Normalized `tfsdk:"swaps_json"`
 }
 
 func NewSourceSwapPolicyResource() resource.Resource { return &sourceSwapPolicyResource{} }
@@ -45,33 +46,40 @@ func (r *sourceSwapPolicyResource) Schema(_ context.Context, _ resource.SchemaRe
 			"type":               schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Policy type: `connection` or `deployment`."},
 			"name":               schema.StringAttribute{Required: true, MarkdownDescription: "Source swap policy name."},
 			"from_connection_id": schema.StringAttribute{Required: true, PlanModifiers: replace, MarkdownDescription: "Connection ID to swap from."},
-			"swaps_json":         schema.StringAttribute{Required: true, MarkdownDescription: "JSON swaps object accepted by the Sigma source swap policy API."},
+			"swaps_json": schema.StringAttribute{
+				Required:            true,
+				CustomType:          jsontypes.NormalizedType{},
+				MarkdownDescription: "JSON swaps object accepted by the Sigma source swap policy API.",
+			},
 		},
 	}
 }
-func sourceSwapInput(plan *sourceSwapPolicyModel) (sigma.SourceSwapPolicyInput, error) {
-	swaps, err := rawJSON(plan.SwapsJSON)
-	if err != nil {
-		return sigma.SourceSwapPolicyInput{}, fmt.Errorf("decode swaps_json: %w", err)
-	}
-	if len(swaps) == 0 {
-		return sigma.SourceSwapPolicyInput{}, fmt.Errorf("swaps_json is required")
+func sourceSwapInput(plan *sourceSwapPolicyModel) (sigma.SourceSwapPolicyInput, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	policyType, typeDiags := knownString(plan.Type, "type")
+	name, nameDiags := knownString(plan.Name, "name")
+	fromConnectionID, fromDiags := knownString(plan.FromConnectionID, "from_connection_id")
+	_, swaps, swapDiags := knownNormalizedObject(plan.SwapsJSON, "swaps_json")
+	diags.Append(typeDiags...)
+	diags.Append(nameDiags...)
+	diags.Append(fromDiags...)
+	diags.Append(swapDiags...)
+	if diags.HasError() {
+		return sigma.SourceSwapPolicyInput{}, diags
 	}
 	return sigma.SourceSwapPolicyInput{
-		Type:             plan.Type.ValueString(),
-		Name:             plan.Name.ValueString(),
-		FromConnectionID: plan.FromConnectionID.ValueString(),
+		Type:             policyType,
+		Name:             name,
+		FromConnectionID: fromConnectionID,
 		Swaps:            swaps,
-	}, nil
+	}, diags
 }
 func setSourceSwapPolicy(state *sourceSwapPolicyModel, value *sigma.SourceSwapPolicy) {
 	state.ID = types.StringValue(value.PolicyID)
 	state.Type = types.StringValue(value.Type)
 	state.Name = types.StringValue(value.Name)
 	state.FromConnectionID = types.StringValue(value.FromConnectionID)
-	if len(value.Swaps) > 0 && string(value.Swaps) != "null" {
-		state.SwapsJSON = jsonString(value.Swaps)
-	}
+	state.SwapsJSON = normalizedFromRaw(value.Swaps)
 }
 func (r *sourceSwapPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan sourceSwapPolicyModel
@@ -79,9 +87,9 @@ func (r *sourceSwapPolicyResource) Create(ctx context.Context, req resource.Crea
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	in, err := sourceSwapInput(&plan)
-	if err != nil {
-		resp.Diagnostics.AddError("Invalid Sigma source swap policy configuration", err.Error())
+	in, inputDiags := sourceSwapInput(&plan)
+	resp.Diagnostics.Append(inputDiags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	value, err := r.client.CreateSourceSwapPolicy(ctx, in)
@@ -98,7 +106,12 @@ func (r *sourceSwapPolicyResource) Read(ctx context.Context, req resource.ReadRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	value, err := r.client.GetSourceSwapPolicy(ctx, state.ID.ValueString())
+	id, idDiags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(idDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	value, err := r.client.GetSourceSwapPolicy(ctx, id)
 	if sigma.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -116,12 +129,14 @@ func (r *sourceSwapPolicyResource) Update(ctx context.Context, req resource.Upda
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	in, err := sourceSwapInput(&plan)
-	if err != nil {
-		resp.Diagnostics.AddError("Invalid Sigma source swap policy configuration", err.Error())
+	id, idDiags := knownString(plan.ID, "id")
+	resp.Diagnostics.Append(idDiags...)
+	in, inputDiags := sourceSwapInput(&plan)
+	resp.Diagnostics.Append(inputDiags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	value, err := r.client.UpdateSourceSwapPolicy(ctx, plan.ID.ValueString(), in)
+	value, err := r.client.UpdateSourceSwapPolicy(ctx, id, in)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Sigma source swap policy", err.Error())
 		return
@@ -135,7 +150,12 @@ func (r *sourceSwapPolicyResource) Delete(ctx context.Context, req resource.Dele
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteSourceSwapPolicy(ctx, state.ID.ValueString()); err != nil && !sigma.IsNotFound(err) {
+	id, idDiags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(idDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := r.client.DeleteSourceSwapPolicy(ctx, id); err != nil && !sigma.IsNotFound(err) {
 		resp.Diagnostics.AddError("Unable to delete Sigma source swap policy", err.Error())
 	}
 }
