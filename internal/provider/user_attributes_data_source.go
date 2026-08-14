@@ -25,6 +25,7 @@ type userAttributeDataModel struct {
 
 type userAttributesDataModel struct {
 	ID             types.String             `tfsdk:"id"`
+	Name           types.String             `tfsdk:"name"`
 	UserAttributes []userAttributeDataModel `tfsdk:"user_attributes"`
 }
 
@@ -39,9 +40,10 @@ func (d *userAttributesDataSource) Configure(_ context.Context, req datasource.C
 }
 
 func (d *userAttributesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	resp.Schema = schema.Schema{MarkdownDescription: "Lists Sigma user attributes.", Attributes: map[string]schema.Attribute{
-		"id": schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
-		"user_attributes": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "User attributes.", NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{MarkdownDescription: "Lists Sigma user attributes." + listCollectionNotice, Attributes: map[string]schema.Attribute{
+		"id":   schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
+		"name": schema.StringAttribute{Optional: true, MarkdownDescription: "Name filter (`name`)."},
+		"user_attributes": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "User attributes in API order.", NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{Computed: true, MarkdownDescription: "User attribute ID."}, "name": schema.StringAttribute{Computed: true, MarkdownDescription: "Name."},
 			"description": schema.StringAttribute{Computed: true, MarkdownDescription: "Description."}, "default_value": schema.StringAttribute{Computed: true, MarkdownDescription: "Default string value."},
 		}}},
@@ -49,12 +51,21 @@ func (d *userAttributesDataSource) Schema(_ context.Context, _ datasource.Schema
 }
 
 func (d *userAttributesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	values, err := d.client.ListUserAttributes(ctx)
+	var state userAttributesDataModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if abortUnknownInputs(&resp.Diagnostics, state.Name) {
+		return
+	}
+	values, err := d.client.ListUserAttributes(ctx, sigma.ListUserAttributesOptions{Name: optionalStringPtr(state.Name)})
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list Sigma user attributes", err.Error())
 		return
 	}
-	state := userAttributesDataModel{ID: types.StringValue("user-attributes")}
+	state.ID = types.StringValue("user-attributes")
+	state.UserAttributes = make([]userAttributeDataModel, 0, len(values))
 	for i := range values {
 		state.UserAttributes = append(state.UserAttributes, userAttributeData(&values[i]))
 	}

@@ -45,7 +45,12 @@ func (d *teamDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	value, err := d.client.GetTeam(ctx, state.ID.ValueString())
+	id, idDiags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(idDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	value, err := d.client.GetTeam(ctx, id)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read Sigma team", err.Error())
 		return

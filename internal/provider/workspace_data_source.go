@@ -49,7 +49,12 @@ func (d *workspaceDataSource) Read(ctx context.Context, request datasource.ReadR
 	if response.Diagnostics.HasError() {
 		return
 	}
-	value, err := d.client.GetWorkspace(ctx, state.ID.ValueString())
+	id, idDiags := knownString(state.ID, "id")
+	response.Diagnostics.Append(idDiags...)
+	if response.Diagnostics.HasError() {
+		return
+	}
+	value, err := d.client.GetWorkspace(ctx, id)
 	if err != nil {
 		response.Diagnostics.AddError("Unable to read Sigma workspace", err.Error())
 		return

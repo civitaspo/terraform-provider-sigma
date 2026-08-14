@@ -11,6 +11,8 @@ const betaAPINotice = "This resource uses a Sigma Beta API and may change withou
 
 const betaDataSourceNotice = "This resource uses a Sigma Beta API and may change without notice."
 
+const listCollectionNotice = " Results preserve Sigma API order; key collections by returned IDs rather than positional indices. Pagination cursors and page sizes are not exposed; this data source retrieves every page."
+
 func nullableString(value *string) types.String {
 	if value == nil {
 		return types.StringNull()
@@ -89,6 +91,36 @@ func changedBoolPtr(plan, state types.Bool) *bool {
 
 func knownTrue(value types.Bool) bool {
 	return !value.IsNull() && !value.IsUnknown() && value.ValueBool()
+}
+
+func abortUnknownInputs(diags *diag.Diagnostics, values ...interface{ IsUnknown() bool }) bool {
+	for _, value := range values {
+		if value != nil && value.IsUnknown() {
+			diags.AddError("Unknown data source input", "Data source inputs must be known before Sigma is queried.")
+			return true
+		}
+	}
+	return false
+}
+
+func optionalStringSlice(ctx context.Context, value types.Set, attribute string) (*[]string, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if value.IsUnknown() {
+		diags.AddError("Unknown "+attribute, attribute+" must be known before Sigma is queried.")
+		return nil, diags
+	}
+	if value.IsNull() {
+		return nil, diags
+	}
+	var items []string
+	diags.Append(value.ElementsAs(ctx, &items, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	if items == nil {
+		items = make([]string, 0)
+	}
+	return &items, diags
 }
 
 func knownString(value types.String, attribute string) (string, diag.Diagnostics) {

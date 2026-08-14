@@ -29,12 +29,25 @@ data "sigma_report" "example" {
 
 - `created_at` (String) Creation timestamp.
 - `created_by` (String) Creator member ID.
+- `description` (String) Report description.
 - `is_archived` (Boolean) Whether the report is archived.
 - `latest_version` (Number) Latest report version.
 - `name` (String) Report name.
 - `owner_id` (String) Owner member ID.
 - `path` (String) Report path.
+- `tags` (Attributes List) Version tags on the report. (see [below for nested schema](#nestedatt--tags))
 - `updated_at` (String) Update timestamp.
 - `updated_by` (String) Last updater member ID.
 - `url` (String) Report URL.
 - `url_id` (String) Report URL ID.
+
+<a id="nestedatt--tags"></a>
+### Nested Schema for `tags`
+
+Read-Only:
+
+- `source_version` (Number) Source version.
+- `tag_name` (String) Tag name.
+- `tagged_at` (String) When the report was tagged.
+- `tagged_report_id` (String) Tagged report ID.
+- `version_tag_id` (String) Version tag ID.

@@ -96,6 +96,7 @@ func (p *SigmaProvider) DataSources(_ context.Context) []func() datasource.DataS
 		NewConnectionDataSource,
 		NewConnectionsDataSource,
 		NewConnectionPathsDataSource,
+		NewConnectionPathDataSource,
 		NewWorkbookDataSource,
 		NewWorkbooksDataSource,
 		NewReportDataSource,

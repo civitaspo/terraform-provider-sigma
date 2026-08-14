@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 
+	"github.com/civitaspo/terraform-provider-sigma/internal/sigma"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -16,8 +17,9 @@ var (
 type datasetsDataSource struct{ configuredDataSource }
 
 type datasetsDocModel struct {
-	ID       types.String      `tfsdk:"id"`
-	Datasets []datasetDocModel `tfsdk:"datasets"`
+	ID                  types.String      `tfsdk:"id"`
+	SkipPermissionCheck types.Bool        `tfsdk:"skip_permission_check"`
+	Datasets            []datasetDocModel `tfsdk:"datasets"`
 }
 
 func NewDatasetsDataSource() datasource.DataSource { return &datasetsDataSource{} }
@@ -30,21 +32,31 @@ func (d *datasetsDataSource) Configure(_ context.Context, req datasource.Configu
 }
 func (d *datasetsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists Sigma datasets.",
+		MarkdownDescription: "Lists Sigma datasets." + listCollectionNotice,
 		DeprecationMessage:  datasetDeprecation,
 		Attributes: map[string]schema.Attribute{
-			"id":       schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
-			"datasets": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Datasets.", NestedObject: schema.NestedAttributeObject{Attributes: datasetDataAttributes(false)}},
+			"id":                    schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
+			"skip_permission_check": schema.BoolAttribute{Optional: true, MarkdownDescription: "Whether to skip permission checks (`skipPermissionCheck`). Explicit `false` is sent; null omits the parameter."},
+			"datasets":              schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Datasets in API order.", NestedObject: schema.NestedAttributeObject{Attributes: datasetDataAttributes(false)}},
 		},
 	}
 }
 func (d *datasetsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	values, err := d.client.ListDatasets(ctx)
+	var state datasetsDocModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if abortUnknownInputs(&resp.Diagnostics, state.SkipPermissionCheck) {
+		return
+	}
+	values, err := d.client.ListDatasets(ctx, sigma.ListDatasetsOptions{SkipPermissionCheck: optionalBoolPtr(state.SkipPermissionCheck)})
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list Sigma datasets", err.Error())
 		return
 	}
-	state := datasetsDocModel{ID: types.StringValue("datasets")}
+	state.ID = types.StringValue("datasets")
+	state.Datasets = make([]datasetDocModel, 0, len(values))
 	for i := range values {
 		state.Datasets = append(state.Datasets, datasetDoc(&values[i]))
 	}

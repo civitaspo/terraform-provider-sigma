@@ -3,12 +3,12 @@
 page_title: "sigma_connection Data Source - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Retrieves a Sigma connection by ID.
+  Retrieves a Sigma connection by ID. Credentials are never exposed.
 ---
 
 # sigma_connection (Data Source)
 
-Retrieves a Sigma connection by ID.
+Retrieves a Sigma connection by ID. Credentials are never exposed.
 
 ## Example Usage
 
@@ -27,10 +27,51 @@ data "sigma_connection" "example" {
 
 ### Read-Only
 
+- `account` (String) Account associated with the connection.
+- `created_at` (String) Creation timestamp.
+- `created_by` (String) Member ID that created the connection.
 - `description_json` (String) Description JSON returned by Sigma.
+- `exports_warehouse` (String) Warehouse used for export jobs.
+- `friendly_name` (Boolean) GET `friendlyName`.
+- `input_table_audit_log_schema_json` (String) Input table write-ahead log schema JSON.
+- `is_archived` (Boolean) Whether the connection is archived.
+- `is_audit_log` (Boolean) Whether audit logging is enabled.
+- `is_independent_oauth` (Boolean) Whether the connection uses connection-level OAuth.
+- `is_sample` (Boolean) Whether this is the Sigma sample data connection.
+- `last_active_at` (String) Last activity timestamp.
+- `materialization_warehouse` (String) Warehouse used for materialization jobs.
 - `name` (String) Connection name.
+- `oauth_audience` (String) OAuth federation audience.
+- `oauth_client_id` (String) Connection-level OAuth client ID. This is not a client secret.
+- `oauth_idp_type` (String) OAuth provider type.
+- `oauth_metadata_url` (String) Connection-level OAuth metadata URL.
+- `oauth_scopes` (List of String) Connection-level OAuth scopes.
+- `oauth_use_jwt` (Boolean) Whether connection-level OAuth uses JWT bearer tokens.
+- `oauth_use_pkce` (Boolean) Whether connection-level OAuth uses PKCE.
+- `organization_id` (String) Organization ID.
 - `pool_sizes_json` (String) Pool sizes JSON returned by Sigma.
-- `timeout_secs` (Number) Connection timeout in seconds.
+- `role` (String) Role used by the connection user.
+- `role_switching` (String) Snowflake OAuth role-switching setting.
+- `timeout` (Attributes) Complete GET `timeout` object. (see [below for nested schema](#nestedatt--timeout))
+- `timeout_secs` (Number) Request-facing timeout seconds mapped from `timeout.default` when present.
 - `type` (String) Warehouse type.
-- `use_friendly_names` (Boolean) Whether friendly names are enabled.
-- `use_oauth` (Boolean) Whether the connection uses OAuth, as returned by Sigma GET `useOauth`.
+- `updated_at` (String) Update timestamp.
+- `updated_by` (String) Member or process that last updated the connection.
+- `use_friendly_names` (Boolean) Whether friendly names are enabled (`friendlyName`).
+- `use_oauth` (Boolean) Whether the connection uses OAuth (`useOauth`).
+- `user` (String) User associated with the connection.
+- `user_attributes_json` (String) User attributes JSON associated with the connection.
+- `warehouse` (String) Warehouse associated with the connection.
+- `write_access` (Boolean) Whether write access is enabled.
+- `writeback_schemas_json` (String) OAuth write-back schema configuration JSON.
+- `writebacks_json` (String) Non-OAuth write-back configuration JSON.
+
+<a id="nestedatt--timeout"></a>
+### Nested Schema for `timeout`
+
+Read-Only:
+
+- `dashboard` (Number) Dashboard timeout in seconds.
+- `default` (Number) Default timeout in seconds.
+- `download` (Number) Download timeout in seconds.
+- `worksheet` (Number) Worksheet timeout in seconds.

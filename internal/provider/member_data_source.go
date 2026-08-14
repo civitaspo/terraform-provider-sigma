@@ -49,7 +49,12 @@ func (d *memberDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	value, err := d.client.GetMember(ctx, state.ID.ValueString())
+	id, idDiags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(idDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	value, err := d.client.GetMember(ctx, id)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read Sigma member", err.Error())
 		return

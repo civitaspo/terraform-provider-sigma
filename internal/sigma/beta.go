@@ -73,10 +73,27 @@ func (c *Client) DeleteTenant(ctx context.Context, id string) error {
 	})
 }
 
-func (c *Client) ListTenants(ctx context.Context) ([]Tenant, error) {
+type ListTenantsOptions struct {
+	Key    *string
+	Order  *string
+	Search *string
+}
+
+func (c *Client) ListTenants(ctx context.Context, opts ListTenantsOptions) ([]Tenant, error) {
+	base := &openapi.ListTenantsParams{Search: opts.Search}
+	if opts.Key != nil {
+		key := openapi.V2TenantsGetParametersKey(*opts.Key)
+		base.Key = &key
+	}
+	if opts.Order != nil {
+		order := openapi.V2TenantsGetParametersOrder(*opts.Order)
+		base.Order = &order
+	}
 	return listAllByPageToken(ctx, func(ctx context.Context, pageToken *string) ([]Tenant, *string, error) {
+		params := *base
+		params.PageToken = pageToken
 		return fetchPageToken[Tenant](c, func() (*http.Response, error) {
-			return c.api.ListTenants(ctx, &openapi.ListTenantsParams{PageToken: pageToken})
+			return c.api.ListTenants(ctx, &params)
 		})
 	})
 }

@@ -18,18 +18,28 @@ const datasetDeprecation = "Sigma datasets are deprecated; prefer data models."
 
 type datasetDataSource struct{ configuredDataSource }
 
+type datasetMigrationModel struct {
+	DataModelID  types.String `tfsdk:"data_model_id"`
+	DataModelURL types.String `tfsdk:"data_model_url"`
+	MigratedAt   types.String `tfsdk:"migrated_at"`
+	MigratedBy   types.String `tfsdk:"migrated_by"`
+}
+
 type datasetDocModel struct {
-	ID          types.String `tfsdk:"id"`
-	Name        types.String `tfsdk:"name"`
-	Description types.String `tfsdk:"description"`
-	URL         types.String `tfsdk:"url"`
-	Path        types.String `tfsdk:"path"`
-	Owner       types.String `tfsdk:"owner"`
-	CreatedBy   types.String `tfsdk:"created_by"`
-	UpdatedBy   types.String `tfsdk:"updated_by"`
-	CreatedAt   types.String `tfsdk:"created_at"`
-	UpdatedAt   types.String `tfsdk:"updated_at"`
-	IsArchived  types.Bool   `tfsdk:"is_archived"`
+	ID                   types.String            `tfsdk:"id"`
+	Name                 types.String            `tfsdk:"name"`
+	Description          types.String            `tfsdk:"description"`
+	URL                  types.String            `tfsdk:"url"`
+	Path                 types.String            `tfsdk:"path"`
+	Owner                types.String            `tfsdk:"owner"`
+	CreatedBy            types.String            `tfsdk:"created_by"`
+	UpdatedBy            types.String            `tfsdk:"updated_by"`
+	CreatedAt            types.String            `tfsdk:"created_at"`
+	UpdatedAt            types.String            `tfsdk:"updated_at"`
+	IsArchived           types.Bool              `tfsdk:"is_archived"`
+	ReferenceCount       types.Float64           `tfsdk:"reference_count"`
+	MigrationStatus      types.String            `tfsdk:"migration_status"`
+	MigrationToDataModel []datasetMigrationModel `tfsdk:"migration_to_data_model"`
 }
 
 func NewDatasetDataSource() datasource.DataSource { return &datasetDataSource{} }
@@ -53,7 +63,12 @@ func (d *datasetDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	value, err := d.client.GetDataset(ctx, state.ID.ValueString())
+	id, idDiags := knownString(state.ID, "id")
+	resp.Diagnostics.Append(idDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	value, err := d.client.GetDataset(ctx, id)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read Sigma dataset", err.Error())
 		return
@@ -67,17 +82,25 @@ func datasetDataAttributes(requireID bool) map[string]schema.Attribute {
 		id = schema.StringAttribute{Required: true, MarkdownDescription: "Dataset ID."}
 	}
 	return map[string]schema.Attribute{
-		"id":          id,
-		"name":        schema.StringAttribute{Computed: true, MarkdownDescription: "Dataset name."},
-		"description": schema.StringAttribute{Computed: true, MarkdownDescription: "Dataset description."},
-		"url":         schema.StringAttribute{Computed: true, MarkdownDescription: "Dataset URL."},
-		"path":        schema.StringAttribute{Computed: true, MarkdownDescription: "Dataset path."},
-		"owner":       schema.StringAttribute{Computed: true, MarkdownDescription: "Owner identifier."},
-		"created_by":  schema.StringAttribute{Computed: true, MarkdownDescription: "Creator member ID."},
-		"updated_by":  schema.StringAttribute{Computed: true, MarkdownDescription: "Last updater member ID."},
-		"created_at":  schema.StringAttribute{Computed: true, MarkdownDescription: "Creation timestamp."},
-		"updated_at":  schema.StringAttribute{Computed: true, MarkdownDescription: "Update timestamp."},
-		"is_archived": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the dataset is archived."},
+		"id":               id,
+		"name":             schema.StringAttribute{Computed: true, MarkdownDescription: "Dataset name."},
+		"description":      schema.StringAttribute{Computed: true, MarkdownDescription: "Dataset description."},
+		"url":              schema.StringAttribute{Computed: true, MarkdownDescription: "Dataset URL."},
+		"path":             schema.StringAttribute{Computed: true, MarkdownDescription: "Dataset path."},
+		"owner":            schema.StringAttribute{Computed: true, MarkdownDescription: "Owner identifier."},
+		"created_by":       schema.StringAttribute{Computed: true, MarkdownDescription: "Creator member ID."},
+		"updated_by":       schema.StringAttribute{Computed: true, MarkdownDescription: "Last updater member ID."},
+		"created_at":       schema.StringAttribute{Computed: true, MarkdownDescription: "Creation timestamp."},
+		"updated_at":       schema.StringAttribute{Computed: true, MarkdownDescription: "Update timestamp."},
+		"is_archived":      schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the dataset is archived."},
+		"reference_count":  schema.Float64Attribute{Computed: true, MarkdownDescription: "Count of inbound references to the dataset."},
+		"migration_status": schema.StringAttribute{Computed: true, MarkdownDescription: "Migration status: `migrated`, `not-migrated`, or `not-required`."},
+		"migration_to_data_model": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Migration-to-data-model details when present. Empty when Sigma returns null.", NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
+			"data_model_id":  schema.StringAttribute{Computed: true, MarkdownDescription: "Migrated data model ID."},
+			"data_model_url": schema.StringAttribute{Computed: true, MarkdownDescription: "Migrated data model URL."},
+			"migrated_at":    schema.StringAttribute{Computed: true, MarkdownDescription: "Migration timestamp."},
+			"migrated_by":    schema.StringAttribute{Computed: true, MarkdownDescription: "Member who migrated the dataset."},
+		}}},
 	}
 }
 
@@ -86,10 +109,19 @@ func datasetDoc(value *sigma.Dataset) datasetDocModel {
 		ID: types.StringValue(value.DatasetID), Name: types.StringValue(value.Name), URL: types.StringValue(value.URL),
 		Path: types.StringValue(value.Path), Owner: types.StringValue(value.Owner), CreatedBy: types.StringValue(value.CreatedBy),
 		UpdatedBy: types.StringValue(value.UpdatedBy), CreatedAt: types.StringValue(value.CreatedAt), UpdatedAt: types.StringValue(value.UpdatedAt),
-		IsArchived: types.BoolValue(value.IsArchived), Description: types.StringNull(),
+		IsArchived: types.BoolValue(value.IsArchived), Description: nullableString(value.Description),
+		MigrationStatus: nullableString(value.MigrationStatus), MigrationToDataModel: make([]datasetMigrationModel, 0),
 	}
-	if value.Description != nil {
-		state.Description = types.StringValue(*value.Description)
+	if value.ReferenceCount != nil {
+		state.ReferenceCount = types.Float64Value(*value.ReferenceCount)
+	} else {
+		state.ReferenceCount = types.Float64Null()
+	}
+	if value.MigrationToDataModel != nil {
+		state.MigrationToDataModel = []datasetMigrationModel{{
+			DataModelID: types.StringValue(value.MigrationToDataModel.DataModelID), DataModelURL: types.StringValue(value.MigrationToDataModel.DataModelURL),
+			MigratedAt: types.StringValue(value.MigrationToDataModel.MigratedAt), MigratedBy: types.StringValue(value.MigrationToDataModel.MigratedBy),
+		}}
 	}
 	return state
 }

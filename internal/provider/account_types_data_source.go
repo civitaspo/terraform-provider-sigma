@@ -38,7 +38,7 @@ func (d *accountTypesDataSource) Configure(_ context.Context, req datasource.Con
 }
 
 func (d *accountTypesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	resp.Schema = schema.Schema{MarkdownDescription: "Lists Sigma account types.", Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{MarkdownDescription: "Lists Sigma account types." + listCollectionNotice, Attributes: map[string]schema.Attribute{
 		"id": schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
 		"account_types": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Account types.", NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{Computed: true, MarkdownDescription: "Account type ID."}, "name": schema.StringAttribute{Computed: true, MarkdownDescription: "Account type name."},
@@ -53,7 +53,7 @@ func (d *accountTypesDataSource) Read(ctx context.Context, req datasource.ReadRe
 		resp.Diagnostics.AddError("Unable to list Sigma account types", err.Error())
 		return
 	}
-	state := accountTypesDataModel{ID: types.StringValue("account-types")}
+	state := accountTypesDataModel{ID: types.StringValue("account-types"), AccountTypes: make([]accountTypeDataModel, 0, len(values))}
 	for _, v := range values {
 		state.AccountTypes = append(state.AccountTypes, accountTypeDataModel{ID: types.StringValue(v.AccountTypeID), Name: types.StringValue(v.AccountTypeName), Description: types.StringValue(v.Description), IsCustom: types.BoolValue(v.IsCustom)})
 	}
