@@ -157,4 +157,7 @@ resource "sigma_deployment_policy_tenant" "b" {
 	}}))
 }
 
-func TestAccDeploymentPolicyTenantResource(t *testing.T) { requireAcceptance(t) }
+func TestAccDeploymentPolicyTenantResource(t *testing.T) {
+	requireAcceptance(t)
+	t.Skip("deployment policy tenant attach is skipped without a disposable policy")
+}

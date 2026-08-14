@@ -20,4 +20,4 @@ data "sigma_deployment_policy" "one" {
 	})
 }
 
-func TestAccDeploymentPolicyDataSource(t *testing.T) { requireAcceptance(t) }
+func TestAccDeploymentPolicyDataSource(t *testing.T) { runAccReadOnlyCatalog(t) }

@@ -67,4 +67,7 @@ resource "sigma_connection_path_grant" "test" {
 	}))
 }
 
-func TestAccConnectionPathGrantResource(t *testing.T) { requireAcceptance(t) }
+func TestAccConnectionPathGrantResource(t *testing.T) {
+	requireAcceptance(t)
+	t.Skip("connection path grants would mutate an existing production path")
+}

@@ -330,4 +330,7 @@ resource "sigma_team" "test" {
 	}))
 }
 
-func TestAccTeamResource(t *testing.T) { requireAcceptance(t) }
+func TestAccTeamResource(t *testing.T) {
+	requireAcceptance(t)
+	t.Skip("team create is skipped in SCIM-managed production orgs")
+}

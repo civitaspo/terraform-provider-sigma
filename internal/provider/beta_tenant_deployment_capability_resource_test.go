@@ -157,4 +157,7 @@ resource "sigma_tenant_deployment_capability" "b" {
 	}}))
 }
 
-func TestAccTenantDeploymentCapabilityResource(t *testing.T) { requireAcceptance(t) }
+func TestAccTenantDeploymentCapabilityResource(t *testing.T) {
+	requireAcceptance(t)
+	t.Skip("tenant capability mutation is skipped in production")
+}

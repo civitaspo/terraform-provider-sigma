@@ -22,4 +22,4 @@ data "sigma_tenant" "one" {
 	})
 }
 
-func TestAccTenantDataSource(t *testing.T) { requireAcceptance(t) }
+func TestAccTenantDataSource(t *testing.T) { runAccReadOnlyCatalog(t) }

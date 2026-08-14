@@ -137,3 +137,237 @@ resource "sigma_workbook_schedule" "test" {
 		{Config: config, ExpectNonEmptyPlan: false},
 	}))
 }
+
+func runAccWhoami(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + `
+data "sigma_whoami" "test" {}
+data "sigma_member" "self" {
+  id = data.sigma_whoami.test.user_id
+}
+data "sigma_members" "all" {}
+`,
+		Check: resource.ComposeAggregateTestCheckFunc(
+			resource.TestCheckResourceAttrSet("data.sigma_whoami.test", "user_id"),
+			resource.TestCheckResourceAttrSet("data.sigma_whoami.test", "organization_id"),
+			resource.TestCheckResourceAttrSet("data.sigma_member.self", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_members.all", "id"),
+		),
+	}}))
+}
+
+func runAccReadOnlyCatalog(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + `
+data "sigma_workspaces" "all" {}
+data "sigma_workspace" "first" {
+  id = data.sigma_workspaces.all.workspaces[0].id
+}
+data "sigma_teams" "all" {}
+data "sigma_team" "first" {
+  id = data.sigma_teams.all.teams[0].id
+}
+data "sigma_account_types" "all" {}
+data "sigma_user_attributes" "all" {}
+data "sigma_connections" "all" {}
+data "sigma_workbooks" "all" {}
+data "sigma_reports" "all" {}
+data "sigma_data_models" "all" {}
+data "sigma_datasets" "all" {}
+data "sigma_templates" "all" {}
+data "sigma_tags" "all" {}
+data "sigma_files" "all" {}
+data "sigma_tenants" "all" {}
+data "sigma_deployment_policies" "all" {}
+`,
+		Check: resource.ComposeAggregateTestCheckFunc(
+			resource.TestCheckResourceAttrSet("data.sigma_workspaces.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_workspace.first", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_teams.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_team.first", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_account_types.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_user_attributes.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_connections.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_workbooks.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_reports.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_data_models.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_datasets.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_templates.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_tags.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_files.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_tenants.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_deployment_policies.all", "id"),
+		),
+	}}))
+}
+
+func runAccConnectionReadOnly(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + `
+data "sigma_connections" "all" {}
+data "sigma_connection" "first" {
+  id = data.sigma_connections.all.connections[0].id
+}
+`,
+		Check: resource.TestCheckResourceAttrSet("data.sigma_connection.first", "id"),
+	}}))
+}
+
+func runAccOwnedWorkspaceFolderGrant(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	name := accName("tf-acc-ws")
+	folder := accName("tf-acc-folder")
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + `
+data "sigma_teams" "all" {}
+resource "sigma_workspace" "test" {
+  name          = "` + name + `"
+  no_duplicates = true
+}
+resource "sigma_folder" "test" {
+  name      = "` + folder + `"
+  parent_id = sigma_workspace.test.id
+}
+resource "sigma_workspace_grant" "test" {
+  inode_id   = sigma_workspace.test.id
+  team_id    = data.sigma_teams.all.teams[0].id
+  permission = "view"
+}
+data "sigma_workspace" "created" {
+  id = sigma_workspace.test.id
+}
+data "sigma_file" "folder" {
+  id = sigma_folder.test.id
+}
+`,
+		Check: resource.ComposeAggregateTestCheckFunc(
+			resource.TestCheckResourceAttrSet("sigma_workspace.test", "id"),
+			resource.TestCheckResourceAttrSet("sigma_folder.test", "id"),
+			resource.TestCheckResourceAttrSet("sigma_workspace_grant.test", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_workspace.created", "name"),
+			resource.TestCheckResourceAttr("data.sigma_file.folder", "type", "folder"),
+		),
+	}}))
+}
+
+func runAccUserAttributeAndAssignment(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	name := accName("tf-acc-attr")
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + `
+data "sigma_whoami" "me" {}
+resource "sigma_user_attribute" "test" {
+  name          = "` + name + `"
+  description   = "tf-acc disposable attribute"
+  default_value = "unset"
+}
+resource "sigma_user_attribute_user_assignment" "test" {
+  user_attribute_id = sigma_user_attribute.test.id
+  user_id           = data.sigma_whoami.me.user_id
+  value             = "tf-acc"
+}
+data "sigma_user_attribute" "created" {
+  id = sigma_user_attribute.test.id
+}
+`,
+		Check: resource.ComposeAggregateTestCheckFunc(
+			resource.TestCheckResourceAttrSet("sigma_user_attribute.test", "id"),
+			resource.TestCheckResourceAttrSet("sigma_user_attribute_user_assignment.test", "id"),
+			resource.TestCheckResourceAttr("data.sigma_user_attribute.created", "name", name),
+		),
+	}}))
+}
+
+func runAccAccountType(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	name := accName("tf-acc-atype")
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + `
+data "sigma_account_types" "all" {}
+resource "sigma_account_type" "test" {
+  name                          = "` + name + `"
+  description                   = "tf-acc disposable account type"
+  permissions                   = ["comment"]
+  reassign_to_account_type_id   = data.sigma_account_types.all.account_types[0].id
+}
+data "sigma_account_type_permissions" "test" {
+  account_type_id = sigma_account_type.test.id
+}
+`,
+		Check: resource.ComposeAggregateTestCheckFunc(
+			resource.TestCheckResourceAttrSet("sigma_account_type.test", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_account_type_permissions.test", "id"),
+		),
+	}}))
+}
+
+func runAccAPICredentialAndConnector(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	name := accName("tf-acc-cred")
+	connector := accName("tf-acc-conn")
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + `
+resource "sigma_api_credential" "test" {
+  name      = "` + name + `"
+  allowlist = ["example.com"]
+  credential_wo = jsonencode({
+    authMethod = "bearer"
+    bearer = {
+      token = "tf-acc-not-a-real-token"
+    }
+  })
+  credential_wo_version = 1
+}
+resource "sigma_api_connector" "test" {
+  name    = "` + connector + `"
+  auth_id = sigma_api_credential.test.id
+  params_json = jsonencode({
+    method      = "GET"
+    url         = "https://example.com/tf-acc"
+    headers     = []
+    pathParams  = []
+    queryParams = []
+    body        = ""
+  })
+}
+`,
+		Check: resource.ComposeAggregateTestCheckFunc(
+			resource.TestCheckResourceAttrSet("sigma_api_credential.test", "id"),
+			resource.TestCheckResourceAttrSet("sigma_api_connector.test", "id"),
+		),
+	}}))
+}
+
+func TestAccWhoamiAndMemberDataSources(t *testing.T) { runAccWhoami(t) }
+
+func TestAccReadOnlyCatalogDataSources(t *testing.T) { runAccReadOnlyCatalog(t) }
+
+func TestAccConnectionReadOnlyDataSources(t *testing.T) { runAccConnectionReadOnly(t) }
+
+func runAccTranslationVariant(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	variant := accName("tf-acc")
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + `
+resource "sigma_translation" "test" {
+  lng         = "en"
+  lng_variant = "` + variant + `"
+  translations = {
+    "tf-acc.hello" = "hello"
+  }
+}
+`,
+		Check: resource.TestCheckResourceAttrSet("sigma_translation.test", "id"),
+	}}))
+}

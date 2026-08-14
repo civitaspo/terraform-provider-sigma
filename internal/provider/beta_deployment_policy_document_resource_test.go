@@ -163,4 +163,7 @@ resource "sigma_deployment_policy_document" "b" {
 	}}))
 }
 
-func TestAccDeploymentPolicyDocumentResource(t *testing.T) { requireAcceptance(t) }
+func TestAccDeploymentPolicyDocumentResource(t *testing.T) {
+	requireAcceptance(t)
+	t.Skip("deployment policy document attach is skipped without a disposable policy")
+}

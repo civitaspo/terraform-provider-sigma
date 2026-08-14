@@ -134,4 +134,7 @@ resource "sigma_user_attribute_tenant_assignment" "test" {
 	}))
 }
 
-func TestAccUserAttributeTenantAssignmentResource(t *testing.T) { requireAcceptance(t) }
+func TestAccUserAttributeTenantAssignmentResource(t *testing.T) {
+	requireAcceptance(t)
+	t.Skip("tenant assignment is skipped; creating tenants in production is unsafe")
+}

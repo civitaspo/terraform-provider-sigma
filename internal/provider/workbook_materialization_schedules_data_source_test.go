@@ -21,4 +21,7 @@ data "sigma_workbook_materialization_schedules" "all" {
 	})
 }
 
-func TestAccWorkbookMaterializationSchedulesDataSource(t *testing.T) { requireAcceptance(t) }
+func TestAccWorkbookMaterializationSchedulesDataSource(t *testing.T) {
+	requireAcceptance(t)
+	t.Skip("materialization schedule lookup needs a dedicated workbook ID")
+}

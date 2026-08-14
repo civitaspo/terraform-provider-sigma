@@ -149,4 +149,4 @@ resource "sigma_account_type" "test" {
 	}))
 }
 
-func TestAccAccountTypeResource(t *testing.T) { requireAcceptance(t) }
+func TestAccAccountTypeResource(t *testing.T) { runAccAccountType(t) }

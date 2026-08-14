@@ -102,4 +102,40 @@ resource "sigma_api_credential" "test" {
 	}))
 }
 
-func TestAccAPICredentialResource(t *testing.T) { requireAcceptance(t) }
+func TestAPICredentialResourceOmitsEmptyDescription(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	credential := map[string]any{
+		"apiCredentialId": "credential-1", "name": "weather", "description": "",
+		"authMethod": "bearer", "allowlist": []string{"example.com"},
+		"credential": map[string]any{"authMethod": "bearer"},
+	}
+	mock.Mux.HandleFunc("/v2/api-credentials", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		writeJSON(response, credential)
+	})
+	mock.Mux.HandleFunc("/v2/api-credentials/credential-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method == http.MethodDelete {
+			writeJSON(response, map[string]any{})
+			return
+		}
+		writeJSON(response, credential)
+	})
+	config := connectionProviderConfig(mock) + `
+resource "sigma_api_credential" "test" {
+  name      = "weather"
+  allowlist = ["example.com"]
+  credential_wo = jsonencode({
+    authMethod = "bearer"
+    bearer     = { token = "secret" }
+  })
+  credential_wo_version = 1
+}
+`
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{{
+		Config: config,
+		Check:  resource.TestCheckNoResourceAttr("sigma_api_credential.test", "description"),
+	}}))
+}
+
+func TestAccAPICredentialResource(t *testing.T) { runAccAPICredentialAndConnector(t) }

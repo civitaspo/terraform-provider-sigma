@@ -114,4 +114,4 @@ resource "sigma_user_attribute" "test" {
 	}))
 }
 
-func TestAccUserAttributeResource(t *testing.T) { requireAcceptance(t) }
+func TestAccUserAttributeResource(t *testing.T) { runAccUserAttributeAndAssignment(t) }

@@ -22,4 +22,4 @@ data "sigma_file" "one" {
 	})
 }
 
-func TestAccFileDataSource(t *testing.T) { requireAcceptance(t) }
+func TestAccFileDataSource(t *testing.T) { runAccOwnedWorkspaceFolderGrant(t) }

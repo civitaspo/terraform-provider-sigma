@@ -171,8 +171,14 @@ func importGrantCompositeID(ctx context.Context, request resource.ImportStateReq
 
 func setGrant(state *grantModel, value *sigma.Grant) {
 	priorTag := state.TagID
+	priorInode := state.InodeID
 	state.ID = types.StringValue(value.GrantID)
-	state.InodeID = types.StringValue(value.InodeID)
+	// List/get may return a URL id while configuration used the UUID.
+	if !priorInode.IsNull() && !priorInode.IsUnknown() && priorInode.ValueString() != "" {
+		state.InodeID = priorInode
+	} else {
+		state.InodeID = types.StringValue(value.InodeID)
+	}
 	state.MemberID = nullableString(value.MemberID)
 	state.TeamID = nullableString(value.TeamID)
 	state.Permission = types.StringValue(value.Permission)

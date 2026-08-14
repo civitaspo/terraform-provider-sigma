@@ -29,7 +29,7 @@ func (r *workspaceGrantResource) Configure(_ context.Context, request resource.C
 func (r *workspaceGrantResource) Schema(_ context.Context, _ resource.SchemaRequest, response *resource.SchemaResponse) {
 	response.Schema = grantSchema(
 		"Manages a fine-grained Sigma workspace grant.",
-		"Workspace ID.",
+		"Workspace ID. List/get may return a URL id; Terraform keeps the configured UUID.",
 		"Workspace permission: `view`, `explore`, `organize`, or `edit`.",
 		workspaceGrantTagMarkdown,
 	)

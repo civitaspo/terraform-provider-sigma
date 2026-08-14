@@ -23,4 +23,4 @@ data "sigma_template" "one" {
 	})
 }
 
-func TestAccTemplateDataSource(t *testing.T) { requireAcceptance(t) }
+func TestAccTemplateDataSource(t *testing.T) { runAccReadOnlyCatalog(t) }

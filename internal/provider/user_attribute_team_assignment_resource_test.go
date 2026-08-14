@@ -124,4 +124,7 @@ resource "sigma_user_attribute_team_assignment" "test" {
 	}))
 }
 
-func TestAccUserAttributeTeamAssignmentResource(t *testing.T) { requireAcceptance(t) }
+func TestAccUserAttributeTeamAssignmentResource(t *testing.T) {
+	requireAcceptance(t)
+	t.Skip("team attribute assignment is skipped in SCIM-managed production orgs")
+}

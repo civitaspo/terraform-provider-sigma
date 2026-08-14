@@ -22,4 +22,4 @@ data "sigma_user_attribute" "one" {
 	})
 }
 
-func TestAccUserAttributeDataSource(t *testing.T) { requireAcceptance(t) }
+func TestAccUserAttributeDataSource(t *testing.T) { runAccUserAttributeAndAssignment(t) }
