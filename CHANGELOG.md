@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.2.0] - 2026-08-13
+## [0.2.0] - 2026-08-14
 
 
 ### Bug Fixes
 
+- require complete connection PUTs and paired write-only credentials (#89)
 - correct dedicated grants, schedules, public embeds, and translations (#88)
 - make identity lifecycle and Framework conversions fail closed (#85)
 - update module github.com/oapi-codegen/runtime to v1.6.0 (#83)
