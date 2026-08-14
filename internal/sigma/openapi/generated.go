@@ -22181,6 +22181,29 @@ type V21TeamsGetResponsesContentApplicationJsonSchemaEntriesItems struct {
 // V21TeamsGetResponsesContentApplicationJsonSchemaEntriesItemsVisibility defines model for V21TeamsGetResponsesContentApplicationJsonSchemaEntriesItemsVisibility.
 type V21TeamsGetResponsesContentApplicationJsonSchemaEntriesItemsVisibility string
 
+// V21WorkbooksWorkbookIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItems defines model for V21WorkbooksWorkbookIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItems.
+type V21WorkbooksWorkbookIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItems struct {
+	ConfiguredAt time.Time `json:"configuredAt"`
+
+	// ElementId Identifier of the element being materialized
+	ElementId   string                                                                                                      `json:"elementId"`
+	ElementName string                                                                                                      `json:"elementName"`
+	Paused      bool                                                                                                        `json:"paused"`
+	Schedule    *V21WorkbooksWorkbookIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItemsSchedule `json:"schedule"`
+
+	// SheetId Identifier of the materialization schedule for the element
+	SheetId string `json:"sheetId"`
+}
+
+// V21WorkbooksWorkbookIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItemsSchedule defines model for V21WorkbooksWorkbookIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItemsSchedule.
+type V21WorkbooksWorkbookIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItemsSchedule struct {
+	// CronSpec Cron expression to use for the schedule
+	CronSpec *string `json:"cronSpec,omitempty"`
+
+	// Timezone Timezone code, for example, PST
+	Timezone *string `json:"timezone,omitempty"`
+}
+
 // V21WorkbooksWorkbookIdSchedulesGetResponsesContentApplicationJsonSchemaEntriesItems defines model for V21WorkbooksWorkbookIdSchedulesGetResponsesContentApplicationJsonSchemaEntriesItems.
 type V21WorkbooksWorkbookIdSchedulesGetResponsesContentApplicationJsonSchemaEntriesItems struct {
 	ConfigV2 V21WorkbooksWorkbookIdSchedulesGetResponsesContentApplicationJsonSchemaEntriesItemsConfigV2 `json:"configV2"`
@@ -26888,6 +26911,29 @@ type V2DataModelsDataModelIdGetResponsesContentApplicationJsonSchemaTagsItems st
 
 	// VersionTagId Unique identifier of the tag.
 	VersionTagId string `json:"versionTagId"`
+}
+
+// V2DataModelsDataModelIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItems defines model for V2DataModelsDataModelIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItems.
+type V2DataModelsDataModelIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItems struct {
+	ConfiguredAt time.Time `json:"configuredAt"`
+
+	// ElementId Identifier of the element being materialized
+	ElementId   string                                                                                                       `json:"elementId"`
+	ElementName string                                                                                                       `json:"elementName"`
+	Paused      bool                                                                                                         `json:"paused"`
+	Schedule    *V2DataModelsDataModelIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItemsSchedule `json:"schedule"`
+
+	// SheetId Identifier of the materialization schedule for the element
+	SheetId string `json:"sheetId"`
+}
+
+// V2DataModelsDataModelIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItemsSchedule defines model for V2DataModelsDataModelIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItemsSchedule.
+type V2DataModelsDataModelIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItemsSchedule struct {
+	// CronSpec Cron expression to use for the schedule
+	CronSpec *string `json:"cronSpec,omitempty"`
+
+	// Timezone Timezone code, for example, PST
+	Timezone *string `json:"timezone,omitempty"`
 }
 
 // V2DataModelsGetResponsesContentApplicationJsonSchemaEntriesItems defines model for V2DataModelsGetResponsesContentApplicationJsonSchemaEntriesItems.
@@ -37250,6 +37296,16 @@ type DataModelsGetDataModelResponse200 struct {
 	Url       string `json:"url"`
 }
 
+// DataModelsListDataModelMaterializationSchedulesResponse200 defines model for dataModels_listDataModelMaterializationSchedules_Response_200.
+type DataModelsListDataModelMaterializationSchedulesResponse200 struct {
+	// Entries Array of results returned by the endpoint
+	Entries []V2DataModelsDataModelIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItems `json:"entries"`
+
+	// NextPageToken A string that can be passed to the `pageToken` parameter in the next request to fetch the next page of results. Not present in the last page of results.
+	// **Must be treated as an opaque string.**
+	NextPageToken *string `json:"nextPageToken,omitempty"`
+}
+
 // DataModelsListDataModelsResponse200 defines model for dataModels_listDataModels_Response_200.
 type DataModelsListDataModelsResponse200 struct {
 	// Entries Array of results returned by the endpoint
@@ -38487,6 +38543,21 @@ type WorkbooksUpdateWorkbookScheduleResponse200 struct {
 	WorkbookId string `json:"workbookId"`
 }
 
+// WorkbooksV21ListMaterializationSchedulesResponse200 defines model for workbooks_v2_1_listMaterializationSchedules_Response_200.
+type WorkbooksV21ListMaterializationSchedulesResponse200 struct {
+	// Entries Array of results returned by the endpoint
+	Entries []V21WorkbooksWorkbookIdMaterializationSchedulesGetResponsesContentApplicationJsonSchemaEntriesItems `json:"entries"`
+
+	// HasMore **[Deprecated]** Indicates whether more results are available.
+	HasMore *bool `json:"hasMore,omitempty"`
+
+	// NextPage Returns a string that can be used as the `page` parameter in the next request to fetch the next page of results. The last page of results returns `null`.
+	NextPage *string `json:"nextPage"`
+
+	// Total Total number of results. Useful to determine if there is a need to paginate.
+	Total *float64 `json:"total,omitempty"`
+}
+
 // WorkbooksV21ListWorkbookSchedulesResponse200 defines model for workbooks_v2_1_listWorkbookSchedules_Response_200.
 type WorkbooksV21ListWorkbookSchedulesResponse200 struct {
 	// Entries Array of results returned by the endpoint
@@ -38574,6 +38645,15 @@ type V21ListTeamsParams struct {
 	Name        *string                          `form:"name,omitempty" json:"name,omitempty"`
 	Description *string                          `form:"description,omitempty" json:"description,omitempty"`
 	Visibility  *V21TeamsGetParametersVisibility `form:"visibility,omitempty" json:"visibility,omitempty"`
+
+	// Authorization OAuth authentication
+	Authorization string `json:"Authorization"`
+}
+
+// V21ListMaterializationSchedulesParams defines parameters for V21ListMaterializationSchedules.
+type V21ListMaterializationSchedulesParams struct {
+	Page  *string  `form:"page,omitempty" json:"page,omitempty"`
+	Limit *float64 `form:"limit,omitempty" json:"limit,omitempty"`
 
 	// Authorization OAuth authentication
 	Authorization string `json:"Authorization"`
@@ -38917,6 +38997,15 @@ type ListDataModelsParams struct {
 // GetDataModelParams defines parameters for GetDataModel.
 type GetDataModelParams struct {
 	ExcludeTags *bool `form:"excludeTags,omitempty" json:"excludeTags,omitempty"`
+
+	// Authorization OAuth authentication
+	Authorization string `json:"Authorization"`
+}
+
+// ListDataModelMaterializationSchedulesParams defines parameters for ListDataModelMaterializationSchedules.
+type ListDataModelMaterializationSchedulesParams struct {
+	PageToken *string `form:"pageToken,omitempty" json:"pageToken,omitempty"`
+	PageSize  *int    `form:"pageSize,omitempty" json:"pageSize,omitempty"`
 
 	// Authorization OAuth authentication
 	Authorization string `json:"Authorization"`
@@ -71981,6 +72070,27 @@ type ClientInterface interface {
 	// Corresponds with GET /v2.1/teams (the `V21ListTeams` operationId).
 	V21ListTeams(ctx context.Context, params *V21ListTeamsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// V21ListMaterializationSchedules List materialization schedules (Paginated)
+	//
+	//
+	//   **Attention:** This API endpoint uses pagination by default.
+	//
+	//   This endpoint retrieves a list of all materialization schedules associated with a workbook. Each schedule details when and how often specific workbook elements are automatically materialized to optimize performance and data freshness.
+	//   ### Usage notes
+	//   - Retrieve the **workbookId** by calling the [/v2/workbooks](https://help.sigmacomputing.com/reference/list-workbooks) endpoint.
+	//   - To retrieve additional pages of results, use the response of the `nextPage` parameter as the `page` query parameter in the following request.
+	//
+	//   ### Usage scenarios
+	//   - **Monitoring and management:** Administrators can monitor and manage the schedules for materialization to ensure optimal system performance.
+	//   - **Audit and review:** Periodic reviews of materialization schedules can help in assessing the efficiency of data processes and making necessary adjustments.
+	//
+	//   ### Best practices
+	//   - Regularly review materialization schedules to align them with current data usage patterns and business needs.
+	//   - Use pagination to manage large sets of data and improve response times of API calls.
+	//
+	// Corresponds with GET /v2.1/workbooks/{workbookId}/materialization-schedules (the `V21ListMaterializationSchedules` operationId).
+	V21ListMaterializationSchedules(ctx context.Context, workbookId string, params *V21ListMaterializationSchedulesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// V21ListWorkbookSchedules List scheduled workbook exports (Paginated)
 	//
 	//
@@ -72655,6 +72765,25 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /v2/dataModels/{dataModelId} (the `GetDataModel` operationId).
 	GetDataModel(ctx context.Context, dataModelId string, params *GetDataModelParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListDataModelMaterializationSchedules List materialization schedules for a data model
+	//
+	//
+	//   This endpoint retrieves a list of all materialization schedules associated with a data model. Each schedule details when and how often specific data model elements are automatically materialized to optimize performance and data freshness.
+	//   ### Usage notes
+	//   - Retrieve the **dataModelId** by calling the [/v2/dataModels](https://help.sigmacomputing.com/reference/list-data-models) endpoint.
+	//   - To retrieve additional pages of results, use the response of the `nextPageToken` parameter as the `pageToken` query parameter in the following request.
+	//
+	//   ### Usage scenarios
+	//   - **Monitoring and management:** Administrators can monitor and manage the schedules for materialization to ensure optimal system performance.
+	//   - **Audit and review:** Periodic reviews of materialization schedules can help in assessing the efficiency of data processes and making necessary adjustments.
+	//
+	//   ### Best practices
+	//   - Regularly review materialization schedules to align them with current data usage patterns and business needs.
+	//   - Use pagination to manage large sets of data and improve response times of API calls.
+	//
+	// Corresponds with GET /v2/dataModels/{dataModelId}/materializationSchedules (the `ListDataModelMaterializationSchedules` operationId).
+	ListDataModelMaterializationSchedules(ctx context.Context, dataModelId string, params *ListDataModelMaterializationSchedulesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDatasets List datasets (Deprecated)
 	//
@@ -74784,6 +74913,36 @@ func (c *Client) V21ListTeams(ctx context.Context, params *V21ListTeamsParams, r
 	return c.Client.Do(req)
 }
 
+// V21ListMaterializationSchedules List materialization schedules (Paginated)
+//
+//	**Attention:** This API endpoint uses pagination by default.
+//
+//	This endpoint retrieves a list of all materialization schedules associated with a workbook. Each schedule details when and how often specific workbook elements are automatically materialized to optimize performance and data freshness.
+//	### Usage notes
+//	- Retrieve the **workbookId** by calling the [/v2/workbooks](https://help.sigmacomputing.com/reference/list-workbooks) endpoint.
+//	- To retrieve additional pages of results, use the response of the `nextPage` parameter as the `page` query parameter in the following request.
+//
+//	### Usage scenarios
+//	- **Monitoring and management:** Administrators can monitor and manage the schedules for materialization to ensure optimal system performance.
+//	- **Audit and review:** Periodic reviews of materialization schedules can help in assessing the efficiency of data processes and making necessary adjustments.
+//
+//	### Best practices
+//	- Regularly review materialization schedules to align them with current data usage patterns and business needs.
+//	- Use pagination to manage large sets of data and improve response times of API calls.
+//
+// Corresponds with GET /v2.1/workbooks/{workbookId}/materialization-schedules (the `V21ListMaterializationSchedules` operationId).
+func (c *Client) V21ListMaterializationSchedules(ctx context.Context, workbookId string, params *V21ListMaterializationSchedulesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewV21ListMaterializationSchedulesRequest(c.Server, workbookId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // V21ListWorkbookSchedules List scheduled workbook exports (Paginated)
 //
 //	**Attention:** This API endpoint uses pagination by default.
@@ -75850,6 +76009,34 @@ func (c *Client) ListDataModels(ctx context.Context, params *ListDataModelsParam
 // Corresponds with GET /v2/dataModels/{dataModelId} (the `GetDataModel` operationId).
 func (c *Client) GetDataModel(ctx context.Context, dataModelId string, params *GetDataModelParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDataModelRequest(c.Server, dataModelId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListDataModelMaterializationSchedules List materialization schedules for a data model
+//
+//	This endpoint retrieves a list of all materialization schedules associated with a data model. Each schedule details when and how often specific data model elements are automatically materialized to optimize performance and data freshness.
+//	### Usage notes
+//	- Retrieve the **dataModelId** by calling the [/v2/dataModels](https://help.sigmacomputing.com/reference/list-data-models) endpoint.
+//	- To retrieve additional pages of results, use the response of the `nextPageToken` parameter as the `pageToken` query parameter in the following request.
+//
+//	### Usage scenarios
+//	- **Monitoring and management:** Administrators can monitor and manage the schedules for materialization to ensure optimal system performance.
+//	- **Audit and review:** Periodic reviews of materialization schedules can help in assessing the efficiency of data processes and making necessary adjustments.
+//
+//	### Best practices
+//	- Regularly review materialization schedules to align them with current data usage patterns and business needs.
+//	- Use pagination to manage large sets of data and improve response times of API calls.
+//
+// Corresponds with GET /v2/dataModels/{dataModelId}/materializationSchedules (the `ListDataModelMaterializationSchedules` operationId).
+func (c *Client) ListDataModelMaterializationSchedules(ctx context.Context, dataModelId string, params *ListDataModelMaterializationSchedulesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListDataModelMaterializationSchedulesRequest(c.Server, dataModelId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -79346,6 +79533,92 @@ func NewV21ListTeamsRequest(server string, params *V21ListTeamsParams) (*http.Re
 	return req, nil
 }
 
+// NewV21ListMaterializationSchedulesRequest constructs an http.Request for the V21ListMaterializationSchedules method
+func NewV21ListMaterializationSchedulesRequest(server string, workbookId string, params *V21ListMaterializationSchedulesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workbookId", workbookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v2.1/workbooks/%s/materialization-schedules", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: "double"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Authorization", params.Authorization, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Authorization", headerParam0)
+
+	}
+
+	return req, nil
+}
+
 // NewV21ListWorkbookSchedulesRequest constructs an http.Request for the V21ListWorkbookSchedules method
 func NewV21ListWorkbookSchedulesRequest(server string, workbookId string, params *V21ListWorkbookSchedulesParams) (*http.Request, error) {
 	var err error
@@ -81457,6 +81730,92 @@ func NewGetDataModelRequest(server string, dataModelId string, params *GetDataMo
 		if params.ExcludeTags != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "excludeTags", *params.ExcludeTags, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Authorization", params.Authorization, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Authorization", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewListDataModelMaterializationSchedulesRequest constructs an http.Request for the ListDataModelMaterializationSchedules method
+func NewListDataModelMaterializationSchedulesRequest(server string, dataModelId string, params *ListDataModelMaterializationSchedulesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "dataModelId", dataModelId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v2/dataModels/%s/materializationSchedules", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.PageToken != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "pageToken", *params.PageToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PageSize != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "pageSize", *params.PageSize, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -87750,6 +88109,29 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /v2.1/teams (the `V21ListTeams` operationId).
 	V21ListTeamsWithResponse(ctx context.Context, params *V21ListTeamsParams, reqEditors ...RequestEditorFn) (*V21ListTeamsResponse, error)
 
+	// V21ListMaterializationSchedulesWithResponse List materialization schedules (Paginated)
+	//
+	//
+	//   **Attention:** This API endpoint uses pagination by default.
+	//
+	//   This endpoint retrieves a list of all materialization schedules associated with a workbook. Each schedule details when and how often specific workbook elements are automatically materialized to optimize performance and data freshness.
+	//   ### Usage notes
+	//   - Retrieve the **workbookId** by calling the [/v2/workbooks](https://help.sigmacomputing.com/reference/list-workbooks) endpoint.
+	//   - To retrieve additional pages of results, use the response of the `nextPage` parameter as the `page` query parameter in the following request.
+	//
+	//   ### Usage scenarios
+	//   - **Monitoring and management:** Administrators can monitor and manage the schedules for materialization to ensure optimal system performance.
+	//   - **Audit and review:** Periodic reviews of materialization schedules can help in assessing the efficiency of data processes and making necessary adjustments.
+	//
+	//   ### Best practices
+	//   - Regularly review materialization schedules to align them with current data usage patterns and business needs.
+	//   - Use pagination to manage large sets of data and improve response times of API calls.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v2.1/workbooks/{workbookId}/materialization-schedules (the `V21ListMaterializationSchedules` operationId).
+	V21ListMaterializationSchedulesWithResponse(ctx context.Context, workbookId string, params *V21ListMaterializationSchedulesParams, reqEditors ...RequestEditorFn) (*V21ListMaterializationSchedulesResponse, error)
+
 	// V21ListWorkbookSchedulesWithResponse List scheduled workbook exports (Paginated)
 	//
 	//
@@ -88468,6 +88850,27 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /v2/dataModels/{dataModelId} (the `GetDataModel` operationId).
 	GetDataModelWithResponse(ctx context.Context, dataModelId string, params *GetDataModelParams, reqEditors ...RequestEditorFn) (*GetDataModelResponse, error)
+
+	// ListDataModelMaterializationSchedulesWithResponse List materialization schedules for a data model
+	//
+	//
+	//   This endpoint retrieves a list of all materialization schedules associated with a data model. Each schedule details when and how often specific data model elements are automatically materialized to optimize performance and data freshness.
+	//   ### Usage notes
+	//   - Retrieve the **dataModelId** by calling the [/v2/dataModels](https://help.sigmacomputing.com/reference/list-data-models) endpoint.
+	//   - To retrieve additional pages of results, use the response of the `nextPageToken` parameter as the `pageToken` query parameter in the following request.
+	//
+	//   ### Usage scenarios
+	//   - **Monitoring and management:** Administrators can monitor and manage the schedules for materialization to ensure optimal system performance.
+	//   - **Audit and review:** Periodic reviews of materialization schedules can help in assessing the efficiency of data processes and making necessary adjustments.
+	//
+	//   ### Best practices
+	//   - Regularly review materialization schedules to align them with current data usage patterns and business needs.
+	//   - Use pagination to manage large sets of data and improve response times of API calls.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v2/dataModels/{dataModelId}/materializationSchedules (the `ListDataModelMaterializationSchedules` operationId).
+	ListDataModelMaterializationSchedulesWithResponse(ctx context.Context, dataModelId string, params *ListDataModelMaterializationSchedulesParams, reqEditors ...RequestEditorFn) (*ListDataModelMaterializationSchedulesResponse, error)
 
 	// ListDatasetsWithResponse List datasets (Deprecated)
 	//
@@ -90739,6 +91142,47 @@ func (r V21ListTeamsResponse) ContentType() string {
 	return ""
 }
 
+type V21ListMaterializationSchedulesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkbooksV21ListMaterializationSchedulesResponse200
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r V21ListMaterializationSchedulesResponse) GetJSON200() *WorkbooksV21ListMaterializationSchedulesResponse200 {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r V21ListMaterializationSchedulesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r V21ListMaterializationSchedulesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r V21ListMaterializationSchedulesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r V21ListMaterializationSchedulesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type V21ListWorkbookSchedulesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -92045,6 +92489,47 @@ func (r GetDataModelResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetDataModelResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListDataModelMaterializationSchedulesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DataModelsListDataModelMaterializationSchedulesResponse200
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListDataModelMaterializationSchedulesResponse) GetJSON200() *DataModelsListDataModelMaterializationSchedulesResponse200 {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListDataModelMaterializationSchedulesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListDataModelMaterializationSchedulesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListDataModelMaterializationSchedulesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListDataModelMaterializationSchedulesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -96045,6 +96530,34 @@ func (c *ClientWithResponses) V21ListTeamsWithResponse(ctx context.Context, para
 	return ParseV21ListTeamsResponse(rsp)
 }
 
+// V21ListMaterializationSchedulesWithResponse List materialization schedules (Paginated)
+//
+//	**Attention:** This API endpoint uses pagination by default.
+//
+//	This endpoint retrieves a list of all materialization schedules associated with a workbook. Each schedule details when and how often specific workbook elements are automatically materialized to optimize performance and data freshness.
+//	### Usage notes
+//	- Retrieve the **workbookId** by calling the [/v2/workbooks](https://help.sigmacomputing.com/reference/list-workbooks) endpoint.
+//	- To retrieve additional pages of results, use the response of the `nextPage` parameter as the `page` query parameter in the following request.
+//
+//	### Usage scenarios
+//	- **Monitoring and management:** Administrators can monitor and manage the schedules for materialization to ensure optimal system performance.
+//	- **Audit and review:** Periodic reviews of materialization schedules can help in assessing the efficiency of data processes and making necessary adjustments.
+//
+//	### Best practices
+//	- Regularly review materialization schedules to align them with current data usage patterns and business needs.
+//	- Use pagination to manage large sets of data and improve response times of API calls.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v2.1/workbooks/{workbookId}/materialization-schedules (the `V21ListMaterializationSchedules` operationId).
+func (c *ClientWithResponses) V21ListMaterializationSchedulesWithResponse(ctx context.Context, workbookId string, params *V21ListMaterializationSchedulesParams, reqEditors ...RequestEditorFn) (*V21ListMaterializationSchedulesResponse, error) {
+	rsp, err := c.V21ListMaterializationSchedules(ctx, workbookId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseV21ListMaterializationSchedulesResponse(rsp)
+}
+
 // V21ListWorkbookSchedulesWithResponse List scheduled workbook exports (Paginated)
 //
 //	**Attention:** This API endpoint uses pagination by default.
@@ -96995,6 +97508,32 @@ func (c *ClientWithResponses) GetDataModelWithResponse(ctx context.Context, data
 		return nil, err
 	}
 	return ParseGetDataModelResponse(rsp)
+}
+
+// ListDataModelMaterializationSchedulesWithResponse List materialization schedules for a data model
+//
+//	This endpoint retrieves a list of all materialization schedules associated with a data model. Each schedule details when and how often specific data model elements are automatically materialized to optimize performance and data freshness.
+//	### Usage notes
+//	- Retrieve the **dataModelId** by calling the [/v2/dataModels](https://help.sigmacomputing.com/reference/list-data-models) endpoint.
+//	- To retrieve additional pages of results, use the response of the `nextPageToken` parameter as the `pageToken` query parameter in the following request.
+//
+//	### Usage scenarios
+//	- **Monitoring and management:** Administrators can monitor and manage the schedules for materialization to ensure optimal system performance.
+//	- **Audit and review:** Periodic reviews of materialization schedules can help in assessing the efficiency of data processes and making necessary adjustments.
+//
+//	### Best practices
+//	- Regularly review materialization schedules to align them with current data usage patterns and business needs.
+//	- Use pagination to manage large sets of data and improve response times of API calls.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v2/dataModels/{dataModelId}/materializationSchedules (the `ListDataModelMaterializationSchedules` operationId).
+func (c *ClientWithResponses) ListDataModelMaterializationSchedulesWithResponse(ctx context.Context, dataModelId string, params *ListDataModelMaterializationSchedulesParams, reqEditors ...RequestEditorFn) (*ListDataModelMaterializationSchedulesResponse, error) {
+	rsp, err := c.ListDataModelMaterializationSchedules(ctx, dataModelId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListDataModelMaterializationSchedulesResponse(rsp)
 }
 
 // ListDatasetsWithResponse List datasets (Deprecated)
@@ -99978,6 +100517,32 @@ func ParseV21ListTeamsResponse(rsp *http.Response) (*V21ListTeamsResponse, error
 	return response, nil
 }
 
+// ParseV21ListMaterializationSchedulesResponse parses an HTTP response from a V21ListMaterializationSchedulesWithResponse call
+func ParseV21ListMaterializationSchedulesResponse(rsp *http.Response) (*V21ListMaterializationSchedulesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &V21ListMaterializationSchedulesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkbooksV21ListMaterializationSchedulesResponse200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseV21ListWorkbookSchedulesResponse parses an HTTP response from a V21ListWorkbookSchedulesWithResponse call
 func ParseV21ListWorkbookSchedulesResponse(rsp *http.Response) (*V21ListWorkbookSchedulesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -100800,6 +101365,32 @@ func ParseGetDataModelResponse(rsp *http.Response) (*GetDataModelResponse, error
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest DataModelsGetDataModelResponse200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListDataModelMaterializationSchedulesResponse parses an HTTP response from a ListDataModelMaterializationSchedulesWithResponse call
+func ParseListDataModelMaterializationSchedulesResponse(rsp *http.Response) (*ListDataModelMaterializationSchedulesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListDataModelMaterializationSchedulesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DataModelsListDataModelMaterializationSchedulesResponse200
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

@@ -601,3 +601,34 @@ func (c *Client) ListTemplates(ctx context.Context, opts ListTemplatesOptions) (
 		})
 	})
 }
+
+// MaterializationSchedule is a Sigma element materialization schedule.
+type MaterializationSchedule struct {
+	SheetID      string               `json:"sheetId"`
+	ElementID    string               `json:"elementId"`
+	ElementName  string               `json:"elementName"`
+	Schedule     *MaterializationCron `json:"schedule"`
+	ConfiguredAt string               `json:"configuredAt"`
+	Paused       bool                 `json:"paused"`
+}
+
+type MaterializationCron struct {
+	CronSpec string `json:"cronSpec"`
+	Timezone string `json:"timezone"`
+}
+
+func (c *Client) ListWorkbookMaterializationSchedules(ctx context.Context, workbookID string) ([]MaterializationSchedule, error) {
+	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]MaterializationSchedule, *string, error) {
+		return fetchPage[MaterializationSchedule](c, func() (*http.Response, error) {
+			return c.api.V21ListMaterializationSchedules(ctx, workbookID, &openapi.V21ListMaterializationSchedulesParams{Page: page})
+		})
+	})
+}
+
+func (c *Client) ListDataModelMaterializationSchedules(ctx context.Context, dataModelID string) ([]MaterializationSchedule, error) {
+	return listAllByPageToken(ctx, func(ctx context.Context, pageToken *string) ([]MaterializationSchedule, *string, error) {
+		return fetchPageToken[MaterializationSchedule](c, func() (*http.Response, error) {
+			return c.api.ListDataModelMaterializationSchedules(ctx, dataModelID, &openapi.ListDataModelMaterializationSchedulesParams{PageToken: pageToken})
+		})
+	})
+}

@@ -106,7 +106,7 @@ operations:
     path: /v2/accountTypes
     reference: https://help.sigmacomputing.com/reference/list-account-types.md
   - operation_id: listAccountTypePermissions
-    terraform_types: [resource.sigma_account_type]
+    terraform_types: [resource.sigma_account_type, data.sigma_account_type_permissions]
     method: GET
     path: /v2/accountTypes/{accountTypeId}/permissions
     reference: https://help.sigmacomputing.com/reference/list-account-type-permissions.md
@@ -565,6 +565,11 @@ operations:
     method: GET
     path: /v2/workbooks
     reference: https://help.sigmacomputing.com/reference/list-workbooks.md
+  - operation_id: v2_1_listMaterializationSchedules
+    terraform_types: [data.sigma_workbook_materialization_schedules]
+    method: GET
+    path: /v2.1/workbooks/{workbookId}/materialization-schedules
+    reference: https://help.sigmacomputing.com/reference/v-2-1-list-materialization-schedules.md
 
   # --- data.sigma_report / data.sigma_reports ---
   - operation_id: getReport
@@ -589,6 +594,11 @@ operations:
     method: GET
     path: /v2/dataModels
     reference: https://help.sigmacomputing.com/reference/list-data-models.md
+  - operation_id: listDataModelMaterializationSchedules
+    terraform_types: [data.sigma_data_model_materialization_schedules]
+    method: GET
+    path: /v2/dataModels/{dataModelId}/materializationSchedules
+    reference: https://help.sigmacomputing.com/reference/list-data-model-materialization-schedules.md
 
   # --- data.sigma_dataset / data.sigma_datasets ---
   - operation_id: getDataset

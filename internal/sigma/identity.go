@@ -274,7 +274,13 @@ func (c *Client) ListAccountTypePermissions(ctx context.Context, id string) ([]A
 	err := c.doDecode(func() (*http.Response, error) {
 		return c.api.ListAccountTypePermissions(ctx, id, nil)
 	}, &v)
-	return v, err
+	if err != nil {
+		return nil, err
+	}
+	if v == nil {
+		v = []AccountTypePermission{}
+	}
+	return v, nil
 }
 func (c *Client) FindAccountType(ctx context.Context, key string) (*AccountType, error) {
 	v, err := c.ListAccountTypes(ctx)

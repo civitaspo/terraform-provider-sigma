@@ -73,7 +73,7 @@ Always set `base_url` explicitly for the cloud where your organization is hosted
 | `sigma_member` | `sigma_member`, `sigma_members` |
 | `sigma_team` | `sigma_team`, `sigma_teams` |
 | `sigma_team_member` | |
-| `sigma_account_type` | `sigma_account_types` |
+| `sigma_account_type` | `sigma_account_types`, `sigma_account_type_permissions` |
 | `sigma_user_attribute` | `sigma_user_attribute`, `sigma_user_attributes` |
 | `sigma_user_attribute_team_assignment` | |
 | `sigma_user_attribute_user_assignment` | |
@@ -102,9 +102,9 @@ Warehouse credentials use write-only attributes (`credentials_wo` + `credentials
 | Resources | Data sources |
 |-----------|--------------|
 | `sigma_tag` | `sigma_tags` |
-| `sigma_workbook_schedule`, `sigma_report_schedule` | `sigma_workbook`, `sigma_workbooks` |
+| `sigma_workbook_schedule`, `sigma_report_schedule` | `sigma_workbook`, `sigma_workbooks`, `sigma_workbook_materialization_schedules` |
 | `sigma_workbook_embed` | `sigma_report`, `sigma_reports` |
-| `sigma_translation` | `sigma_data_model`, `sigma_data_models` |
+| `sigma_translation` | `sigma_data_model`, `sigma_data_models`, `sigma_data_model_materialization_schedules` |
 | | `sigma_dataset`, `sigma_datasets` (deprecated) |
 | | `sigma_template`, `sigma_templates` |
 | | `sigma_whoami` |
