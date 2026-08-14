@@ -142,6 +142,13 @@ The following Sigma capabilities are intentionally not managed by this provider:
 | Aggregate team membership (`sigma_team_members`) | Overlapping ownership; use singular `sigma_team_member` |
 | Applying version tags to documents | Short lifecycle and high AI change frequency are a poor Terraform fit. Tag definitions via `sigma_tag` remain |
 | Data model spec / as-code content | Short lifecycle and high AI change frequency are a poor Terraform fit |
+| Workbook bookmarks | Create requires a UI-session `exploreKey` plus `workbookVersion`; not declaratively authorable |
+| Webhooks | Send-only Beta action, not durable infrastructure |
+| Cross-org template shares | Imperative accept/delete lifecycle |
+| Member-scoped listings | Teams, schedules, and recents are per-member operational lists; favorites are already excluded |
+| Connection dbt artifacts | Push-only operational artifact, not a long-lived resource |
+| Warehouse table-column listing | Read-heavy catalog surface; poor Terraform fit |
+| Generic grants read surface | Deferred until a real use case; write tagged grants via `sigma_workbook_grant` and `sigma_report_grant` |
 
 ## Acceptance tests
 
