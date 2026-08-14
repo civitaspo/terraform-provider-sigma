@@ -3,12 +3,12 @@
 page_title: "sigma_api_connector Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a third-party API connector in Sigma. When secrets_wo has been managed via secrets_wo_version, changing params_json requires incrementing the version and resupplying secrets because PATCH replaces the full params object. Metadata-only updates omit params so existing secrets are retained.
+  Manages a third-party API connector in Sigma. secrets_wo and secrets_wo_version must be supplied together. After secrets were managed, sending params requires a strictly greater version and a known secrets_wo. Metadata-only updates omit params so existing secrets are retained. Read does not replace configured params with a redacted GET body.
 ---
 
 # sigma_api_connector (Resource)
 
-Manages a third-party API connector in Sigma. When `secrets_wo` has been managed via `secrets_wo_version`, changing `params_json` requires incrementing the version and resupplying secrets because PATCH replaces the full `params` object. Metadata-only updates omit `params` so existing secrets are retained.
+Manages a third-party API connector in Sigma. `secrets_wo` and `secrets_wo_version` must be supplied together. After secrets were managed, sending `params` requires a strictly greater version and a known `secrets_wo`. Metadata-only updates omit `params` so existing secrets are retained. Read does not replace configured params with a redacted GET body.
 
 ## Example Usage
 
@@ -43,8 +43,8 @@ resource "sigma_api_connector" "example" {
 - `auth_id` (String) Associated `sigma_api_credential` ID.
 - `config_json` (String) JSON timeout, retry, redirect, and rate limit configuration.
 - `description` (String) Description.
-- `secrets_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only JSON object merged into `params_json` for static secret parameters. Required whenever `secrets_wo_version` changes.
-- `secrets_wo_version` (Number) Set on create when using `secrets_wo`, and increment when rotating secrets or changing `params_json` after secrets were managed.
+- `secrets_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only JSON object merged into `params_json` for static secret parameters. Required together with `secrets_wo_version`.
+- `secrets_wo_version` (Number) Must be supplied with `secrets_wo`. Increment when rotating secrets or changing `params_json` after secrets were managed.
 
 ### Read-Only
 

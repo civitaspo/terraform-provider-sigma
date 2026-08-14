@@ -3,12 +3,12 @@
 page_title: "sigma_connection Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages a Sigma warehouse connection. details_json is polymorphic by warehouse type; put write-only fields such as password, serviceAccount, and clientSecret in credentials_wo. Sigma's update connection API replaces warehouse details entirely, so any update that previously sent credentials_wo requires incrementing credentials_wo_version (and resupplying credentials_wo) to avoid clearing authentication. Restore is not a credentials-free path. use_oauth is computed from GET useOauth; warehouse OAuth settings remain in details_json. Sigma's get endpoint does not return warehouse details, so imported resources cannot recover them.
+  Manages a Sigma warehouse connection. details_json is required and must contain the complete non-secret warehouse configuration for every create and PUT. Put write-only fields such as password, serviceAccount, and clientSecret in credentials_wo. Sigma's update connection API replaces warehouse details entirely, so any update after credentials were managed requires a strictly greater credentials_wo_version and a resupplied credentials_wo. Restore is not a Terraform attribute. GET does not return warehouse details, so import is ID-only: configuration must include complete details_json before Terraform can update.
 ---
 
 # sigma_connection (Resource)
 
-Manages a Sigma warehouse connection. `details_json` is polymorphic by warehouse `type`; put write-only fields such as `password`, `serviceAccount`, and `clientSecret` in `credentials_wo`. Sigma's update connection API replaces warehouse details entirely, so any update that previously sent `credentials_wo` requires incrementing `credentials_wo_version` (and resupplying `credentials_wo`) to avoid clearing authentication. Restore is not a credentials-free path. `use_oauth` is computed from GET `useOauth`; warehouse OAuth settings remain in `details_json`. Sigma's get endpoint does not return warehouse details, so imported resources cannot recover them.
+Manages a Sigma warehouse connection. `details_json` is required and must contain the complete non-secret warehouse configuration for every create and PUT. Put write-only fields such as `password`, `serviceAccount`, and `clientSecret` in `credentials_wo`. Sigma's update connection API replaces warehouse details entirely, so any update after credentials were managed requires a strictly greater `credentials_wo_version` and a resupplied `credentials_wo`. Restore is not a Terraform attribute. GET does not return warehouse details, so import is ID-only: configuration must include complete `details_json` before Terraform can update.
 
 ## Example Usage
 
@@ -38,26 +38,66 @@ resource "sigma_connection" "example" {
 
 ### Required
 
+- `details_json` (String) Required JSON object containing non-secret warehouse-specific connection details. Every PUT sends this object plus any write-only credentials. GET does not return warehouse details; do not infer them from flattened GET metadata.
 - `name` (String) Connection name.
 
 ### Optional
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `credentials_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only JSON object merged into `details_json` before create or update. Required whenever `credentials_wo_version` changes.
-- `credentials_wo_version` (Number) Set on create when using `credentials_wo`, and increment on every update that should retain or rotate warehouse credentials. Sigma PUT replaces details, so updates without a version bump are rejected when credentials were previously managed. Restore is not a credentials-free path.
+- `credentials_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only JSON object merged into a copy of `details_json` for the outbound request only. Required together with `credentials_wo_version` on create/rotation. Never stored in state.
+- `credentials_wo_version` (Number) Must be supplied with `credentials_wo`. After credentials have been managed, every PUT requires a known strictly greater version and a known write-only payload from configuration.
 - `description_json` (String) JSON object accepted by Sigma as the connection description.
-- `details_json` (String) JSON object containing non-secret warehouse-specific connection details.
 - `pool_sizes_json` (String) JSON object configuring connection pool sizes.
-- `restore` (Boolean) When true, PUT `restore=true` to unarchive a deleted connection. Sigma PUT still replaces warehouse details, so restore is not a credentials-free path: increment `credentials_wo_version` and resupply `credentials_wo` whenever credentials were previously managed.
-- `timeout_secs` (Number) Connection timeout in seconds.
-- `use_friendly_names` (Boolean) Whether friendly names are enabled.
+- `timeout_secs` (Number) Request `timeoutSecs`. When GET returns `timeout.default`, Terraform maps that value here because the documented semantics match.
+- `use_friendly_names` (Boolean) Request `useFriendlyNames`. GET reports this as `friendlyName`.
 
 ### Read-Only
 
+- `account` (String) Account associated with the connection. Response-only; not copied into PUT details.
+- `created_at` (String) Creation timestamp.
+- `created_by` (String) Member ID that created the connection.
+- `exports_warehouse` (String) Warehouse used for export jobs.
+- `friendly_name` (Boolean) GET `friendlyName`.
 - `id` (String) Connection ID.
+- `input_table_audit_log_schema_json` (String) Input table write-ahead log schema JSON.
+- `is_archived` (Boolean) Whether the connection is archived.
+- `is_audit_log` (Boolean) Whether audit logging is enabled.
+- `is_independent_oauth` (Boolean) Whether the connection uses connection-level OAuth.
+- `is_sample` (Boolean) Whether this is the Sigma sample data connection.
+- `last_active_at` (String) Last activity timestamp.
+- `materialization_warehouse` (String) Warehouse used for materialization jobs.
+- `oauth_audience` (String) OAuth federation audience.
+- `oauth_client_id` (String) Connection-level OAuth client ID.
+- `oauth_idp_type` (String) OAuth provider type.
+- `oauth_metadata_url` (String) Connection-level OAuth metadata URL.
+- `oauth_scopes` (List of String) Connection-level OAuth scopes.
+- `oauth_use_jwt` (Boolean) Whether connection-level OAuth uses JWT bearer tokens.
+- `oauth_use_pkce` (Boolean) Whether connection-level OAuth uses PKCE.
+- `organization_id` (String) Organization ID.
+- `role` (String) Role used by the connection user. Response-only; not copied into PUT details.
+- `role_switching` (String) Snowflake OAuth role-switching setting.
+- `timeout` (Attributes) Complete GET `timeout` object (`default`, `dashboard`, `download`, `worksheet`). (see [below for nested schema](#nestedatt--timeout))
 - `type` (String) Warehouse type returned by Sigma.
+- `updated_at` (String) Update timestamp.
+- `updated_by` (String) Member or process that last updated the connection.
 - `use_oauth` (Boolean) Whether the connection uses OAuth, as returned by Sigma GET `useOauth`. Not settable; warehouse OAuth configuration remains in `details_json`.
+- `user` (String) User associated with the connection. Response-only; not copied into PUT details.
+- `user_attributes_json` (String) User attributes JSON associated with the connection.
+- `warehouse` (String) Warehouse associated with the connection. Response-only; not copied into PUT details.
+- `write_access` (Boolean) Whether write access is enabled.
+- `writeback_schemas_json` (String) OAuth write-back schema configuration JSON.
+- `writebacks_json` (String) Non-OAuth write-back configuration JSON.
+
+<a id="nestedatt--timeout"></a>
+### Nested Schema for `timeout`
+
+Read-Only:
+
+- `dashboard` (Number) Dashboard timeout in seconds.
+- `default` (Number) Default timeout in seconds.
+- `download` (Number) Download timeout in seconds.
+- `worksheet` (Number) Worksheet timeout in seconds.
 
 ## Import
 
@@ -67,5 +107,6 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 
 ```shell
 #!/usr/bin/env sh
+# Import is ID-only. Configuration must include complete details_json before Terraform can update.
 terraform import sigma_connection.example connection-id
 ```

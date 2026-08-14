@@ -64,19 +64,32 @@ func validateConnectionGrant(plan *connectionGrantModel) error {
 	return nil
 }
 
-func findConnectionGrant(values []sigma.Grant, memberID, teamID, permission, grantID string) *sigma.Grant {
-	for i := range values {
-		value := &values[i]
-		if grantID != "" && value.GrantID == grantID {
-			return value
+func lookupConnectionGrant(values []sigma.Grant, memberID, teamID, permission, grantID string) (*sigma.Grant, error) {
+	if grantID != "" {
+		for i := range values {
+			if values[i].GrantID == grantID {
+				return &values[i], nil
+			}
 		}
+		return nil, &sigma.APIError{StatusCode: 404, Message: "grant not found"}
+	}
+	var matches []sigma.Grant
+	for i := range values {
+		value := values[i]
 		memberMatches := memberID != "" && value.MemberID != nil && *value.MemberID == memberID
 		teamMatches := teamID != "" && value.TeamID != nil && *value.TeamID == teamID
 		if (memberMatches || teamMatches) && value.Permission == permission {
-			return value
+			matches = append(matches, value)
 		}
 	}
-	return nil
+	switch len(matches) {
+	case 1:
+		return &matches[0], nil
+	case 0:
+		return nil, &sigma.APIError{StatusCode: 404, Message: "grant not found"}
+	default:
+		return nil, fmt.Errorf("multiple grants matched grantee and permission; refusing to select the first match")
+	}
 }
 
 func (r *connectionGrantResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -98,9 +111,9 @@ func (r *connectionGrantResource) Create(ctx context.Context, req resource.Creat
 		resp.Diagnostics.AddError("Unable to locate created Sigma grant", err.Error())
 		return
 	}
-	value := findConnectionGrant(values, plan.MemberID.ValueString(), plan.TeamID.ValueString(), plan.Permission.ValueString(), "")
-	if value == nil {
-		resp.Diagnostics.AddError("Unable to locate created Sigma grant", "Sigma accepted the grant but did not return it from the list endpoint.")
+	value, err := lookupConnectionGrant(values, plan.MemberID.ValueString(), plan.TeamID.ValueString(), plan.Permission.ValueString(), "")
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to locate created Sigma grant", err.Error())
 		return
 	}
 	plan.ID = types.StringValue(value.GrantID)
@@ -123,9 +136,13 @@ func (r *connectionGrantResource) Read(ctx context.Context, req resource.ReadReq
 		resp.Diagnostics.AddError("Unable to read Sigma grant", err.Error())
 		return
 	}
-	value := findConnectionGrant(values, "", "", "", state.ID.ValueString())
-	if value == nil {
+	value, err := lookupConnectionGrant(values, "", "", "", state.ID.ValueString())
+	if sigma.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
+		return
+	}
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to read Sigma grant", err.Error())
 		return
 	}
 	state.Permission = types.StringValue(value.Permission)

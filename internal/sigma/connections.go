@@ -24,29 +24,87 @@ type ConnectionTimeout struct {
 // TimeoutSecs is mapped from response timeout.default (and still accepted from
 // legacy timeoutSecs JSON). FriendlyName comes from response friendlyName.
 type Connection struct {
-	ConnectionID string             `json:"connectionId"`
-	Name         string             `json:"name"`
-	Type         string             `json:"type"`
-	Description  json.RawMessage    `json:"description"`
-	PoolSizes    json.RawMessage    `json:"poolSizes"`
-	TimeoutSecs  *float64           `json:"timeoutSecs"`
-	FriendlyName bool               `json:"friendlyName"`
-	UseOauth     *bool              `json:"useOauth"`
-	Timeout      *ConnectionTimeout `json:"timeout,omitempty"`
+	ConnectionID             string             `json:"connectionId"`
+	Name                     string             `json:"name"`
+	Type                     string             `json:"type"`
+	Description              json.RawMessage    `json:"description"`
+	PoolSizes                json.RawMessage    `json:"poolSizes"`
+	TimeoutSecs              *float64           `json:"timeoutSecs"`
+	FriendlyName             bool               `json:"friendlyName"`
+	UseOauth                 *bool              `json:"useOauth"`
+	Timeout                  *ConnectionTimeout `json:"timeout,omitempty"`
+	OrganizationID           string             `json:"organizationId"`
+	IsSample                 *bool              `json:"isSample,omitempty"`
+	IsAuditLog               *bool              `json:"isAuditLog,omitempty"`
+	LastActiveAt             string             `json:"lastActiveAt"`
+	CreatedBy                string             `json:"createdBy"`
+	UpdatedBy                string             `json:"updatedBy"`
+	CreatedAt                string             `json:"createdAt"`
+	UpdatedAt                string             `json:"updatedAt"`
+	IsArchived               *bool              `json:"isArchived,omitempty"`
+	Account                  string             `json:"account"`
+	Warehouse                string             `json:"warehouse"`
+	User                     string             `json:"user"`
+	Role                     string             `json:"role"`
+	WriteAccess              *bool              `json:"writeAccess,omitempty"`
+	Writebacks               json.RawMessage    `json:"writebacks"`
+	WritebackSchemas         json.RawMessage    `json:"writebackSchemas"`
+	InputTableAuditLogSchema json.RawMessage    `json:"inputTableAuditLogSchema"`
+	MaterializationWarehouse string             `json:"materializationWarehouse"`
+	ExportsWarehouse         string             `json:"exportsWarehouse"`
+	OauthMetadataURL         string             `json:"oauthMetadataUrl"`
+	OauthClientID            string             `json:"oauthClientId"`
+	OauthScopes              []string           `json:"oauthScopes"`
+	OauthIdpType             string             `json:"oauthIdpType"`
+	OauthUsePkce             *bool              `json:"oauthUsePkce,omitempty"`
+	OauthUseJwt              *bool              `json:"oauthUseJwt,omitempty"`
+	OauthAudience            string             `json:"oauthAudience"`
+	IsIndependentOAuth       *bool              `json:"isIndependentOAuth,omitempty"`
+	UserAttributes           json.RawMessage    `json:"userAttributes"`
+	RoleSwitching            string             `json:"roleSwitching"`
 }
 
 func (value *Connection) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		ConnectionID     string             `json:"connectionId"`
-		Name             string             `json:"name"`
-		Type             string             `json:"type"`
-		Description      json.RawMessage    `json:"description"`
-		PoolSizes        json.RawMessage    `json:"poolSizes"`
-		TimeoutSecs      *float64           `json:"timeoutSecs"`
-		FriendlyName     *bool              `json:"friendlyName"`
-		UseFriendlyNames *bool              `json:"useFriendlyNames"`
-		UseOauth         *bool              `json:"useOauth"`
-		Timeout          *ConnectionTimeout `json:"timeout"`
+		ConnectionID             string             `json:"connectionId"`
+		Name                     string             `json:"name"`
+		Type                     string             `json:"type"`
+		Description              json.RawMessage    `json:"description"`
+		PoolSizes                json.RawMessage    `json:"poolSizes"`
+		TimeoutSecs              *float64           `json:"timeoutSecs"`
+		FriendlyName             *bool              `json:"friendlyName"`
+		UseFriendlyNames         *bool              `json:"useFriendlyNames"`
+		UseOauth                 *bool              `json:"useOauth"`
+		Timeout                  *ConnectionTimeout `json:"timeout"`
+		OrganizationID           string             `json:"organizationId"`
+		IsSample                 *bool              `json:"isSample"`
+		IsAuditLog               *bool              `json:"isAuditLog"`
+		LastActiveAt             string             `json:"lastActiveAt"`
+		CreatedBy                string             `json:"createdBy"`
+		UpdatedBy                string             `json:"updatedBy"`
+		CreatedAt                string             `json:"createdAt"`
+		UpdatedAt                string             `json:"updatedAt"`
+		IsArchived               *bool              `json:"isArchived"`
+		Account                  string             `json:"account"`
+		Warehouse                string             `json:"warehouse"`
+		User                     string             `json:"user"`
+		Role                     string             `json:"role"`
+		WriteAccess              *bool              `json:"writeAccess"`
+		Writebacks               json.RawMessage    `json:"writebacks"`
+		WritebackSchemas         json.RawMessage    `json:"writebackSchemas"`
+		InputTableAuditLogSchema json.RawMessage    `json:"inputTableAuditLogSchema"`
+		MaterializationWarehouse string             `json:"materializationWarehouse"`
+		ExportsWarehouse         string             `json:"exportsWarehouse"`
+		OauthMetadataURL         string             `json:"oauthMetadataUrl"`
+		OauthClientID            string             `json:"oauthClientId"`
+		OauthScopes              []string           `json:"oauthScopes"`
+		OauthIdpType             string             `json:"oauthIdpType"`
+		OauthUsePkce             *bool              `json:"oauthUsePkce"`
+		OauthUseJwt              *bool              `json:"oauthUseJwt"`
+		OauthAudience            string             `json:"oauthAudience"`
+		IsIndependentOAuth       *bool              `json:"isIndependentOAuth"`
+		UserAttributes           json.RawMessage    `json:"userAttributes"`
+		RoleSwitching            string             `json:"roleSwitching"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -58,6 +116,35 @@ func (value *Connection) UnmarshalJSON(data []byte) error {
 	value.PoolSizes = raw.PoolSizes
 	value.UseOauth = raw.UseOauth
 	value.Timeout = raw.Timeout
+	value.OrganizationID = raw.OrganizationID
+	value.IsSample = raw.IsSample
+	value.IsAuditLog = raw.IsAuditLog
+	value.LastActiveAt = raw.LastActiveAt
+	value.CreatedBy = raw.CreatedBy
+	value.UpdatedBy = raw.UpdatedBy
+	value.CreatedAt = raw.CreatedAt
+	value.UpdatedAt = raw.UpdatedAt
+	value.IsArchived = raw.IsArchived
+	value.Account = raw.Account
+	value.Warehouse = raw.Warehouse
+	value.User = raw.User
+	value.Role = raw.Role
+	value.WriteAccess = raw.WriteAccess
+	value.Writebacks = raw.Writebacks
+	value.WritebackSchemas = raw.WritebackSchemas
+	value.InputTableAuditLogSchema = raw.InputTableAuditLogSchema
+	value.MaterializationWarehouse = raw.MaterializationWarehouse
+	value.ExportsWarehouse = raw.ExportsWarehouse
+	value.OauthMetadataURL = raw.OauthMetadataURL
+	value.OauthClientID = raw.OauthClientID
+	value.OauthScopes = raw.OauthScopes
+	value.OauthIdpType = raw.OauthIdpType
+	value.OauthUsePkce = raw.OauthUsePkce
+	value.OauthUseJwt = raw.OauthUseJwt
+	value.OauthAudience = raw.OauthAudience
+	value.IsIndependentOAuth = raw.IsIndependentOAuth
+	value.UserAttributes = raw.UserAttributes
+	value.RoleSwitching = raw.RoleSwitching
 	switch {
 	case raw.TimeoutSecs != nil:
 		value.TimeoutSecs = raw.TimeoutSecs
@@ -76,6 +163,7 @@ func (value *Connection) UnmarshalJSON(data []byte) error {
 
 // ConnectionInput is the create/update request body. TimeoutSecs and
 // UseFriendlyNames are request field names; they are not the GET response shape.
+// Restore is intentionally omitted from this façade; Terraform does not expose it.
 type ConnectionInput struct {
 	Details          json.RawMessage `json:"details"`
 	Name             string          `json:"name"`
@@ -83,7 +171,6 @@ type ConnectionInput struct {
 	PoolSizes        json.RawMessage `json:"poolSizes,omitempty"`
 	TimeoutSecs      *float64        `json:"timeoutSecs,omitempty"`
 	UseFriendlyNames *bool           `json:"useFriendlyNames,omitempty"`
-	Restore          *bool           `json:"restore,omitempty"`
 }
 
 type ConnectionTest struct {

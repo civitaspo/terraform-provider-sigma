@@ -95,7 +95,7 @@ Always set `base_url` explicitly for the cloud where your organization is hosted
 | `sigma_connection_grant`, `sigma_connection_path_grant` | `sigma_connection_paths` |
 | `sigma_api_connector`, `sigma_api_credential` | |
 
-Warehouse credentials use write-only attributes (`credentials_wo` + `credentials_wo_version`). Because Sigma's connection update replaces warehouse details entirely, any update after credentials were managed requires bumping `credentials_wo_version` and resupplying `credentials_wo`. Connection tests after create/update are warnings, not hard errors.
+Warehouse credentials use write-only attributes (`credentials_wo` + `credentials_wo_version`). Because Sigma's connection update replaces warehouse details entirely, any update after credentials were managed requires bumping `credentials_wo_version` and resupplying `credentials_wo`. Connection restore is not a Terraform attribute. Connection tests after create/update are warnings, not hard errors.
 
 ### Documents and schedules
 

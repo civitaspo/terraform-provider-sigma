@@ -46,22 +46,9 @@ func TestConnectionMapsTimeoutDefault(t *testing.T) {
 	}
 }
 
-func TestConnectionInputRestoreJSON(t *testing.T) {
+func TestConnectionInputOmitsRestore(t *testing.T) {
 	t.Parallel()
-	restore := true
-	encoded, err := json.Marshal(sigma.ConnectionInput{Name: "warehouse", Details: json.RawMessage(`{"type":"postgres"}`), Restore: &restore})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var body map[string]any
-	if err := json.Unmarshal(encoded, &body); err != nil {
-		t.Fatal(err)
-	}
-	if body["restore"] != true {
-		t.Fatalf("restore = %#v", body["restore"])
-	}
-
-	encoded, err = json.Marshal(sigma.ConnectionInput{Name: "warehouse", Details: json.RawMessage(`{"type":"postgres"}`)})
+	encoded, err := json.Marshal(sigma.ConnectionInput{Name: "warehouse", Details: json.RawMessage(`{"type":"postgres"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
