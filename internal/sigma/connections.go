@@ -224,12 +224,20 @@ func (c *Client) TestConnection(ctx context.Context, id string) (*ConnectionTest
 	return &value, err
 }
 
-func (c *Client) ListConnections(ctx context.Context) ([]Connection, error) {
+func (c *Client) ListConnections(ctx context.Context, opts ListConnectionsOptions) ([]Connection, error) {
+	base := &openapi.ListConnectionsParams{IncludeArchived: opts.IncludeArchived, Search: opts.Search}
 	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]Connection, *string, error) {
+		params := *base
+		params.Page = page
 		return fetchPage[Connection](c, func() (*http.Response, error) {
-			return c.api.ListConnections(ctx, &openapi.ListConnectionsParams{Page: page})
+			return c.api.ListConnections(ctx, &params)
 		})
 	})
+}
+
+type ListConnectionsOptions struct {
+	IncludeArchived *bool
+	Search          *string
 }
 
 func (c *Client) CreateConnectionGrant(ctx context.Context, connectionID, memberID, teamID, permission string) error {
@@ -298,11 +306,12 @@ type ConnectionPath struct {
 	Path         []string `json:"path"`
 }
 
-func (c *Client) ListConnectionPaths(ctx context.Context, connectionID string) ([]ConnectionPath, error) {
-	base := &openapi.ListConnectionPathsParams{}
-	if connectionID != "" {
-		base.ConnectionId = &connectionID
-	}
+type ListConnectionPathsOptions struct {
+	ConnectionID *string
+}
+
+func (c *Client) ListConnectionPaths(ctx context.Context, opts ListConnectionPathsOptions) ([]ConnectionPath, error) {
+	base := &openapi.ListConnectionPathsParams{ConnectionId: opts.ConnectionID}
 	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]ConnectionPath, *string, error) {
 		params := *base
 		params.Page = page

@@ -39,7 +39,7 @@ func (d *deploymentPoliciesDataSource) Configure(_ context.Context, req datasour
 }
 func (d *deploymentPoliciesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists Sigma deployment policies. " + betaDataSourceNotice,
+		MarkdownDescription: "Lists Sigma deployment policies. " + betaDataSourceNotice + listCollectionNotice,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
 			"deployment_policies": schema.ListNestedAttribute{
@@ -83,8 +83,16 @@ func (d *deploymentPoliciesDataSource) Read(ctx context.Context, req datasource.
 		if policy.SourceSwapPolicies == nil {
 			policy.SourceSwapPolicies = []string{}
 		}
-		item.SourceSwapPolicies, _ = types.SetValueFrom(ctx, types.StringType, policy.SourceSwapPolicies)
+		swaps, swapDiags := types.SetValueFrom(ctx, types.StringType, policy.SourceSwapPolicies)
+		resp.Diagnostics.Append(swapDiags...)
+		item.SourceSwapPolicies = swaps
+		if resp.Diagnostics.HasError() {
+			return
+		}
 		state.DeploymentPolicies = append(state.DeploymentPolicies, item)
+	}
+	if resp.Diagnostics.HasError() {
+		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

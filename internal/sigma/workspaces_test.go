@@ -102,7 +102,7 @@ func TestWorkspaceFileAndGrantClientMethods(t *testing.T) {
 	if _, err = client.UpdateWorkspace(ctx, workspace.WorkspaceID, sigma.UpdateWorkspaceInput{Name: workspace.Name}); err != nil {
 		t.Fatal(err)
 	}
-	if values, listErr := client.ListWorkspaces(ctx); listErr != nil || len(values) != 1 {
+	if values, listErr := client.ListWorkspaces(ctx, sigma.ListWorkspacesOptions{}); listErr != nil || len(values) != 1 {
 		t.Fatalf("ListWorkspaces() = %v, %v", values, listErr)
 	}
 	if err = client.CreateWorkspaceGrant(ctx, workspace.WorkspaceID, sigma.Grantee{MemberID: owner}, "view"); err != nil {
@@ -127,7 +127,7 @@ func TestWorkspaceFileAndGrantClientMethods(t *testing.T) {
 	if _, err = client.UpdateFile(ctx, file.ID, sigma.UpdateFileInput{Name: &file.Name}); err != nil {
 		t.Fatal(err)
 	}
-	if values, listErr := client.ListFiles(ctx, sigma.ListFilesOptions{ParentID: workspace.WorkspaceID}); listErr != nil || len(values) != 1 {
+	if values, listErr := client.ListFiles(ctx, sigma.ListFilesOptions{ParentID: &workspace.WorkspaceID}); listErr != nil || len(values) != 1 {
 		t.Fatalf("ListFiles() = %v, %v", values, listErr)
 	}
 	if err = client.DeleteFile(ctx, file.ID); err != nil {

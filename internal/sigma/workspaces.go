@@ -69,10 +69,19 @@ func (c *Client) DeleteWorkspace(ctx context.Context, id string) error {
 	})
 }
 
-func (c *Client) ListWorkspaces(ctx context.Context) ([]Workspace, error) {
+// ListWorkspacesOptions are documented v2.1 list workspace filters except pagination.
+type ListWorkspacesOptions struct {
+	Name      *string
+	ExactName *string
+}
+
+func (c *Client) ListWorkspaces(ctx context.Context, opts ListWorkspacesOptions) ([]Workspace, error) {
+	base := &openapi.V21ListWorkspacesParams{Name: opts.Name, ExactName: opts.ExactName}
 	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]Workspace, *string, error) {
+		params := *base
+		params.Page = page
 		return fetchPage[Workspace](c, func() (*http.Response, error) {
-			return c.api.V21ListWorkspaces(ctx, &openapi.V21ListWorkspacesParams{Page: page})
+			return c.api.V21ListWorkspaces(ctx, &params)
 		})
 	})
 }
@@ -161,12 +170,12 @@ func (c *Client) DeleteFile(ctx context.Context, id string) error {
 	})
 }
 
-// ListFilesOptions controls file list filters.
+// ListFilesOptions controls file list filters. Pointers preserve null versus explicit empty/false.
 type ListFilesOptions struct {
-	Name               string
-	Permission         string
-	TypeFilters        []string
-	ParentID           string
+	Name               *string
+	Permission         *string
+	TypeFilters        *[]string
+	ParentID           *string
 	DirectChildrenOnly *bool
 }
 
@@ -185,20 +194,21 @@ func (c *Client) ListFiles(ctx context.Context, options ListFilesOptions) ([]Fil
 }
 
 func listFilesParams(options ListFilesOptions) (*openapi.ListParams, error) {
-	params := &openapi.ListParams{}
-	if options.Name != "" {
-		params.Name = &options.Name
+	params := &openapi.ListParams{
+		Name:              options.Name,
+		ParentId:          options.ParentID,
+		DirectChildFilter: options.DirectChildrenOnly,
 	}
-	if options.Permission != "" {
+	if options.Permission != nil {
 		var filter openapi.V2FilesGetParametersPermissionFilter
-		if err := filter.FromV2FilesGetParametersPermissionFilter0(openapi.V2FilesGetParametersPermissionFilter0(options.Permission)); err != nil {
+		if err := filter.FromV2FilesGetParametersPermissionFilter0(openapi.V2FilesGetParametersPermissionFilter0(*options.Permission)); err != nil {
 			return nil, fmt.Errorf("encode file permissionFilter: %w", err)
 		}
 		params.PermissionFilter = &filter
 	}
-	if len(options.TypeFilters) > 0 {
-		items := make(openapi.V2FilesGetParametersTypeFilters0, len(options.TypeFilters))
-		for i, fileType := range options.TypeFilters {
+	if options.TypeFilters != nil {
+		items := make(openapi.V2FilesGetParametersTypeFilters0, len(*options.TypeFilters))
+		for i, fileType := range *options.TypeFilters {
 			items[i] = openapi.V2FilesGetParametersTypeFiltersSchemaOneOf0Items(fileType)
 		}
 		var filters openapi.V2FilesGetParametersTypeFilters
@@ -207,10 +217,6 @@ func listFilesParams(options ListFilesOptions) (*openapi.ListParams, error) {
 		}
 		params.TypeFilters = &filters
 	}
-	if options.ParentID != "" {
-		params.ParentId = &options.ParentID
-	}
-	params.DirectChildFilter = options.DirectChildrenOnly
 	return params, nil
 }
 

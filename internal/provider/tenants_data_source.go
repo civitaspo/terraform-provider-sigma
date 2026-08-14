@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 
+	"github.com/civitaspo/terraform-provider-sigma/internal/sigma"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -32,6 +33,9 @@ type tenantDataModel struct {
 
 type tenantsDataModel struct {
 	ID      types.String      `tfsdk:"id"`
+	Search  types.String      `tfsdk:"search"`
+	Key     types.String      `tfsdk:"key"`
+	Order   types.String      `tfsdk:"order"`
 	Tenants []tenantDataModel `tfsdk:"tenants"`
 }
 
@@ -45,9 +49,12 @@ func (d *tenantsDataSource) Configure(_ context.Context, req datasource.Configur
 }
 func (d *tenantsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists Sigma tenant organizations. " + betaDataSourceNotice,
+		MarkdownDescription: "Lists Sigma tenant organizations. " + betaDataSourceNotice + listCollectionNotice,
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
+			"id":     schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
+			"search": schema.StringAttribute{Optional: true, MarkdownDescription: "Search filter (`search`)."},
+			"key":    schema.StringAttribute{Optional: true, MarkdownDescription: "Sort key (`key`): `createdAt`, `createdBy`, `name`, or `url`."},
+			"order":  schema.StringAttribute{Optional: true, MarkdownDescription: "Sort order (`order`): `asc` or `desc`."},
 			"tenants": schema.ListNestedAttribute{
 				Computed: true, MarkdownDescription: "Tenant organizations visible to the caller.",
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
@@ -74,7 +81,14 @@ func (d *tenantsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	tenants, err := d.client.ListTenants(ctx)
+	if abortUnknownInputs(&resp.Diagnostics, state.Search, state.Key, state.Order) {
+		return
+	}
+	tenants, err := d.client.ListTenants(ctx, sigma.ListTenantsOptions{
+		Search: optionalStringPtr(state.Search),
+		Key:    optionalStringPtr(state.Key),
+		Order:  optionalStringPtr(state.Order),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list Sigma tenants", err.Error())
 		return

@@ -3,12 +3,12 @@
 page_title: "sigma_deployment_policies Data Source - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Lists Sigma deployment policies. This resource uses a Sigma Beta API and may change without notice.
+  Lists Sigma deployment policies. This resource uses a Sigma Beta API and may change without notice. Results preserve Sigma API order; key collections by returned IDs rather than positional indices. Pagination cursors and page sizes are not exposed; this data source retrieves every page.
 ---
 
 # sigma_deployment_policies (Data Source)
 
-Lists Sigma deployment policies. This resource uses a Sigma Beta API and may change without notice.
+Lists Sigma deployment policies. This resource uses a Sigma Beta API and may change without notice. Results preserve Sigma API order; key collections by returned IDs rather than positional indices. Pagination cursors and page sizes are not exposed; this data source retrieves every page.
 
 ## Example Usage
 

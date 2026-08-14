@@ -58,15 +58,15 @@ func (d *filesDataSource) Configure(_ context.Context, request datasource.Config
 
 func (d *filesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, response *datasource.SchemaResponse) {
 	response.Schema = schema.Schema{
-		MarkdownDescription: "Lists Sigma files with optional API filters.",
+		MarkdownDescription: "Lists Sigma files with optional API filters." + listCollectionNotice,
 		Attributes: map[string]schema.Attribute{
 			"id":                   schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
-			"name":                 schema.StringAttribute{Optional: true, MarkdownDescription: "File name filter."},
-			"permission":           schema.StringAttribute{Optional: true, MarkdownDescription: "Permission filter: `view`, `explore`, `organize`, or `edit`."},
-			"type_filters":         schema.SetAttribute{Optional: true, ElementType: types.StringType, MarkdownDescription: "File type filters supported by the Sigma files API."},
-			"parent_id":            schema.StringAttribute{Optional: true, MarkdownDescription: "Parent folder ID."},
-			"direct_children_only": schema.BoolAttribute{Optional: true, MarkdownDescription: "Whether to return only direct children of the parent."},
-			"files":                schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Files.", NestedObject: schema.NestedAttributeObject{Attributes: fileDataAttributes()}},
+			"name":                 schema.StringAttribute{Optional: true, MarkdownDescription: "File name filter (`name`)."},
+			"permission":           schema.StringAttribute{Optional: true, MarkdownDescription: "Permission filter (`permissionFilter`): `view`, `explore`, `organize`, or `edit`."},
+			"type_filters":         schema.SetAttribute{Optional: true, ElementType: types.StringType, MarkdownDescription: "File type filters (`typeFilters`) supported by the Sigma files API. Null omits the parameter; an empty set sends an empty filter list."},
+			"parent_id":            schema.StringAttribute{Optional: true, MarkdownDescription: "Parent folder ID (`parentId`)."},
+			"direct_children_only": schema.BoolAttribute{Optional: true, MarkdownDescription: "Whether to return only direct children of the parent (`directChildFilter`). Explicit `false` is sent; null omits the parameter."},
+			"files":                schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Files in API order.", NestedObject: schema.NestedAttributeObject{Attributes: fileDataAttributes()}},
 		},
 	}
 }
@@ -77,22 +77,27 @@ func (d *filesDataSource) Read(ctx context.Context, request datasource.ReadReque
 	if response.Diagnostics.HasError() {
 		return
 	}
-	var typeFilters []string
-	response.Diagnostics.Append(state.TypeFilters.ElementsAs(ctx, &typeFilters, false)...)
-	var direct *bool
-	if !state.DirectChildrenOnly.IsNull() && !state.DirectChildrenOnly.IsUnknown() {
-		value := state.DirectChildrenOnly.ValueBool()
-		direct = &value
+	if abortUnknownInputs(&response.Diagnostics, state.Name, state.Permission, state.TypeFilters, state.ParentID, state.DirectChildrenOnly) {
+		return
+	}
+	typeFilters, typeDiags := optionalStringSlice(ctx, state.TypeFilters, "type_filters")
+	response.Diagnostics.Append(typeDiags...)
+	if response.Diagnostics.HasError() {
+		return
 	}
 	values, err := d.client.ListFiles(ctx, sigma.ListFilesOptions{
-		Name: state.Name.ValueString(), Permission: state.Permission.ValueString(), TypeFilters: typeFilters,
-		ParentID: state.ParentID.ValueString(), DirectChildrenOnly: direct,
+		Name:               optionalStringPtr(state.Name),
+		Permission:         optionalStringPtr(state.Permission),
+		TypeFilters:        typeFilters,
+		ParentID:           optionalStringPtr(state.ParentID),
+		DirectChildrenOnly: optionalBoolPtr(state.DirectChildrenOnly),
 	})
 	if err != nil {
 		response.Diagnostics.AddError("Unable to list Sigma files", err.Error())
 		return
 	}
 	state.ID = types.StringValue("files")
+	state.Files = make([]fileDataModel, 0, len(values))
 	for i := range values {
 		state.Files = append(state.Files, fileData(&values[i]))
 	}

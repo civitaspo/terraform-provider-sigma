@@ -30,8 +30,9 @@ type tagDocModel struct {
 }
 
 type tagsDocModel struct {
-	ID   types.String  `tfsdk:"id"`
-	Tags []tagDocModel `tfsdk:"tags"`
+	ID     types.String  `tfsdk:"id"`
+	Search types.String  `tfsdk:"search"`
+	Tags   []tagDocModel `tfsdk:"tags"`
 }
 
 func NewTagsDataSource() datasource.DataSource { return &tagsDataSource{} }
@@ -43,8 +44,9 @@ func (d *tagsDataSource) Configure(_ context.Context, req datasource.ConfigureRe
 	d.configure(req, resp)
 }
 func (d *tagsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	resp.Schema = schema.Schema{MarkdownDescription: "Lists Sigma version tags.", Attributes: map[string]schema.Attribute{
-		"id": schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
+	resp.Schema = schema.Schema{MarkdownDescription: "Lists Sigma version tags." + listCollectionNotice, Attributes: map[string]schema.Attribute{
+		"id":     schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
+		"search": schema.StringAttribute{Optional: true, MarkdownDescription: "Search filter (`search`)."},
 		"tags": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Version tags.", NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 			"id":          schema.StringAttribute{Computed: true, MarkdownDescription: "Version tag ID."},
 			"name":        schema.StringAttribute{Computed: true, MarkdownDescription: "Tag name."},
@@ -60,12 +62,21 @@ func (d *tagsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 	}}
 }
 func (d *tagsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	values, err := d.client.ListTags(ctx)
+	var state tagsDocModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if abortUnknownInputs(&resp.Diagnostics, state.Search) {
+		return
+	}
+	values, err := d.client.ListTags(ctx, sigma.ListTagsOptions{Search: optionalStringPtr(state.Search)})
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list Sigma tags", err.Error())
 		return
 	}
-	state := tagsDocModel{ID: types.StringValue("tags")}
+	state.ID = types.StringValue("tags")
+	state.Tags = make([]tagDocModel, 0, len(values))
 	for i := range values {
 		state.Tags = append(state.Tags, tagDoc(&values[i]))
 	}

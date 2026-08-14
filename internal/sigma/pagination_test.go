@@ -41,7 +41,7 @@ func TestListAllByPageSecondPage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	entries, err := client.ListMembers(context.Background())
+	entries, err := client.ListMembers(context.Background(), ListMembersOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestListAllByPageDetectsCursorCycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.ListMembers(context.Background())
+	_, err = client.ListMembers(context.Background(), ListMembersOptions{})
 	if err == nil || !strings.Contains(err.Error(), "pagination cycle") {
 		t.Fatalf("error = %v, want pagination cycle", err)
 	}
@@ -183,7 +183,7 @@ func TestListAllAcceptsBareArray(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	entries, err := client.ListMembers(context.Background())
+	entries, err := client.ListMembers(context.Background(), ListMembersOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestListAllRejectsUnexpectedEnvelope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.ListMembers(context.Background())
+	_, err = client.ListMembers(context.Background(), ListMembersOptions{})
 	if err == nil || !strings.Contains(err.Error(), "unexpected Sigma list response envelope") {
 		t.Fatalf("error = %v, want unexpected envelope", err)
 	}

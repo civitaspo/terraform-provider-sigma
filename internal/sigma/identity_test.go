@@ -144,7 +144,7 @@ func TestIdentityClientMethods(t *testing.T) {
 	if _, err = client.UpdateMember(ctx, member.MemberID, sigma.UpdateMemberInput{FirstName: &first}); err != nil {
 		t.Fatal(err)
 	}
-	if values, listErr := client.ListMembers(ctx); listErr != nil || len(values) != 1 {
+	if values, listErr := client.ListMembers(ctx, sigma.ListMembersOptions{}); listErr != nil || len(values) != 1 {
 		t.Fatalf("ListMembers() = %v, %v", values, listErr)
 	}
 	if err = client.DeleteMember(ctx, member.MemberID); err != nil {
@@ -172,7 +172,7 @@ func TestIdentityClientMethods(t *testing.T) {
 	if _, err = client.UpdateTeam(ctx, team.TeamID, sigma.UpdateTeamInput{Name: &team.Name}); err != nil {
 		t.Fatal(err)
 	}
-	if values, listErr := client.ListTeams(ctx); listErr != nil || len(values) != 1 {
+	if values, listErr := client.ListTeams(ctx, sigma.ListTeamsOptions{}); listErr != nil || len(values) != 1 {
 		t.Fatalf("ListTeams() = %v, %v", values, listErr)
 	}
 	if values, listErr := client.ListTeamMembers(ctx, team.TeamID); listErr != nil || len(values) != 1 {
@@ -205,7 +205,7 @@ func TestIdentityClientMethods(t *testing.T) {
 	if _, err = client.GetUserAttribute(ctx, attribute.UserAttributeID); err != nil {
 		t.Fatal(err)
 	}
-	if values, listErr := client.ListUserAttributes(ctx); listErr != nil || len(values) != 1 {
+	if values, listErr := client.ListUserAttributes(ctx, sigma.ListUserAttributesOptions{}); listErr != nil || len(values) != 1 {
 		t.Fatalf("attributes = %v, %v", values, listErr)
 	}
 	if err = client.SetUserAttributeTeam(ctx, attribute.UserAttributeID, team.TeamID, "americas"); err != nil {

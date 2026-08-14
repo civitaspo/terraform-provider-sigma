@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 
+	"github.com/civitaspo/terraform-provider-sigma/internal/sigma"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -17,6 +18,8 @@ type workspacesDataSource struct{ configuredDataSource }
 
 type workspacesDataModel struct {
 	ID         types.String         `tfsdk:"id"`
+	Name       types.String         `tfsdk:"name"`
+	ExactName  types.String         `tfsdk:"exact_name"`
 	Workspaces []workspaceDataModel `tfsdk:"workspaces"`
 }
 
@@ -32,21 +35,35 @@ func (d *workspacesDataSource) Configure(_ context.Context, request datasource.C
 
 func (d *workspacesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, response *datasource.SchemaResponse) {
 	response.Schema = schema.Schema{
-		MarkdownDescription: "Lists all Sigma workspaces using the paginated v2.1 endpoint.",
+		MarkdownDescription: "Lists Sigma workspaces using the paginated v2.1 endpoint." + listCollectionNotice,
 		Attributes: map[string]schema.Attribute{
 			"id":         schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
-			"workspaces": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Workspaces.", NestedObject: schema.NestedAttributeObject{Attributes: workspaceDataAttributes(false)}},
+			"name":       schema.StringAttribute{Optional: true, MarkdownDescription: "Partial name filter (`name`)."},
+			"exact_name": schema.StringAttribute{Optional: true, MarkdownDescription: "Exact name filter (`exactName`)."},
+			"workspaces": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Workspaces in API order.", NestedObject: schema.NestedAttributeObject{Attributes: workspaceDataAttributes(false)}},
 		},
 	}
 }
 
 func (d *workspacesDataSource) Read(ctx context.Context, request datasource.ReadRequest, response *datasource.ReadResponse) {
-	values, err := d.client.ListWorkspaces(ctx)
+	var state workspacesDataModel
+	response.Diagnostics.Append(request.Config.Get(ctx, &state)...)
+	if response.Diagnostics.HasError() {
+		return
+	}
+	if abortUnknownInputs(&response.Diagnostics, state.Name, state.ExactName) {
+		return
+	}
+	values, err := d.client.ListWorkspaces(ctx, sigma.ListWorkspacesOptions{
+		Name:      optionalStringPtr(state.Name),
+		ExactName: optionalStringPtr(state.ExactName),
+	})
 	if err != nil {
 		response.Diagnostics.AddError("Unable to list Sigma workspaces", err.Error())
 		return
 	}
-	state := workspacesDataModel{ID: types.StringValue("workspaces")}
+	state.ID = types.StringValue("workspaces")
+	state.Workspaces = make([]workspaceDataModel, 0, len(values))
 	for i := range values {
 		state.Workspaces = append(state.Workspaces, workspaceData(&values[i]))
 	}

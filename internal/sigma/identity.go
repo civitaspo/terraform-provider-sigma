@@ -80,8 +80,22 @@ func (c *Client) DeleteMember(ctx context.Context, id string) error {
 		return c.api.DeleteMember(ctx, id, nil)
 	})
 }
-func (c *Client) ListMembers(ctx context.Context) ([]Member, error) {
-	return c.listMembers(ctx, &openapi.ListMembersParams{})
+
+// ListMembersOptions are documented listMembers query filters except pagination.
+type ListMembersOptions struct {
+	Search          *string
+	Email           *string
+	IncludeArchived *bool
+	IncludeInactive *bool
+}
+
+func (c *Client) ListMembers(ctx context.Context, opts ListMembersOptions) ([]Member, error) {
+	return c.listMembers(ctx, &openapi.ListMembersParams{
+		Search:          opts.Search,
+		Email:           opts.Email,
+		IncludeArchived: opts.IncludeArchived,
+		IncludeInactive: opts.IncludeInactive,
+	})
 }
 
 // FindMemberByEmail looks up a member by email. When includeArchived is true, archived
@@ -170,10 +184,25 @@ func (c *Client) DeleteTeam(ctx context.Context, id string) error {
 		return c.api.DeleteTeam(ctx, id, nil)
 	})
 }
-func (c *Client) ListTeams(ctx context.Context) ([]Team, error) {
+
+// ListTeamsOptions are documented v2.1 list teams query filters except pagination.
+type ListTeamsOptions struct {
+	Name        *string
+	Description *string
+	Visibility  *string
+}
+
+func (c *Client) ListTeams(ctx context.Context, opts ListTeamsOptions) ([]Team, error) {
+	base := &openapi.V21ListTeamsParams{Name: opts.Name, Description: opts.Description}
+	if opts.Visibility != nil {
+		visibility := openapi.V21TeamsGetParametersVisibility(*opts.Visibility)
+		base.Visibility = &visibility
+	}
 	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]Team, *string, error) {
+		params := *base
+		params.Page = page
 		return fetchPage[Team](c, func() (*http.Response, error) {
-			return c.api.V21ListTeams(ctx, &openapi.V21ListTeamsParams{Page: page})
+			return c.api.V21ListTeams(ctx, &params)
 		})
 	})
 }
@@ -301,10 +330,19 @@ func (c *Client) DeleteUserAttribute(ctx context.Context, id string) error {
 		return c.api.DeleteUserAttribute(ctx, id, nil)
 	})
 }
-func (c *Client) ListUserAttributes(ctx context.Context) ([]UserAttribute, error) {
+
+// ListUserAttributesOptions are documented list user-attribute filters except pagination.
+type ListUserAttributesOptions struct {
+	Name *string
+}
+
+func (c *Client) ListUserAttributes(ctx context.Context, opts ListUserAttributesOptions) ([]UserAttribute, error) {
+	base := &openapi.ListUserAttributesParams{Name: opts.Name}
 	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]UserAttribute, *string, error) {
+		params := *base
+		params.Page = page
 		return fetchPage[UserAttribute](c, func() (*http.Response, error) {
-			return c.api.ListUserAttributes(ctx, &openapi.ListUserAttributesParams{Page: page})
+			return c.api.ListUserAttributes(ctx, &params)
 		})
 	})
 }
