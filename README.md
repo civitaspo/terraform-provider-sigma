@@ -74,7 +74,7 @@ Always set `base_url` explicitly for the cloud where your organization is hosted
 | `sigma_team` | `sigma_team`, `sigma_teams` |
 | `sigma_team_member` | |
 | `sigma_account_type` | `sigma_account_types` |
-| `sigma_user_attribute` | `sigma_user_attributes` |
+| `sigma_user_attribute` | `sigma_user_attribute`, `sigma_user_attributes` |
 | `sigma_user_attribute_team_assignment` | |
 | `sigma_user_attribute_user_assignment` | |
 
@@ -83,7 +83,7 @@ Always set `base_url` explicitly for the cloud where your organization is hosted
 | Resources | Data sources |
 |-----------|--------------|
 | `sigma_workspace` | `sigma_workspace`, `sigma_workspaces` |
-| `sigma_folder` | `sigma_files` |
+| `sigma_folder` | `sigma_file`, `sigma_files` |
 | `sigma_workspace_grant` | |
 | `sigma_workbook_grant`, `sigma_report_grant` | |
 
@@ -106,7 +106,7 @@ Warehouse credentials use write-only attributes (`credentials_wo` + `credentials
 | `sigma_workbook_embed` | `sigma_report`, `sigma_reports` |
 | `sigma_translation` | `sigma_data_model`, `sigma_data_models` |
 | | `sigma_dataset`, `sigma_datasets` (deprecated) |
-| | `sigma_templates` |
+| | `sigma_template`, `sigma_templates` |
 | | `sigma_whoami` |
 
 ### Beta
@@ -115,10 +115,10 @@ These use Sigma Beta APIs and may change without notice.
 
 | Resources | Data sources |
 |-----------|--------------|
-| `sigma_tenant` | `sigma_tenants` |
+| `sigma_tenant` | `sigma_tenant`, `sigma_tenants` |
 | `sigma_tenant_deployment_capability` | |
 | `sigma_user_attribute_tenant_assignment` | |
-| `sigma_deployment_policy` | `sigma_deployment_policies` |
+| `sigma_deployment_policy` | `sigma_deployment_policy`, `sigma_deployment_policies` |
 | `sigma_deployment_policy_document` | |
 | `sigma_deployment_policy_tenant` | |
 | `sigma_source_swap_policy` | |

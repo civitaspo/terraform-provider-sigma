@@ -118,7 +118,7 @@ operations:
     path: /v2/user-attributes
     reference: https://help.sigmacomputing.com/reference/create-user-attribute.md
   - operation_id: getUserAttribute
-    terraform_types: [resource.sigma_user_attribute]
+    terraform_types: [resource.sigma_user_attribute, data.sigma_user_attribute]
     method: GET
     path: /v2/user-attributes/{userAttributeId}
     reference: https://help.sigmacomputing.com/reference/get-user-attribute.md
@@ -219,7 +219,7 @@ operations:
     path: /v2/files
     reference: https://help.sigmacomputing.com/reference/create-file.md
   - operation_id: get
-    terraform_types: [resource.sigma_folder]
+    terraform_types: [resource.sigma_folder, data.sigma_file]
     method: GET
     path: /v2/files/{inodeId}
     reference: https://help.sigmacomputing.com/reference/get-file.md
@@ -602,7 +602,12 @@ operations:
     path: /v2/datasets
     reference: https://help.sigmacomputing.com/reference/list-datasets.md
 
-  # --- data.sigma_templates ---
+  # --- data.sigma_template / data.sigma_templates ---
+  - operation_id: getTemplate
+    terraform_types: [data.sigma_template]
+    method: GET
+    path: /v2/templates/{templateId}
+    reference: https://help.sigmacomputing.com/reference/get-template.md
   - operation_id: listTemplates
     terraform_types: [data.sigma_templates]
     method: GET
@@ -616,7 +621,7 @@ operations:
     path: /v2/tenants
     reference: https://help.sigmacomputing.com/reference/create-tenant.md
   - operation_id: getTenant
-    terraform_types: [resource.sigma_tenant]
+    terraform_types: [resource.sigma_tenant, data.sigma_tenant]
     method: GET
     path: /v2/tenants/{tenantOrganizationId}
     reference: https://help.sigmacomputing.com/reference/get-tenant.md
@@ -660,7 +665,7 @@ operations:
     path: /v2/deploymentPolicies
     reference: https://help.sigmacomputing.com/reference/create-deployment.md
   - operation_id: getDeployment
-    terraform_types: [resource.sigma_deployment_policy]
+    terraform_types: [resource.sigma_deployment_policy, data.sigma_deployment_policy]
     method: GET
     path: /v2/deploymentPolicies/{deploymentPolicyId}
     reference: https://help.sigmacomputing.com/reference/get-deployment.md

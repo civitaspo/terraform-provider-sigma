@@ -3,8 +3,10 @@ package provider
 import (
 	"context"
 
+	"github.com/civitaspo/terraform-provider-sigma/internal/sigma"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -44,17 +46,7 @@ func (d *deploymentPoliciesDataSource) Schema(_ context.Context, _ datasource.Sc
 			"id": schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
 			"deployment_policies": schema.ListNestedAttribute{
 				Computed: true, MarkdownDescription: "Deployment policies visible to the caller.",
-				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
-					"id":             schema.StringAttribute{Computed: true, MarkdownDescription: "Deployment policy ID."},
-					"name":           schema.StringAttribute{Computed: true, MarkdownDescription: "Deployment policy name."},
-					"name_in_tenant": schema.StringAttribute{Computed: true, MarkdownDescription: "Workspace name created in receiving tenants."},
-					"version_tag_id": schema.StringAttribute{Computed: true, MarkdownDescription: "Version tag ID."},
-					"source_swap_policies": schema.SetAttribute{
-						Computed: true, ElementType: types.StringType,
-						MarkdownDescription: "Source swap policy IDs used when deploying documents.",
-					},
-					"copy_input_table_data": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether input table data is copied when deploying."},
-				}},
+				NestedObject: schema.NestedAttributeObject{Attributes: deploymentPolicyDataAttributes(false)},
 			},
 		},
 	}
@@ -73,26 +65,49 @@ func (d *deploymentPoliciesDataSource) Read(ctx context.Context, req datasource.
 	state.ID = types.StringValue("deployment_policies")
 	state.DeploymentPolicies = make([]deploymentPolicyDataModel, 0, len(policies))
 	for _, policy := range policies {
-		item := deploymentPolicyDataModel{
-			ID:                 types.StringValue(policy.DeploymentPolicyID),
-			Name:               types.StringValue(policy.Name),
-			NameInTenant:       types.StringValue(policy.NameInTenant),
-			VersionTagID:       stringOrNull(policy.VersionTagID),
-			CopyInputTableData: types.BoolValue(policy.CopyInputTableData),
-		}
-		if policy.SourceSwapPolicies == nil {
-			policy.SourceSwapPolicies = []string{}
-		}
-		swaps, swapDiags := types.SetValueFrom(ctx, types.StringType, policy.SourceSwapPolicies)
-		resp.Diagnostics.Append(swapDiags...)
-		item.SourceSwapPolicies = swaps
+		item, itemDiags := deploymentPolicyData(ctx, &policy)
+		resp.Diagnostics.Append(itemDiags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 		state.DeploymentPolicies = append(state.DeploymentPolicies, item)
 	}
-	if resp.Diagnostics.HasError() {
-		return
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func deploymentPolicyDataAttributes(requireID bool) map[string]schema.Attribute {
+	id := schema.StringAttribute{Computed: true, MarkdownDescription: "Deployment policy ID."}
+	if requireID {
+		id = schema.StringAttribute{Required: true, MarkdownDescription: "Deployment policy ID."}
+	}
+	return map[string]schema.Attribute{
+		"id":             id,
+		"name":           schema.StringAttribute{Computed: true, MarkdownDescription: "Deployment policy name."},
+		"name_in_tenant": schema.StringAttribute{Computed: true, MarkdownDescription: "Workspace name created in receiving tenants."},
+		"version_tag_id": schema.StringAttribute{Computed: true, MarkdownDescription: "Version tag ID."},
+		"source_swap_policies": schema.SetAttribute{
+			Computed: true, ElementType: types.StringType,
+			MarkdownDescription: "Source swap policy IDs used when deploying documents.",
+		},
+		"copy_input_table_data": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether input table data is copied when deploying."},
+	}
+}
+
+func deploymentPolicyData(ctx context.Context, policy *sigma.DeploymentPolicy) (deploymentPolicyDataModel, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	item := deploymentPolicyDataModel{
+		ID:                 types.StringValue(policy.DeploymentPolicyID),
+		Name:               types.StringValue(policy.Name),
+		NameInTenant:       types.StringValue(policy.NameInTenant),
+		VersionTagID:       stringOrNull(policy.VersionTagID),
+		CopyInputTableData: types.BoolValue(policy.CopyInputTableData),
+	}
+	swaps := policy.SourceSwapPolicies
+	if swaps == nil {
+		swaps = []string{}
+	}
+	value, swapDiags := types.SetValueFrom(ctx, types.StringType, swaps)
+	diags.Append(swapDiags...)
+	item.SourceSwapPolicies = value
+	return item, diags
 }
