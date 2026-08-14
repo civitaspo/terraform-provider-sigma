@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
+- add materialization schedule and account type permission data sources (#94)
 - add singular lookup data sources (#93)
 - remove overlapping public resources and add sigma_folder (#84)
 - wrap generated Sigma REST client with hardened transport (#82)
