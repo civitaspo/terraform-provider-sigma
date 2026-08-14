@@ -224,8 +224,7 @@ func runAccOwnedWorkspaceFolderGrant(t *testing.T) {
 	requireAcceptance(t)
 	name := accName("tf-acc-ws")
 	folder := accName("tf-acc-folder")
-	resource.Test(t, providerTestCase([]resource.TestStep{{
-		Config: accProviderBlock() + `
+	config := accProviderBlock() + `
 data "sigma_teams" "all" {}
 resource "sigma_workspace" "test" {
   name          = "` + name + `"
@@ -246,15 +245,25 @@ data "sigma_workspace" "created" {
 data "sigma_file" "folder" {
   id = sigma_folder.test.id
 }
-`,
-		Check: resource.ComposeAggregateTestCheckFunc(
-			resource.TestCheckResourceAttrSet("sigma_workspace.test", "id"),
-			resource.TestCheckResourceAttrSet("sigma_folder.test", "id"),
-			resource.TestCheckResourceAttrSet("sigma_workspace_grant.test", "id"),
-			resource.TestCheckResourceAttrSet("data.sigma_workspace.created", "name"),
-			resource.TestCheckResourceAttr("data.sigma_file.folder", "type", "folder"),
-		),
-	}}))
+`
+	resource.Test(t, providerTestCase([]resource.TestStep{
+		{
+			Config: config,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttrSet("sigma_workspace.test", "id"),
+				resource.TestCheckResourceAttrSet("sigma_folder.test", "id"),
+				resource.TestCheckResourceAttrSet("sigma_workspace_grant.test", "id"),
+				resource.TestCheckResourceAttrSet("data.sigma_workspace.created", "name"),
+				resource.TestCheckResourceAttr("data.sigma_file.folder", "type", "folder"),
+			),
+		},
+		{
+			ResourceName:            "sigma_workspace.test",
+			ImportState:             true,
+			ImportStateVerify:       true,
+			ImportStateVerifyIgnore: []string{"no_duplicates"},
+		},
+	}))
 }
 
 func runAccUserAttributeAndAssignment(t *testing.T) {
