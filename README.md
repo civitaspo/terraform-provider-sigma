@@ -92,7 +92,7 @@ Always set `base_url` explicitly for the cloud where your organization is hosted
 | Resources | Data sources |
 |-----------|--------------|
 | `sigma_connection` | `sigma_connection`, `sigma_connections` |
-| `sigma_connection_grant`, `sigma_connection_path_grant` | `sigma_connection_paths` |
+| `sigma_connection_grant`, `sigma_connection_path_grant` | `sigma_connection_path`, `sigma_connection_paths` |
 | `sigma_api_connector`, `sigma_api_credential` | |
 
 Warehouse credentials use write-only attributes (`credentials_wo` + `credentials_wo_version`). Because Sigma's connection update replaces warehouse details entirely, any update after credentials were managed requires bumping `credentials_wo_version` and resupplying `credentials_wo`. Connection restore is not a Terraform attribute. Connection tests after create/update are warnings, not hard errors.
@@ -145,7 +145,7 @@ The following Sigma capabilities are intentionally not managed by this provider:
 
 ## Acceptance tests
 
-Unit tests use a mock Sigma HTTP server:
+Unit tests use a mock Sigma HTTP server and fail if handwritten `internal/provider` or `internal/sigma` coverage is below 80%:
 
 ```bash
 mise run test

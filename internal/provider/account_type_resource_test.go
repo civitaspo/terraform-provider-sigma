@@ -46,7 +46,7 @@ func TestAccountTypeResource(t *testing.T) {
 			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
 			return
 		}
-		if got := request.URL.Query().Get("reassignToAccountTypeId"); got != "type-default" {
+		if got := request.URL.Query().Get("reassignToAccountTypeId"); got != "type-other" {
 			t.Errorf("reassignToAccountTypeId = %q", got)
 		}
 		deleted = true
@@ -76,6 +76,20 @@ resource "sigma_account_type" "test" {
 			ImportStateId:           "Analyst",
 			ImportStateVerify:       true,
 			ImportStateVerifyIgnore: []string{"reassign_to_account_type_id"},
+		},
+		{
+			Config: identityProviderConfig(mock) + `
+resource "sigma_account_type" "test" {
+  name                         = "Analyst"
+  description                  = "Analyst access"
+  permissions                  = ["viewWorksheet"]
+  reassign_to_account_type_id  = "type-other"
+}
+`,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("sigma_account_type.test", "id", "type-1"),
+				resource.TestCheckResourceAttr("sigma_account_type.test", "reassign_to_account_type_id", "type-other"),
+			),
 		},
 		{Config: identityProviderConfig(mock)},
 	}))

@@ -57,13 +57,21 @@ resource "sigma_workbook_grant" "test" {
   permission = "explore"
 }
 `
-	resource.UnitTest(t, providerTestCase([]resource.TestStep{{
-		Config: config,
-		Check: resource.ComposeAggregateTestCheckFunc(
-			resource.TestCheckResourceAttr("sigma_workbook_grant.test", "id", "workbook-grant-1"),
-			resource.TestCheckNoResourceAttr("sigma_workbook_grant.test", "tag_id"),
-		),
-	}}))
+	resource.UnitTest(t, providerTestCase([]resource.TestStep{
+		{
+			Config: config,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("sigma_workbook_grant.test", "id", "workbook-grant-1"),
+				resource.TestCheckNoResourceAttr("sigma_workbook_grant.test", "tag_id"),
+			),
+		},
+		{
+			ResourceName:      "sigma_workbook_grant.test",
+			ImportState:       true,
+			ImportStateId:     "workbook-1/workbook-grant-1",
+			ImportStateVerify: true,
+		},
+	}))
 	mu.Lock()
 	defer mu.Unlock()
 	if got := methods["/v2/workbooks/workbook-1/grants"]; len(got) == 0 || got[0] != http.MethodPost {
@@ -177,4 +185,4 @@ resource "sigma_workbook_grant" "test" {
 	}}))
 }
 
-func TestAccWorkbookGrantResource(t *testing.T) { requireAcceptance(t) }
+func TestAccWorkbookGrantResource(t *testing.T) { runAccWorkbookGrant(t) }

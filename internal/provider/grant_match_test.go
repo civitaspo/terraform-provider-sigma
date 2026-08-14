@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/civitaspo/terraform-provider-sigma/internal/sigma"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -76,5 +77,37 @@ func TestLookupGrantZeroMatchesIsNotFound(t *testing.T) {
 	}
 	if !sigma.IsNotFound(err) {
 		t.Fatalf("error = %v, want structured not-found", err)
+	}
+}
+
+func TestValidateGrantRejectsInvalidCombinations(t *testing.T) {
+	t.Parallel()
+	var diags diag.Diagnostics
+	plan := &grantModel{Permission: types.StringValue("view")}
+	if validateGrant(plan, workspaceGrantPermissions, false, &diags) {
+		t.Fatal("expected missing grantee")
+	}
+	diags = nil
+	plan.MemberID = types.StringValue("member-1")
+	plan.TeamID = types.StringValue("team-1")
+	if validateGrant(plan, workspaceGrantPermissions, false, &diags) {
+		t.Fatal("expected both grantees")
+	}
+	diags = nil
+	plan.TeamID = types.StringNull()
+	plan.TagID = types.StringValue("tag-1")
+	if validateGrant(plan, workspaceGrantPermissions, false, &diags) {
+		t.Fatal("expected workspace tag rejection")
+	}
+	diags = nil
+	plan.TagID = types.StringNull()
+	plan.Permission = types.StringValue("admin")
+	if validateGrant(plan, workspaceGrantPermissions, false, &diags) {
+		t.Fatal("expected invalid permission")
+	}
+	diags = nil
+	plan.Permission = types.StringValue("view")
+	if !validateGrant(plan, workspaceGrantPermissions, false, &diags) || diags.HasError() {
+		t.Fatalf("expected valid grant, diags=%v", diags)
 	}
 }

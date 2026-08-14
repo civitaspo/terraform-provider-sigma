@@ -35,6 +35,13 @@ func TestTenantResource(t *testing.T) {
 		response.Header().Set("Content-Type", "application/json")
 		switch request.Method {
 		case http.MethodGet, http.MethodPatch:
+			if request.Method == http.MethodPatch {
+				var body map[string]any
+				_ = json.NewDecoder(request.Body).Decode(&body)
+				if name, ok := body["tenantOrganizationName"].(string); ok {
+					tenant["tenantOrganizationName"] = name
+				}
+			}
 			_ = json.NewEncoder(response).Encode(tenant)
 		case http.MethodDelete:
 			_ = json.NewEncoder(response).Encode(map[string]any{})
@@ -48,14 +55,30 @@ resource "sigma_tenant" "test" {
   tenant_organization_slug = "acme"
 }
 `
-	resource.UnitTest(t, betaTestCase([]resource.TestStep{{
-		Config: config,
-		Check: resource.ComposeAggregateTestCheckFunc(
-			resource.TestCheckResourceAttr("sigma_tenant.test", "id", "tenant-1"),
-			resource.TestCheckResourceAttr("sigma_tenant.test", "tenant_organization_slug", "acme"),
-			resource.TestCheckResourceAttr("sigma_tenant.test", "tenant_cloud_provider", "aws"),
-		),
-	}}))
+	resource.UnitTest(t, betaTestCase([]resource.TestStep{
+		{
+			Config: config,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("sigma_tenant.test", "id", "tenant-1"),
+				resource.TestCheckResourceAttr("sigma_tenant.test", "tenant_organization_slug", "acme"),
+				resource.TestCheckResourceAttr("sigma_tenant.test", "tenant_cloud_provider", "aws"),
+			),
+		},
+		{
+			ResourceName:      "sigma_tenant.test",
+			ImportState:       true,
+			ImportStateVerify: true,
+		},
+		{
+			Config: betaProviderConfig(mock) + `
+resource "sigma_tenant" "test" {
+  tenant_organization_name = "Acme Renamed"
+  tenant_organization_slug = "acme"
+}
+`,
+			Check: resource.TestCheckResourceAttr("sigma_tenant.test", "tenant_organization_name", "Acme Renamed"),
+		},
+	}))
 }
 
 func TestAccTenantResource(t *testing.T) { requireAcceptance(t) }

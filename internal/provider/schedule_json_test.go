@@ -2,6 +2,7 @@ package provider
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
@@ -95,5 +96,21 @@ func TestCanonicalJSONIgnoresWhitespaceAndKeyOrder(t *testing.T) {
 	}
 	if left != right {
 		t.Fatalf("canonical JSON mismatch: %s vs %s", left, right)
+	}
+}
+
+func TestApplyScheduleCreateSuspension(t *testing.T) {
+	t.Parallel()
+	body, follow, err := applyScheduleCreateSuspension(types.BoolNull(), false)
+	if err != nil || follow || body != nil {
+		t.Fatalf("null plan = %s %v %v", body, follow, err)
+	}
+	body, follow, err = applyScheduleCreateSuspension(types.BoolValue(false), false)
+	if err != nil || follow || body != nil {
+		t.Fatalf("matching = %s %v %v", body, follow, err)
+	}
+	body, follow, err = applyScheduleCreateSuspension(types.BoolValue(true), false)
+	if err != nil || !follow || !strings.Contains(string(body), "pause") {
+		t.Fatalf("mismatch = %s %v %v", body, follow, err)
 	}
 }

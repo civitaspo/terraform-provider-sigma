@@ -93,6 +93,12 @@ resource "sigma_api_credential" "test" {
 			Config: updateConfig,
 			Check:  resource.TestCheckResourceAttr("sigma_api_credential.test", "description", "Updated credential"),
 		},
+		{
+			ResourceName:            "sigma_api_credential.test",
+			ImportState:             true,
+			ImportStateVerify:       true,
+			ImportStateVerifyIgnore: []string{"credential_wo", "credential_wo_version"},
+		},
 	}))
 }
 

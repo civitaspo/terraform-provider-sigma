@@ -11,6 +11,7 @@ import (
 
 func TestUserAttributeTeamAssignmentResource(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
+	currentValue := "americas"
 	mock.Mux.HandleFunc("/v2/user-attributes/attribute-1/teams", func(response http.ResponseWriter, request *http.Request) {
 		mock.AssertBearer(t, request)
 		response.Header().Set("Content-Type", "application/json")
@@ -21,7 +22,7 @@ func TestUserAttributeTeamAssignmentResource(t *testing.T) {
 			_ = json.NewEncoder(response).Encode(map[string]any{
 				"entries": []map[string]any{{
 					"teamId": "team-1",
-					"value":  map[string]string{"val": "americas", "type": "string"},
+					"value":  map[string]string{"val": currentValue, "type": "string"},
 				}},
 				"nextPage": nil,
 			})
@@ -59,6 +60,17 @@ resource "sigma_user_attribute_team_assignment" "test" {
 			ImportState:       true,
 			ImportStateId:     "attribute-1/team-1",
 			ImportStateVerify: true,
+		},
+		{
+			PreConfig: func() { currentValue = "emea" },
+			Config: identityProviderConfig(mock) + `
+resource "sigma_user_attribute_team_assignment" "test" {
+  user_attribute_id = "attribute-1"
+  team_id            = "team-1"
+  value              = "emea"
+}
+`,
+			Check: resource.TestCheckResourceAttr("sigma_user_attribute_team_assignment.test", "value", "emea"),
 		},
 	}))
 }

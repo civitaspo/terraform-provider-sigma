@@ -11,6 +11,7 @@ import (
 
 func TestUserAttributeUserAssignmentResource(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
+	currentValue := "emea"
 	mock.Mux.HandleFunc("/v2/user-attributes/attribute-1/users", func(response http.ResponseWriter, request *http.Request) {
 		mock.AssertBearer(t, request)
 		switch request.Method {
@@ -23,7 +24,7 @@ func TestUserAttributeUserAssignmentResource(t *testing.T) {
 				t.Errorf("userId = %#v", assignment["userId"])
 			}
 			value := assignment["value"].(map[string]any)
-			if value["val"] != "emea" || value["type"] != "string" {
+			if value["val"] != currentValue || value["type"] != "string" {
 				t.Errorf("value = %#v", assignment["value"])
 			}
 			writeJSON(response, map[string]any{})
@@ -31,7 +32,7 @@ func TestUserAttributeUserAssignmentResource(t *testing.T) {
 			writeJSON(response, map[string]any{
 				"entries": []map[string]any{{
 					"userId": "member-1",
-					"value":  map[string]string{"val": "emea", "type": "string"},
+					"value":  map[string]string{"val": currentValue, "type": "string"},
 				}},
 				"nextPage": nil,
 			})
@@ -68,6 +69,17 @@ resource "sigma_user_attribute_user_assignment" "test" {
 			ImportState:       true,
 			ImportStateId:     "attribute-1/member-1",
 			ImportStateVerify: true,
+		},
+		{
+			PreConfig: func() { currentValue = "apac" },
+			Config: identityProviderConfig(mock) + `
+resource "sigma_user_attribute_user_assignment" "test" {
+  user_attribute_id = "attribute-1"
+  user_id           = "member-1"
+  value             = "apac"
+}
+`,
+			Check: resource.TestCheckResourceAttr("sigma_user_attribute_user_assignment.test", "value", "apac"),
 		},
 	}))
 }

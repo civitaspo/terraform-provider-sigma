@@ -82,12 +82,63 @@ func writeNotFound(response http.ResponseWriter) {
 	_ = json.NewEncoder(response).Encode(map[string]any{"message": "not found"})
 }
 
+func TestProviderMissingCredentials(t *testing.T) {
+	t.Setenv("SIGMA_BASE_URL", "")
+	t.Setenv("SIGMA_CLIENT_ID", "")
+	t.Setenv("SIGMA_CLIENT_SECRET", "")
+	resource.UnitTest(t, resource.TestCase{
+		IsUnitTest: true,
+		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
+			"sigma": providerserver.NewProtocol6WithError(sigmaprovider.New("test")()),
+		},
+		Steps: []resource.TestStep{{
+			Config: `
+provider "sigma" {}
+data "sigma_whoami" "test" {}
+`,
+			ExpectError: regexp.MustCompile(`Missing`),
+		}},
+	})
+}
+
+func TestProviderInvalidBaseURL(t *testing.T) {
+	resource.UnitTest(t, resource.TestCase{
+		IsUnitTest: true,
+		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
+			"sigma": providerserver.NewProtocol6WithError(sigmaprovider.New("test")()),
+		},
+		Steps: []resource.TestStep{{
+			Config: `
+provider "sigma" {
+  base_url      = "://not-a-url"
+  client_id     = "id"
+  client_secret = "secret"
+}
+data "sigma_whoami" "test" {}
+`,
+			ExpectError: regexp.MustCompile(`(?i)invalid`),
+		}},
+	})
+}
+
 func requireAcceptance(t *testing.T) {
 	t.Helper()
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip("set TF_ACC=1 to run Sigma acceptance tests")
 	}
-	t.Skip("acceptance test requires dedicated Sigma test fixtures")
+	if os.Getenv("SIGMA_CLIENT_ID") == "" || os.Getenv("SIGMA_CLIENT_SECRET") == "" {
+		t.Skip("SIGMA_CLIENT_ID and SIGMA_CLIENT_SECRET are required for acceptance tests")
+	}
+}
+
+func requireAcceptanceEnv(t *testing.T, keys ...string) {
+	t.Helper()
+	requireAcceptance(t)
+	for _, key := range keys {
+		if os.Getenv(key) == "" {
+			t.Skip(key + " is required for this acceptance test")
+		}
+	}
 }
 
 func assertExactQuery(t *testing.T, request *http.Request, want map[string]string, cursorKeys ...string) {

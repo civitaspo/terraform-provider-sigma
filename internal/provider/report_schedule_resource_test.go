@@ -38,6 +38,7 @@ func TestReportScheduleResource(t *testing.T) {
 		mock.AssertBearer(t, request)
 		switch request.Method {
 		case http.MethodPatch:
+			schedule["isSuspended"] = true
 			writeJSON(response, schedule)
 		case http.MethodDelete:
 			writeJSON(response, map[string]any{})
@@ -55,23 +56,39 @@ resource "sigma_report_schedule" "test" {
   })
 }
 `
-	resource.UnitTest(t, documentTestCase([]resource.TestStep{{
-		Config: config,
-		Check: resource.ComposeAggregateTestCheckFunc(
-			resource.TestCheckResourceAttr("sigma_report_schedule.test", "id", "schedule-1"),
-			resource.TestCheckResourceAttr("sigma_report_schedule.test", "is_suspended", "false"),
-			resource.TestCheckResourceAttrWith("sigma_report_schedule.test", "config_json", func(value string) error {
-				var object map[string]any
-				if err := json.Unmarshal([]byte(value), &object); err != nil {
-					return err
-				}
-				if _, ok := object["target"]; !ok {
-					return fmt.Errorf("target missing from merged config_json")
-				}
-				return nil
-			}),
-		),
-	}}))
+	resource.UnitTest(t, documentTestCase([]resource.TestStep{
+		{
+			Config: config,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("sigma_report_schedule.test", "id", "schedule-1"),
+				resource.TestCheckResourceAttr("sigma_report_schedule.test", "is_suspended", "false"),
+				resource.TestCheckResourceAttrWith("sigma_report_schedule.test", "config_json", func(value string) error {
+					var object map[string]any
+					if err := json.Unmarshal([]byte(value), &object); err != nil {
+						return err
+					}
+					if _, ok := object["target"]; !ok {
+						return fmt.Errorf("target missing from merged config_json")
+					}
+					return nil
+				}),
+			),
+		},
+		{
+			Config: documentProviderConfig(mock) + `
+resource "sigma_report_schedule" "test" {
+  report_id     = "report-1"
+  is_suspended  = true
+  config_json = jsonencode({
+    target   = [{ type = "email", recipient = "user@example.com" }]
+    schedule = { cronSpec = "0 9 * * 1" }
+    configV2 = { title = "Weekly" }
+  })
+}
+`,
+			Check: resource.TestCheckResourceAttr("sigma_report_schedule.test", "is_suspended", "true"),
+		},
+	}))
 }
 
 func TestReportScheduleResourceImportUnsupported(t *testing.T) {

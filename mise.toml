@@ -16,9 +16,12 @@ run = """
 #!/usr/bin/env bash
 set -euo pipefail
 if [ -f go.mod ]; then
+  go vet ./...
   golangci-lint run ./...
   test -z "$(gofmt -l .)"
   go mod tidy -diff
+  tfplugindocs generate
+  git diff --exit-code -- docs examples
 fi
 if [ -f internal/sigma/openapi/generate.sh ]; then
   bash internal/sigma/openapi/generate.sh
@@ -35,15 +38,11 @@ fi
 """
 
 [tasks.test]
-description = "Run Go tests"
+description = "Run Go tests with handwritten coverage gates"
 run = """
 #!/usr/bin/env bash
 set -euo pipefail
-if [ ! -f go.mod ]; then
-  echo "go.mod not present yet; skipping tests"
-  exit 0
-fi
-go test -race -cover ./...
+bash scripts/check-coverage.sh
 """
 
 [tasks.docs]

@@ -1,0 +1,18 @@
+{
+  "inodeId": "folder-1",
+  "urlId": "folder-url-1",
+  "name": "Managed",
+  "type": "folder",
+  "parentId": "workspace-1",
+  "parentUrlId": "workspace-url-1",
+  "permission": "edit",
+  "path": "Analytics/Managed",
+  "badge": null,
+  "isArchived": false,
+  "description": "Terraform managed",
+  "ownerId": "member-1",
+  "createdBy": "member-1",
+  "updatedBy": "member-1",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -28,7 +28,7 @@ jobs:
 
       - name: Build
         if: hashFiles('go.mod') != ''
-        run: go build ./...
+        run: mise run build
 
       - name: Vet
         if: hashFiles('go.mod') != ''
@@ -36,7 +36,7 @@ jobs:
 
       - name: Test
         if: hashFiles('go.mod') != ''
-        run: go test -race -cover ./...
+        run: mise run test
 
       - name: Skip until Go module exists
         if: hashFiles('go.mod') == ''

@@ -26,6 +26,13 @@ func TestTranslationResource(t *testing.T) {
 		case http.MethodGet:
 			writeJSON(response, map[string]any{"translations": translations})
 		case http.MethodPut:
+			var payload struct {
+				Translations map[string]string `json:"translations"`
+			}
+			_ = json.NewDecoder(request.Body).Decode(&payload)
+			if payload.Translations != nil {
+				translations = payload.Translations
+			}
 			writeJSON(response, map[string]any{})
 		case http.MethodDelete:
 			writeJSON(response, map[string]any{})
@@ -41,13 +48,31 @@ resource "sigma_translation" "test" {
   }
 }
 `
-	resource.UnitTest(t, documentTestCase([]resource.TestStep{{
-		Config: config,
-		Check: resource.ComposeAggregateTestCheckFunc(
-			resource.TestCheckResourceAttr("sigma_translation.test", "id", "fr"),
-			resource.TestCheckResourceAttr("sigma_translation.test", "translations.Hello", "Bonjour"),
-		),
-	}}))
+	resource.UnitTest(t, documentTestCase([]resource.TestStep{
+		{
+			Config: config,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("sigma_translation.test", "id", "fr"),
+				resource.TestCheckResourceAttr("sigma_translation.test", "translations.Hello", "Bonjour"),
+			),
+		},
+		{
+			Config: documentProviderConfig(mock) + `
+resource "sigma_translation" "test" {
+  lng = "fr"
+  translations = {
+    Hello = "Salut"
+  }
+}
+`,
+			Check: resource.TestCheckResourceAttr("sigma_translation.test", "translations.Hello", "Salut"),
+		},
+		{
+			ResourceName:      "sigma_translation.test",
+			ImportState:       true,
+			ImportStateVerify: true,
+		},
+	}))
 }
 
 func TestTranslationResourceEmptyMapIntent(t *testing.T) {
