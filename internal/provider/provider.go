@@ -90,9 +90,11 @@ func (p *SigmaProvider) DataSources(_ context.Context) []func() datasource.DataS
 		NewTeamsDataSource,
 		NewAccountTypesDataSource,
 		NewUserAttributesDataSource,
+		NewUserAttributeDataSource,
 		NewWorkspaceDataSource,
 		NewWorkspacesDataSource,
 		NewFilesDataSource,
+		NewFileDataSource,
 		NewConnectionDataSource,
 		NewConnectionsDataSource,
 		NewConnectionPathsDataSource,
@@ -106,9 +108,12 @@ func (p *SigmaProvider) DataSources(_ context.Context) []func() datasource.DataS
 		NewDatasetDataSource,
 		NewDatasetsDataSource,
 		NewTemplatesDataSource,
+		NewTemplateDataSource,
 		NewTagsDataSource,
 		NewTenantsDataSource,
+		NewTenantDataSource,
 		NewDeploymentPoliciesDataSource,
+		NewDeploymentPolicyDataSource,
 	}
 }
 

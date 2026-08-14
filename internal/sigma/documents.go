@@ -579,6 +579,14 @@ type ListTemplatesOptions struct {
 	Search *string
 }
 
+func (c *Client) GetTemplate(ctx context.Context, id string) (*Template, error) {
+	var value Template
+	err := c.doDecode(func() (*http.Response, error) {
+		return c.api.GetTemplate(ctx, id, nil)
+	}, &value)
+	return &value, err
+}
+
 func (c *Client) ListTemplates(ctx context.Context, opts ListTemplatesOptions) ([]Template, error) {
 	base := &openapi.ListTemplatesParams{Search: opts.Search}
 	if opts.Source != nil {

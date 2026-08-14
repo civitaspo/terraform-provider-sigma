@@ -77,9 +77,65 @@ func writeJSON(response http.ResponseWriter, value any) {
 }
 
 func writeNotFound(response http.ResponseWriter) {
+	writeAPIError(response, http.StatusNotFound, "not found")
+}
+
+func writeAPIError(response http.ResponseWriter, status int, message string) {
 	response.Header().Set("Content-Type", "application/json")
-	response.WriteHeader(http.StatusNotFound)
-	_ = json.NewEncoder(response).Encode(map[string]any{"message": "not found"})
+	response.WriteHeader(status)
+	_ = json.NewEncoder(response).Encode(map[string]any{"message": message})
+}
+
+type singularDataSourceCase struct {
+	path      string
+	config    string
+	entry     any
+	address   string
+	checkAttr string
+	want      string
+}
+
+func runSingularDataSourceCases(t *testing.T, spec singularDataSourceCase) {
+	t.Helper()
+	t.Run("read", func(t *testing.T) {
+		mock := testutil.NewMockSigma(t)
+		mock.Mux.HandleFunc(spec.path, func(response http.ResponseWriter, request *http.Request) {
+			mock.AssertBearer(t, request)
+			if request.URL.Path != spec.path {
+				t.Errorf("path = %q, want %q", request.URL.Path, spec.path)
+			}
+			if request.Method != http.MethodGet {
+				t.Errorf("method = %s", request.Method)
+			}
+			writeJSON(response, spec.entry)
+		})
+		resource.UnitTest(t, providerTestCase([]resource.TestStep{{
+			Config: providerConfig(mock) + spec.config,
+			Check:  resource.ComposeAggregateTestCheckFunc(resource.TestCheckResourceAttr(spec.address, spec.checkAttr, spec.want)),
+		}}))
+	})
+	t.Run("not_found", func(t *testing.T) {
+		mock := testutil.NewMockSigma(t)
+		mock.Mux.HandleFunc(spec.path, func(response http.ResponseWriter, request *http.Request) {
+			mock.AssertBearer(t, request)
+			writeNotFound(response)
+		})
+		resource.UnitTest(t, providerTestCase([]resource.TestStep{{
+			Config:      providerConfig(mock) + spec.config,
+			ExpectError: regexp.MustCompile(`not found|Unable to read|404`),
+		}}))
+	})
+	t.Run("error", func(t *testing.T) {
+		mock := testutil.NewMockSigma(t)
+		mock.Mux.HandleFunc(spec.path, func(response http.ResponseWriter, request *http.Request) {
+			mock.AssertBearer(t, request)
+			writeAPIError(response, http.StatusInternalServerError, "boom")
+		})
+		resource.UnitTest(t, providerTestCase([]resource.TestStep{{
+			Config:      providerConfig(mock) + spec.config,
+			ExpectError: regexp.MustCompile(`boom|Unable to read|500`),
+		}}))
+	})
 }
 
 func TestProviderMissingCredentials(t *testing.T) {

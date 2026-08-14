@@ -32527,6 +32527,12 @@ type V2TemplatesGetResponsesContentApplicationJsonSchemaEntriesItemsTagsItems st
 	VersionTagId string `json:"versionTagId"`
 }
 
+// V2TemplatesTemplateIdGetResponsesContentApplicationJsonSchemaTagsItems defines model for V2TemplatesTemplateIdGetResponsesContentApplicationJsonSchemaTagsItems.
+type V2TemplatesTemplateIdGetResponsesContentApplicationJsonSchemaTagsItems struct {
+	Name         string `json:"name"`
+	VersionTagId string `json:"versionTagId"`
+}
+
 // V2TenantsGetParametersKey Field to sort the results by
 type V2TenantsGetParametersKey string
 
@@ -38002,6 +38008,29 @@ type TeamsV21ListTeamsResponse200 struct {
 	Total *float64 `json:"total,omitempty"`
 }
 
+// TemplatesGetTemplateResponse200 defines model for templates_getTemplate_Response_200.
+type TemplatesGetTemplateResponse200 struct {
+	// CreatedAt When the object was created.
+	CreatedAt time.Time `json:"createdAt"`
+
+	// CreatedBy The identifier of the user who created this object.
+	CreatedBy     string                                                                    `json:"createdBy"`
+	IsArchived    *bool                                                                     `json:"isArchived,omitempty"`
+	LatestVersion float64                                                                   `json:"latestVersion"`
+	Name          string                                                                    `json:"name"`
+	Path          string                                                                    `json:"path"`
+	Tags          *[]V2TemplatesTemplateIdGetResponsesContentApplicationJsonSchemaTagsItems `json:"tags,omitempty"`
+	TemplateId    string                                                                    `json:"templateId"`
+	TemplateUrlId string                                                                    `json:"templateUrlId"`
+
+	// UpdatedAt When the object was last updated.
+	UpdatedAt time.Time `json:"updatedAt"`
+
+	// UpdatedBy The identifier of the user or process that last updated this object.
+	UpdatedBy string `json:"updatedBy"`
+	Url       string `json:"url"`
+}
+
 // TemplatesListTemplatesResponse200 defines model for templates_listTemplates_Response_200.
 type TemplatesListTemplatesResponse200 struct {
 	// Entries Array of results returned by the endpoint
@@ -39432,6 +39461,12 @@ type ListTemplatesParams struct {
 	Source *V2TemplatesGetParametersSource `form:"source,omitempty" json:"source,omitempty"`
 	Search *string                         `form:"search,omitempty" json:"search,omitempty"`
 
+	// Authorization OAuth authentication
+	Authorization string `json:"Authorization"`
+}
+
+// GetTemplateParams defines parameters for GetTemplate.
+type GetTemplateParams struct {
 	// Authorization OAuth authentication
 	Authorization string `json:"Authorization"`
 }
@@ -73709,6 +73744,17 @@ type ClientInterface interface {
 	// Corresponds with GET /v2/templates (the `ListTemplates` operationId).
 	ListTemplates(ctx context.Context, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetTemplate Get template
+	//
+	// Get a template by template ID.
+	//
+	//   ### Usage notes
+	//   - Retrieve the **templateId** by calling the [/v2/templates](https://help.sigmacomputing.com/reference/list-templates) endpoint.
+	//
+	//
+	// Corresponds with GET /v2/templates/{templateId} (the `GetTemplate` operationId).
+	GetTemplate(ctx context.Context, templateId string, params *GetTemplateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListTenants List tenant organizations
 	//
 	// Retrieve a paginated list of tenant organizations with optional filtering and sorting.
@@ -77533,6 +77579,26 @@ func (c *Client) UpdateTeamMembers(ctx context.Context, teamId string, params *U
 // Corresponds with GET /v2/templates (the `ListTemplates` operationId).
 func (c *Client) ListTemplates(ctx context.Context, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListTemplatesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetTemplate Get template
+//
+// Get a template by template ID.
+//
+//	### Usage notes
+//	- Retrieve the **templateId** by calling the [/v2/templates](https://help.sigmacomputing.com/reference/list-templates) endpoint.
+//
+// Corresponds with GET /v2/templates/{templateId} (the `GetTemplate` operationId).
+func (c *Client) GetTemplate(ctx context.Context, templateId string, params *GetTemplateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTemplateRequest(c.Server, templateId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -84689,6 +84755,53 @@ func NewListTemplatesRequest(server string, params *ListTemplatesParams) (*http.
 	return req, nil
 }
 
+// NewGetTemplateRequest constructs an http.Request for the GetTemplate method
+func NewGetTemplateRequest(server string, templateId string, params *GetTemplateParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "templateId", templateId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v2/templates/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Authorization", params.Authorization, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Authorization", headerParam0)
+
+	}
+
+	return req, nil
+}
+
 // NewListTenantsRequest constructs an http.Request for the ListTenants method
 func NewListTenantsRequest(server string, params *ListTenantsParams) (*http.Request, error) {
 	var err error
@@ -89506,6 +89619,19 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /v2/templates (the `ListTemplates` operationId).
 	ListTemplatesWithResponse(ctx context.Context, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*ListTemplatesResponse, error)
 
+	// GetTemplateWithResponse Get template
+	//
+	// Get a template by template ID.
+	//
+	//   ### Usage notes
+	//   - Retrieve the **templateId** by calling the [/v2/templates](https://help.sigmacomputing.com/reference/list-templates) endpoint.
+	//
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v2/templates/{templateId} (the `GetTemplate` operationId).
+	GetTemplateWithResponse(ctx context.Context, templateId string, params *GetTemplateParams, reqEditors ...RequestEditorFn) (*GetTemplateResponse, error)
+
 	// ListTenantsWithResponse List tenant organizations
 	//
 	// Retrieve a paginated list of tenant organizations with optional filtering and sorting.
@@ -93975,6 +94101,47 @@ func (r ListTemplatesResponse) ContentType() string {
 	return ""
 }
 
+type GetTemplateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TemplatesGetTemplateResponse200
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetTemplateResponse) GetJSON200() *TemplatesGetTemplateResponse200 {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetTemplateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTemplateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTemplateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListTenantsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -98345,6 +98512,24 @@ func (c *ClientWithResponses) ListTemplatesWithResponse(ctx context.Context, par
 	return ParseListTemplatesResponse(rsp)
 }
 
+// GetTemplateWithResponse Get template
+//
+// Get a template by template ID.
+//
+//	### Usage notes
+//	- Retrieve the **templateId** by calling the [/v2/templates](https://help.sigmacomputing.com/reference/list-templates) endpoint.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v2/templates/{templateId} (the `GetTemplate` operationId).
+func (c *ClientWithResponses) GetTemplateWithResponse(ctx context.Context, templateId string, params *GetTemplateParams, reqEditors ...RequestEditorFn) (*GetTemplateResponse, error) {
+	rsp, err := c.GetTemplate(ctx, templateId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTemplateResponse(rsp)
+}
+
 // ListTenantsWithResponse List tenant organizations
 //
 // Retrieve a paginated list of tenant organizations with optional filtering and sorting.
@@ -101915,6 +102100,32 @@ func ParseListTemplatesResponse(rsp *http.Response) (*ListTemplatesResponse, err
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest TemplatesListTemplatesResponse200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTemplateResponse parses an HTTP response from a GetTemplateWithResponse call
+func ParseGetTemplateResponse(rsp *http.Response) (*GetTemplateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTemplateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TemplatesGetTemplateResponse200
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

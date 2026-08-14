@@ -57,20 +57,7 @@ func (d *tenantsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 			"order":  schema.StringAttribute{Optional: true, MarkdownDescription: "Sort order (`order`): `asc` or `desc`."},
 			"tenants": schema.ListNestedAttribute{
 				Computed: true, MarkdownDescription: "Tenant organizations visible to the caller.",
-				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
-					"id":                       schema.StringAttribute{Computed: true, MarkdownDescription: "Tenant organization ID."},
-					"tenant_organization_name": schema.StringAttribute{Computed: true, MarkdownDescription: "Display name of the tenant organization."},
-					"tenant_organization_slug": schema.StringAttribute{Computed: true, MarkdownDescription: "URL identifier for the tenant organization."},
-					"parent_organization_id":   schema.StringAttribute{Computed: true, MarkdownDescription: "Parent organization ID."},
-					"created_by":               schema.StringAttribute{Computed: true, MarkdownDescription: "Member ID that created the tenant."},
-					"updated_by":               schema.StringAttribute{Computed: true, MarkdownDescription: "Member ID that last updated the tenant."},
-					"created_at":               schema.StringAttribute{Computed: true, MarkdownDescription: "Creation timestamp."},
-					"updated_at":               schema.StringAttribute{Computed: true, MarkdownDescription: "Last update timestamp."},
-					"shared_at":                schema.StringAttribute{Computed: true, MarkdownDescription: "Share timestamp, when applicable."},
-					"tenant_cloud_provider":    schema.StringAttribute{Computed: true, MarkdownDescription: "Cloud provider hosting the tenant."},
-					"tenant_region":            schema.StringAttribute{Computed: true, MarkdownDescription: "Region hosting the tenant."},
-					"tenant_api_url":           schema.StringAttribute{Computed: true, MarkdownDescription: "Tenant organization API base URL."},
-				}},
+				NestedObject: schema.NestedAttributeObject{Attributes: tenantDataAttributes(false)},
 			},
 		},
 	}
@@ -95,21 +82,46 @@ func (d *tenantsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	}
 	state.ID = types.StringValue("tenants")
 	state.Tenants = make([]tenantDataModel, 0, len(tenants))
-	for _, tenant := range tenants {
-		state.Tenants = append(state.Tenants, tenantDataModel{
-			ID:                     types.StringValue(tenant.TenantOrganizationID),
-			TenantOrganizationName: types.StringValue(tenant.TenantOrganizationName),
-			TenantOrganizationSlug: types.StringValue(tenant.TenantOrganizationSlug),
-			ParentOrganizationID:   types.StringValue(tenant.ParentOrganizationID),
-			CreatedBy:              types.StringValue(tenant.CreatedBy),
-			UpdatedBy:              types.StringValue(tenant.UpdatedBy),
-			CreatedAt:              types.StringValue(tenant.CreatedAt),
-			UpdatedAt:              types.StringValue(tenant.UpdatedAt),
-			SharedAt:               stringOrNull(tenant.SharedAt),
-			TenantCloudProvider:    stringOrNull(tenant.TenantCloudProvider),
-			TenantRegion:           stringOrNull(tenant.TenantRegion),
-			TenantAPIURL:           stringOrNull(tenant.TenantAPIURL),
-		})
+	for i := range tenants {
+		state.Tenants = append(state.Tenants, tenantData(&tenants[i]))
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func tenantDataAttributes(requireID bool) map[string]schema.Attribute {
+	id := schema.StringAttribute{Computed: true, MarkdownDescription: "Tenant organization ID."}
+	if requireID {
+		id = schema.StringAttribute{Required: true, MarkdownDescription: "Tenant organization ID."}
+	}
+	return map[string]schema.Attribute{
+		"id":                       id,
+		"tenant_organization_name": schema.StringAttribute{Computed: true, MarkdownDescription: "Display name of the tenant organization."},
+		"tenant_organization_slug": schema.StringAttribute{Computed: true, MarkdownDescription: "URL identifier for the tenant organization."},
+		"parent_organization_id":   schema.StringAttribute{Computed: true, MarkdownDescription: "Parent organization ID."},
+		"created_by":               schema.StringAttribute{Computed: true, MarkdownDescription: "Member ID that created the tenant."},
+		"updated_by":               schema.StringAttribute{Computed: true, MarkdownDescription: "Member ID that last updated the tenant."},
+		"created_at":               schema.StringAttribute{Computed: true, MarkdownDescription: "Creation timestamp."},
+		"updated_at":               schema.StringAttribute{Computed: true, MarkdownDescription: "Last update timestamp."},
+		"shared_at":                schema.StringAttribute{Computed: true, MarkdownDescription: "Share timestamp, when applicable."},
+		"tenant_cloud_provider":    schema.StringAttribute{Computed: true, MarkdownDescription: "Cloud provider hosting the tenant."},
+		"tenant_region":            schema.StringAttribute{Computed: true, MarkdownDescription: "Region hosting the tenant."},
+		"tenant_api_url":           schema.StringAttribute{Computed: true, MarkdownDescription: "Tenant organization API base URL."},
+	}
+}
+
+func tenantData(tenant *sigma.Tenant) tenantDataModel {
+	return tenantDataModel{
+		ID:                     types.StringValue(tenant.TenantOrganizationID),
+		TenantOrganizationName: types.StringValue(tenant.TenantOrganizationName),
+		TenantOrganizationSlug: types.StringValue(tenant.TenantOrganizationSlug),
+		ParentOrganizationID:   types.StringValue(tenant.ParentOrganizationID),
+		CreatedBy:              types.StringValue(tenant.CreatedBy),
+		UpdatedBy:              types.StringValue(tenant.UpdatedBy),
+		CreatedAt:              types.StringValue(tenant.CreatedAt),
+		UpdatedAt:              types.StringValue(tenant.UpdatedAt),
+		SharedAt:               stringOrNull(tenant.SharedAt),
+		TenantCloudProvider:    stringOrNull(tenant.TenantCloudProvider),
+		TenantRegion:           stringOrNull(tenant.TenantRegion),
+		TenantAPIURL:           stringOrNull(tenant.TenantAPIURL),
+	}
 }

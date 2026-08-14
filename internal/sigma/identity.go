@@ -298,6 +298,10 @@ type UserAttribute struct {
 	Name            string          `json:"name"`
 	Description     *string         `json:"description"`
 	DefaultValue    *AttributeValue `json:"defaultValue"`
+	CreatedBy       string          `json:"createdBy"`
+	UpdatedBy       string          `json:"updatedBy"`
+	CreatedAt       string          `json:"createdAt"`
+	UpdatedAt       string          `json:"updatedAt"`
 }
 
 func (c *Client) CreateUserAttribute(ctx context.Context, n, d string, def *AttributeValue) (*UserAttribute, error) {

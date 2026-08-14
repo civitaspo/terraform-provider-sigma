@@ -53,26 +53,10 @@ func (d *templatesDataSource) Configure(_ context.Context, req datasource.Config
 }
 func (d *templatesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{MarkdownDescription: "Lists Sigma templates." + listCollectionNotice, Attributes: map[string]schema.Attribute{
-		"id":     schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
-		"source": schema.StringAttribute{Optional: true, MarkdownDescription: "Template source filter (`source`): `internal` or `external`."},
-		"search": schema.StringAttribute{Optional: true, MarkdownDescription: "Search filter (`search`)."},
-		"templates": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Templates in API order.", NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
-			"id":             schema.StringAttribute{Computed: true, MarkdownDescription: "Template ID."},
-			"url_id":         schema.StringAttribute{Computed: true, MarkdownDescription: "Template URL ID."},
-			"name":           schema.StringAttribute{Computed: true, MarkdownDescription: "Template name."},
-			"url":            schema.StringAttribute{Computed: true, MarkdownDescription: "Template URL."},
-			"path":           schema.StringAttribute{Computed: true, MarkdownDescription: "Template path."},
-			"latest_version": schema.Float64Attribute{Computed: true, MarkdownDescription: "Latest template version."},
-			"created_by":     schema.StringAttribute{Computed: true, MarkdownDescription: "Creator member ID."},
-			"updated_by":     schema.StringAttribute{Computed: true, MarkdownDescription: "Last updater member ID."},
-			"created_at":     schema.StringAttribute{Computed: true, MarkdownDescription: "Creation timestamp."},
-			"updated_at":     schema.StringAttribute{Computed: true, MarkdownDescription: "Update timestamp."},
-			"is_archived":    schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the template is archived."},
-			"tags": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Version tags on the template.", NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
-				"version_tag_id": schema.StringAttribute{Computed: true, MarkdownDescription: "Version tag ID."},
-				"name":           schema.StringAttribute{Computed: true, MarkdownDescription: "Tag name."},
-			}}},
-		}}},
+		"id":        schema.StringAttribute{Computed: true, MarkdownDescription: "Stable identifier for this data source."},
+		"source":    schema.StringAttribute{Optional: true, MarkdownDescription: "Template source filter (`source`): `internal` or `external`."},
+		"search":    schema.StringAttribute{Optional: true, MarkdownDescription: "Search filter (`search`)."},
+		"templates": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Templates in API order.", NestedObject: schema.NestedAttributeObject{Attributes: templateDataAttributes(false)}},
 	}}
 }
 func (d *templatesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -95,6 +79,30 @@ func (d *templatesDataSource) Read(ctx context.Context, req datasource.ReadReque
 		state.Templates = append(state.Templates, templateDoc(&values[i]))
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func templateDataAttributes(requireID bool) map[string]schema.Attribute {
+	id := schema.StringAttribute{Computed: true, MarkdownDescription: "Template ID."}
+	if requireID {
+		id = schema.StringAttribute{Required: true, MarkdownDescription: "Template ID."}
+	}
+	return map[string]schema.Attribute{
+		"id":             id,
+		"url_id":         schema.StringAttribute{Computed: true, MarkdownDescription: "Template URL ID."},
+		"name":           schema.StringAttribute{Computed: true, MarkdownDescription: "Template name."},
+		"url":            schema.StringAttribute{Computed: true, MarkdownDescription: "Template URL."},
+		"path":           schema.StringAttribute{Computed: true, MarkdownDescription: "Template path."},
+		"latest_version": schema.Float64Attribute{Computed: true, MarkdownDescription: "Latest template version."},
+		"created_by":     schema.StringAttribute{Computed: true, MarkdownDescription: "Creator member ID."},
+		"updated_by":     schema.StringAttribute{Computed: true, MarkdownDescription: "Last updater member ID."},
+		"created_at":     schema.StringAttribute{Computed: true, MarkdownDescription: "Creation timestamp."},
+		"updated_at":     schema.StringAttribute{Computed: true, MarkdownDescription: "Update timestamp."},
+		"is_archived":    schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the template is archived."},
+		"tags": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Version tags on the template.", NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
+			"version_tag_id": schema.StringAttribute{Computed: true, MarkdownDescription: "Version tag ID."},
+			"name":           schema.StringAttribute{Computed: true, MarkdownDescription: "Tag name."},
+		}}},
+	}
 }
 
 func templateDoc(value *sigma.Template) templateDocModel {
