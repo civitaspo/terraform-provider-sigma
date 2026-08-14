@@ -2,9 +2,10 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/civitaspo/terraform-provider-sigma/internal/sigma"
+	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -16,64 +17,117 @@ var (
 	_ resource.Resource                = (*apiCredentialResource)(nil)
 	_ resource.ResourceWithConfigure   = (*apiCredentialResource)(nil)
 	_ resource.ResourceWithImportState = (*apiCredentialResource)(nil)
+	_ resource.ResourceWithModifyPlan  = (*apiCredentialResource)(nil)
 )
 
 type apiCredentialResourceModel struct {
-	ID                  types.String `tfsdk:"id"`
-	Name                types.String `tfsdk:"name"`
-	Description         types.String `tfsdk:"description"`
-	AuthMethod          types.String `tfsdk:"auth_method"`
-	Allowlist           types.Set    `tfsdk:"allowlist"`
-	CredentialJSON      types.String `tfsdk:"credential_json"`
-	CredentialWO        types.String `tfsdk:"credential_wo"`
-	CredentialWOVersion types.Int64  `tfsdk:"credential_wo_version"`
+	ID                  types.String         `tfsdk:"id"`
+	Name                types.String         `tfsdk:"name"`
+	Description         types.String         `tfsdk:"description"`
+	AuthMethod          types.String         `tfsdk:"auth_method"`
+	Allowlist           types.Set            `tfsdk:"allowlist"`
+	CredentialJSON      jsontypes.Normalized `tfsdk:"credential_json"`
+	CredentialWO        types.String         `tfsdk:"credential_wo"`
+	CredentialWOVersion types.Int64          `tfsdk:"credential_wo_version"`
 }
 
 func NewAPICredentialResource() resource.Resource { return &apiCredentialResource{} }
+
 func (r *apiCredentialResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_api_credential"
 }
+
 func (r *apiCredentialResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	r.configure(req, resp)
 }
+
 func (r *apiCredentialResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{MarkdownDescription: "Manages credentials used to call third-party APIs from Sigma. This resource does not manage Sigma organization API client keys. Increment `credential_wo_version` to rotate secrets; updates without a version bump omit `credential` so Sigma retains existing secrets.", Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{MarkdownDescription: "Manages credentials used to call third-party APIs from Sigma. This resource does not manage Sigma organization API client keys. `credential_wo` and `credential_wo_version` must be supplied together. After credentials were managed, rotating secrets requires a strictly greater version and a known `credential_wo`. Updates without a version bump omit `credential` so Sigma retains existing secrets.", Attributes: map[string]schema.Attribute{
 		"id":                    schema.StringAttribute{Computed: true, MarkdownDescription: "API credential ID."},
 		"name":                  schema.StringAttribute{Required: true, MarkdownDescription: "Display name."},
 		"description":           schema.StringAttribute{Optional: true, MarkdownDescription: "Description."},
 		"auth_method":           schema.StringAttribute{Computed: true, MarkdownDescription: "Authentication method."},
 		"allowlist":             schema.SetAttribute{Required: true, ElementType: types.StringType, MarkdownDescription: "Non-empty hostname glob allowlist."},
-		"credential_json":       schema.StringAttribute{Computed: true, MarkdownDescription: "Nonsensitive credential projection returned by Sigma."},
-		"credential_wo":         schema.StringAttribute{Optional: true, WriteOnly: true, Sensitive: true, MarkdownDescription: "Write-only credential JSON. Supported methods are `basic`, `bearer`, `apiKey`, `oAuthClientCredentials`, and `awsSigV4`. Required on create and whenever `credential_wo_version` changes."},
-		"credential_wo_version": schema.Int64Attribute{Optional: true, MarkdownDescription: "Increment to rotate or resend credential secrets. Updates without a version bump omit the credential body."},
+		"credential_json":       schema.StringAttribute{Computed: true, CustomType: jsontypes.NormalizedType{}, MarkdownDescription: "Nonsensitive credential projection returned by Sigma."},
+		"credential_wo":         schema.StringAttribute{Optional: true, WriteOnly: true, Sensitive: true, MarkdownDescription: "Write-only credential JSON. Supported methods are `basic`, `bearer`, `apiKey`, `oAuthClientCredentials`, and `awsSigV4`. Required together with `credential_wo_version` on create and rotation."},
+		"credential_wo_version": schema.Int64Attribute{Optional: true, MarkdownDescription: "Must be supplied with `credential_wo`. Increment to rotate secrets. Updates without a version bump omit the credential body."},
 	}}
 }
-func apiCredentialInput(ctx context.Context, plan *apiCredentialResourceModel, requireCredential bool) (sigma.APICredentialInput, error) {
-	var allowlist []string
-	diagnostics := plan.Allowlist.ElementsAs(ctx, &allowlist, false)
-	if diagnostics.HasError() {
-		return sigma.APICredentialInput{}, fmt.Errorf("decode allowlist")
+
+func (r *apiCredentialResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+	var plan apiCredentialResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	var config apiCredentialResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(writeOnlyVersionPair(config.CredentialWO, plan.CredentialWOVersion, "credential_wo", "credential_wo_version")...)
+	if req.State.Raw.IsNull() {
+		return
+	}
+	var state apiCredentialResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if state.CredentialWOVersion.IsNull() || state.CredentialWOVersion.IsUnknown() {
+		return
+	}
+	if plan.CredentialWOVersion.IsNull() {
+		resp.Diagnostics.AddError("Cannot remove credential_wo_version", "After credential_wo has been managed, credential_wo_version cannot be removed.")
+		return
+	}
+	if !plan.CredentialWOVersion.Equal(state.CredentialWOVersion) {
+		resp.Diagnostics.Append(managedWriteOnlyUpdate(state.CredentialWOVersion, plan.CredentialWOVersion, config.CredentialWO, "credential_wo", "credential_wo_version")...)
+	}
+}
+
+func apiCredentialInput(ctx context.Context, plan *apiCredentialResourceModel, credential types.String, requireCredential bool) (sigma.APICredentialInput, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	allowlist, allowDiags := knownStringSet(ctx, plan.Allowlist, "allowlist")
+	diags.Append(allowDiags...)
+	if diags.HasError() {
+		return sigma.APICredentialInput{}, diags
 	}
 	if len(allowlist) == 0 {
-		return sigma.APICredentialInput{}, fmt.Errorf("allowlist must not be empty")
+		diags.AddError("Invalid allowlist", "allowlist must not be empty")
+		return sigma.APICredentialInput{}, diags
 	}
-	credential, err := rawJSON(plan.CredentialWO)
-	if err != nil {
-		return sigma.APICredentialInput{}, fmt.Errorf("decode credential_wo: %w", err)
+	var body []byte
+	if requireCredential {
+		if credential.IsNull() || credential.IsUnknown() {
+			diags.AddError("Invalid credential_wo", "credential_wo is required")
+			return sigma.APICredentialInput{}, diags
+		}
+		canonical, err := canonicalJSON([]byte(credential.ValueString()))
+		if err != nil {
+			diags.AddError("Invalid credential_wo", err.Error())
+			return sigma.APICredentialInput{}, diags
+		}
+		body = []byte(canonical)
 	}
-	if requireCredential && len(credential) == 0 {
-		return sigma.APICredentialInput{}, fmt.Errorf("credential_wo is required")
-	}
-	return sigma.APICredentialInput{Name: plan.Name.ValueString(), Description: plan.Description.ValueString(), Allowlist: allowlist, Credential: credential}, nil
+	return sigma.APICredentialInput{Name: plan.Name.ValueString(), Description: plan.Description.ValueString(), Allowlist: allowlist, Credential: body}, diags
 }
-func setAPICredential(ctx context.Context, state *apiCredentialResourceModel, value *sigma.APICredential) {
+
+func setAPICredential(ctx context.Context, state *apiCredentialResourceModel, value *sigma.APICredential) diag.Diagnostics {
+	var diags diag.Diagnostics
+	priorVersion := state.CredentialWOVersion
 	state.ID = types.StringValue(value.APICredentialID)
 	state.Name = types.StringValue(value.Name)
 	state.Description = types.StringValue(value.Description)
 	state.AuthMethod = types.StringValue(value.AuthMethod)
-	state.CredentialJSON = jsonString(value.Credential)
-	state.Allowlist, _ = types.SetValueFrom(ctx, types.StringType, value.Allowlist)
+	state.CredentialJSON = normalizedFromRaw(value.Credential)
+	state.CredentialWOVersion = priorVersion
+	allowlist, allowDiags := stringSetValue(ctx, value.Allowlist)
+	diags.Append(allowDiags...)
+	state.Allowlist = allowlist
+	return diags
 }
+
 func (r *apiCredentialResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan apiCredentialResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -82,10 +136,13 @@ func (r *apiCredentialResource) Create(ctx context.Context, req resource.CreateR
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	plan.CredentialWO = config.CredentialWO
-	input, err := apiCredentialInput(ctx, &plan, true)
-	if err != nil {
-		resp.Diagnostics.AddError("Invalid Sigma API credential configuration", err.Error())
+	resp.Diagnostics.Append(writeOnlyVersionPair(config.CredentialWO, plan.CredentialWOVersion, "credential_wo", "credential_wo_version")...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	input, diags := apiCredentialInput(ctx, &plan, config.CredentialWO, true)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	value, err := r.client.CreateAPICredential(ctx, input)
@@ -93,9 +150,13 @@ func (r *apiCredentialResource) Create(ctx context.Context, req resource.CreateR
 		resp.Diagnostics.AddError("Unable to create Sigma API credential", err.Error())
 		return
 	}
-	setAPICredential(ctx, &plan, value)
+	resp.Diagnostics.Append(setAPICredential(ctx, &plan, value)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
+
 func (r *apiCredentialResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state apiCredentialResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -111,9 +172,13 @@ func (r *apiCredentialResource) Read(ctx context.Context, req resource.ReadReque
 		resp.Diagnostics.AddError("Unable to read Sigma API credential", err.Error())
 		return
 	}
-	setAPICredential(ctx, &state, value)
+	resp.Diagnostics.Append(setAPICredential(ctx, &state, value)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
+
 func (r *apiCredentialResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan apiCredentialResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -125,12 +190,19 @@ func (r *apiCredentialResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 	resendingCredential := !plan.CredentialWOVersion.Equal(state.CredentialWOVersion)
-	if resendingCredential {
-		plan.CredentialWO = config.CredentialWO
+	if !state.CredentialWOVersion.IsNull() && plan.CredentialWOVersion.IsNull() {
+		resp.Diagnostics.AddError("Cannot remove credential_wo_version", "After credential_wo has been managed, credential_wo_version cannot be removed.")
+		return
 	}
-	input, err := apiCredentialInput(ctx, &plan, resendingCredential)
-	if err != nil {
-		resp.Diagnostics.AddError("Invalid Sigma API credential configuration", err.Error())
+	if resendingCredential {
+		resp.Diagnostics.Append(managedWriteOnlyUpdate(state.CredentialWOVersion, plan.CredentialWOVersion, config.CredentialWO, "credential_wo", "credential_wo_version")...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+	input, diags := apiCredentialInput(ctx, &plan, config.CredentialWO, resendingCredential)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	value, err := r.client.UpdateAPICredential(ctx, state.ID.ValueString(), input)
@@ -138,9 +210,13 @@ func (r *apiCredentialResource) Update(ctx context.Context, req resource.UpdateR
 		resp.Diagnostics.AddError("Unable to update Sigma API credential", err.Error())
 		return
 	}
-	setAPICredential(ctx, &plan, value)
+	resp.Diagnostics.Append(setAPICredential(ctx, &plan, value)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
+
 func (r *apiCredentialResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state apiCredentialResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -151,6 +227,7 @@ func (r *apiCredentialResource) Delete(ctx context.Context, req resource.DeleteR
 		resp.Diagnostics.AddError("Unable to delete Sigma API credential", err.Error())
 	}
 }
+
 func (r *apiCredentialResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	importPassthrough(ctx, req, resp)
 }

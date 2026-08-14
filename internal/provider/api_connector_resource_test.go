@@ -136,4 +136,60 @@ resource "sigma_api_connector" "test" {
 	}))
 }
 
+func TestAPIConnectorResourceRedactedReadKeepsConfiguredParams(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	createParams := map[string]any{"method": "GET", "url": "https://api.example.com/weather", "headers": []any{}, "pathParams": []any{}, "queryParams": []any{}}
+	connector := map[string]any{
+		"apiConnectorId": "connector-1", "name": "weather", "description": "Weather API",
+		"params": createParams, "config": map[string]any{}, "authId": "credential-1",
+	}
+	mock.Mux.HandleFunc("/v2/api-connectors", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(connector)
+	})
+	mock.Mux.HandleFunc("/v2/api-connectors/connector-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		switch request.Method {
+		case http.MethodGet:
+			redacted := map[string]any{
+				"apiConnectorId": "connector-1", "name": "weather", "description": "Weather API",
+				"params": map[string]any{"method": "GET", "url": "https://api.example.com/weather", "queryParams": []any{map[string]any{"name": "api_key", "value": "REDACTED"}}},
+				"config": map[string]any{}, "authId": "credential-1",
+			}
+			_ = json.NewEncoder(response).Encode(redacted)
+		case http.MethodDelete:
+			_ = json.NewEncoder(response).Encode(map[string]any{})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	config := connectionProviderConfig(mock) + `
+resource "sigma_api_connector" "test" {
+  name        = "weather"
+  description = "Weather API"
+  auth_id     = "credential-1"
+  params_json = jsonencode({
+    method      = "GET"
+    url         = "https://api.example.com/weather"
+    headers     = []
+    pathParams  = []
+    queryParams = []
+  })
+  secrets_wo = jsonencode({
+    queryParams = [{ name = "api_key", value = "secret", type = "string" }]
+  })
+  secrets_wo_version = 1
+}
+`
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{
+		{Config: config},
+		{
+			Config:   config,
+			PlanOnly: true,
+		},
+	}))
+}
+
 func TestAccAPIConnectorResource(t *testing.T) { requireAcceptance(t) }

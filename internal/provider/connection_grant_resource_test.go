@@ -3,6 +3,7 @@ package provider_test
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"testing"
 
 	"github.com/civitaspo/terraform-provider-sigma/internal/provider/testutil"
@@ -104,3 +105,36 @@ resource "sigma_connection_grant" "test" {
 }
 
 func TestAccConnectionGrantResource(t *testing.T) { requireAcceptance(t) }
+
+func TestConnectionGrantResourceAmbiguousMatches(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	mock.Mux.HandleFunc("/v2/connections/connection-1/grants", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		response.Header().Set("Content-Type", "application/json")
+		switch request.Method {
+		case http.MethodPost:
+			_ = json.NewEncoder(response).Encode(map[string]any{})
+		case http.MethodGet:
+			_ = json.NewEncoder(response).Encode(map[string]any{
+				"entries": []map[string]any{
+					{"grantId": "grant-1", "inodeId": "connection-1", "memberId": "member-1", "teamId": nil, "permission": "usage"},
+					{"grantId": "grant-2", "inodeId": "connection-1", "memberId": "member-1", "teamId": nil, "permission": "usage"},
+				},
+				"nextPage": nil,
+			})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	config := connectionProviderConfig(mock) + `
+resource "sigma_connection_grant" "test" {
+  connection_id = "connection-1"
+  member_id     = "member-1"
+  permission    = "usage"
+}
+`
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{{
+		Config:      config,
+		ExpectError: regexp.MustCompile(`multiple grants matched`),
+	}}))
+}

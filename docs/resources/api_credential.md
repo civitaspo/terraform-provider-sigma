@@ -3,12 +3,12 @@
 page_title: "sigma_api_credential Resource - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Manages credentials used to call third-party APIs from Sigma. This resource does not manage Sigma organization API client keys. Increment credential_wo_version to rotate secrets; updates without a version bump omit credential so Sigma retains existing secrets.
+  Manages credentials used to call third-party APIs from Sigma. This resource does not manage Sigma organization API client keys. credential_wo and credential_wo_version must be supplied together. After credentials were managed, rotating secrets requires a strictly greater version and a known credential_wo. Updates without a version bump omit credential so Sigma retains existing secrets.
 ---
 
 # sigma_api_credential (Resource)
 
-Manages credentials used to call third-party APIs from Sigma. This resource does not manage Sigma organization API client keys. Increment `credential_wo_version` to rotate secrets; updates without a version bump omit `credential` so Sigma retains existing secrets.
+Manages credentials used to call third-party APIs from Sigma. This resource does not manage Sigma organization API client keys. `credential_wo` and `credential_wo_version` must be supplied together. After credentials were managed, rotating secrets requires a strictly greater version and a known `credential_wo`. Updates without a version bump omit `credential` so Sigma retains existing secrets.
 
 ## Example Usage
 
@@ -43,8 +43,8 @@ resource "sigma_api_credential" "example" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `credential_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only credential JSON. Supported methods are `basic`, `bearer`, `apiKey`, `oAuthClientCredentials`, and `awsSigV4`. Required on create and whenever `credential_wo_version` changes.
-- `credential_wo_version` (Number) Increment to rotate or resend credential secrets. Updates without a version bump omit the credential body.
+- `credential_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only credential JSON. Supported methods are `basic`, `bearer`, `apiKey`, `oAuthClientCredentials`, and `awsSigV4`. Required together with `credential_wo_version` on create and rotation.
+- `credential_wo_version` (Number) Must be supplied with `credential_wo`. Increment to rotate secrets. Updates without a version bump omit the credential body.
 - `description` (String) Description.
 
 ### Read-Only
