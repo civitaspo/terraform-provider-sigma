@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- expose documented data-source filters and split connection path lookup (#90)
 - require complete connection PUTs and paired write-only credentials (#89)
 - correct dedicated grants, schedules, public embeds, and translations (#88)
 - make identity lifecycle and Framework conversions fail closed (#85)
