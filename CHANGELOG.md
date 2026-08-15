@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - keep configured state and finish live catalog pagination (#96)
 
+
+### Maintenance
+
+- update dependency jdx/mise to v2026.8.6 (#97)
+
 ## [0.2.0] - 2026-08-14
 
 
