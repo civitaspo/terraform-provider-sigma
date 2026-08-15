@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.2.1] - 2026-08-15
+
+
+### Bug Fixes
+
+- keep configured state and finish live catalog pagination (#96)
+
 ## [0.2.0] - 2026-08-14
 
 
