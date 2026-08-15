@@ -124,4 +124,6 @@ resource "sigma_user_attribute_team_assignment" "test" {
 	}))
 }
 
-func TestAccUserAttributeTeamAssignmentResource(t *testing.T) { requireAcceptance(t) }
+func TestAccUserAttributeTeamAssignmentResource(t *testing.T) {
+	runAccUserAttributeAndAssignment(t)
+}

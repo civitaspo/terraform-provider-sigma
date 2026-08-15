@@ -678,4 +678,7 @@ resource "sigma_member" "test" {
 	})
 }
 
-func TestAccMemberResource(t *testing.T) { requireAcceptance(t) }
+func TestAccMemberResource(t *testing.T) {
+	requireAcceptance(t)
+	t.Skip("member create/archive is skipped in production to avoid leftover archived users")
+}

@@ -128,4 +128,7 @@ resource "sigma_report_schedule" "test" {
 	}))
 }
 
-func TestAccReportScheduleResource(t *testing.T) { requireAcceptance(t) }
+func TestAccReportScheduleResource(t *testing.T) {
+	requireAcceptance(t)
+	t.Skip("report schedules need a disposable report; provider cannot create reports")
+}

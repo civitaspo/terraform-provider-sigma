@@ -119,4 +119,4 @@ resource "sigma_translation" "test" {
 	}}))
 }
 
-func TestAccTranslationResource(t *testing.T) { requireAcceptance(t) }
+func TestAccTranslationResource(t *testing.T) { runAccTranslationVariant(t) }

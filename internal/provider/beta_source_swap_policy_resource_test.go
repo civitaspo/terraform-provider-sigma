@@ -90,4 +90,4 @@ resource "sigma_source_swap_policy" "test" {
 	}))
 }
 
-func TestAccSourceSwapPolicyResource(t *testing.T) { requireAcceptance(t) }
+func TestAccSourceSwapPolicyResource(t *testing.T) { runAccSourceSwapPolicy(t) }

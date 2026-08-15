@@ -56,6 +56,50 @@ resource "sigma_api_connector" "test" {
 	}}))
 }
 
+func TestAPIConnectorResourcePreservesConfiguredParamsOnRead(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	created := map[string]any{
+		"apiConnectorId": "connector-1", "name": "weather", "description": "",
+		"params": map[string]any{"method": "GET", "url": "https://example.com/tf-acc", "headers": []any{}, "pathParams": []any{}, "queryParams": []any{}, "body": ""},
+		"config": map[string]any{}, "authId": "credential-1",
+	}
+	read := map[string]any{
+		"apiConnectorId": "connector-1", "name": "weather", "description": "",
+		"params": map[string]any{"method": "GET", "url": "https://example.com/tf-acc", "headers": []any{}, "pathParams": []any{}, "queryParams": []any{}, "body": "", "bodyParams": []any{}},
+		"config": map[string]any{}, "authId": "credential-1",
+	}
+	mock.Mux.HandleFunc("/v2/api-connectors", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		writeJSON(response, created)
+	})
+	mock.Mux.HandleFunc("/v2/api-connectors/connector-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method == http.MethodDelete {
+			writeJSON(response, map[string]any{})
+			return
+		}
+		writeJSON(response, read)
+	})
+	config := connectionProviderConfig(mock) + `
+resource "sigma_api_connector" "test" {
+  name    = "weather"
+  auth_id = "credential-1"
+  params_json = jsonencode({
+    method      = "GET"
+    url         = "https://example.com/tf-acc"
+    headers     = []
+    pathParams  = []
+    queryParams = []
+    body        = ""
+  })
+}
+`
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{{
+		Config: config,
+		Check:  resource.TestCheckResourceAttr("sigma_api_connector.test", "id", "connector-1"),
+	}}))
+}
+
 func TestAPIConnectorResourceUpdateOmitsParamsWithoutSecretsVersion(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
 	params := map[string]any{"method": "GET", "url": "https://api.example.com/weather", "headers": []any{}, "pathParams": []any{}, "queryParams": []any{}}
@@ -198,4 +242,4 @@ resource "sigma_api_connector" "test" {
 	}))
 }
 
-func TestAccAPIConnectorResource(t *testing.T) { requireAcceptance(t) }
+func TestAccAPIConnectorResource(t *testing.T) { runAccAPICredentialAndConnector(t) }

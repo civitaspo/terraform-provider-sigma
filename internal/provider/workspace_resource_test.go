@@ -59,4 +59,4 @@ resource "sigma_workspace" "test" {
 	}))
 }
 
-func TestAccWorkspaceResource(t *testing.T) { requireAcceptance(t) }
+func TestAccWorkspaceResource(t *testing.T) { runAccOwnedWorkspaceFolderGrant(t) }

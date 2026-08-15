@@ -23,4 +23,7 @@ data "sigma_data_model_materialization_schedules" "all" {
 	})
 }
 
-func TestAccDataModelMaterializationSchedulesDataSource(t *testing.T) { requireAcceptance(t) }
+func TestAccDataModelMaterializationSchedulesDataSource(t *testing.T) {
+	requireAcceptance(t)
+	t.Skip("materialization schedule lookup needs a dedicated data model ID")
+}

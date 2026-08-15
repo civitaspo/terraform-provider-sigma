@@ -111,6 +111,21 @@ func lookupGrant(values []sigma.Grant, model *grantModel, grantID string) (*sigm
 	case 0:
 		return nil, &sigma.APIError{StatusCode: 404, Message: "grant not found"}
 	default:
+		// List-by-inode also returns inherited parent grants (workspace view
+		// plus document view to the same team). Prefer the grant on the
+		// configured inode when that uniquely identifies it.
+		desired := model.InodeID.ValueString()
+		if desired != "" {
+			var exact []sigma.Grant
+			for _, match := range matches {
+				if match.InodeID == desired {
+					exact = append(exact, match)
+				}
+			}
+			if len(exact) == 1 {
+				return &exact[0], nil
+			}
+		}
 		return nil, fmt.Errorf("multiple grants matched inode, grantee, and permission; refusing to select the first match")
 	}
 }
@@ -171,8 +186,14 @@ func importGrantCompositeID(ctx context.Context, request resource.ImportStateReq
 
 func setGrant(state *grantModel, value *sigma.Grant) {
 	priorTag := state.TagID
+	priorInode := state.InodeID
 	state.ID = types.StringValue(value.GrantID)
-	state.InodeID = types.StringValue(value.InodeID)
+	// List/get may return a URL id while configuration used the UUID.
+	if !priorInode.IsNull() && !priorInode.IsUnknown() && priorInode.ValueString() != "" {
+		state.InodeID = priorInode
+	} else {
+		state.InodeID = types.StringValue(value.InodeID)
+	}
 	state.MemberID = nullableString(value.MemberID)
 	state.TeamID = nullableString(value.TeamID)
 	state.Permission = types.StringValue(value.Permission)

@@ -197,6 +197,11 @@ func retryDelay(response *http.Response, base time.Duration, attempt int, now ti
 	}
 	if delay == 0 {
 		delay = base * time.Duration(1<<attempt)
+		if response != nil && response.StatusCode == http.StatusTooManyRequests && delay < 2*time.Second {
+			// Cloudflare 1015 often omits Retry-After. A 100ms exponential
+			// backoff burns the retry budget before the edge unblocks.
+			delay = 2 * time.Second
+		}
 		delay = time.Duration(float64(delay) * (0.5 + rand.Float64()))
 	}
 	if delay > maxRetrySleep {

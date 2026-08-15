@@ -45,6 +45,15 @@ func optionalBoolPtr(value types.Bool) *bool {
 	return &v
 }
 
+// optionalAPIString keeps an omitted Optional attribute null when Sigma
+// returns an empty string instead of omitting the field.
+func optionalAPIString(prior types.String, api string) types.String {
+	if api == "" && (prior.IsNull() || prior.IsUnknown()) {
+		return types.StringNull()
+	}
+	return types.StringValue(api)
+}
+
 func stringOrNull(value *string) types.String {
 	if value == nil || *value == "" {
 		return types.StringNull()

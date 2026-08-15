@@ -39,7 +39,7 @@ func (d *connectionPathsDataSource) Configure(_ context.Context, req datasource.
 }
 
 func (d *connectionPathsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	resp.Schema = schema.Schema{MarkdownDescription: "Lists Sigma connection paths using GET `/v2/connections/paths`." + listCollectionNotice, Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{MarkdownDescription: "Lists Sigma connection paths using GET `/v2/connections/paths`. Warehouse catalogs can contain tens of thousands of paths; the provider requests 500 rows per page and paces pagination to avoid Cloudflare 429s. " + listCollectionNotice, Attributes: map[string]schema.Attribute{
 		"id":            schema.StringAttribute{Computed: true, MarkdownDescription: "Stable list identifier. Includes the optional connection filter when set."},
 		"connection_id": schema.StringAttribute{Optional: true, MarkdownDescription: "Optional connection filter (`connectionId`)."},
 		"paths": schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Connection paths in API order.", NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{

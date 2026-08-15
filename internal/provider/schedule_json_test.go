@@ -54,6 +54,46 @@ func TestMergeScheduleConfigPreservesTargetAndRemovesSuspensionAction(t *testing
 	}
 }
 
+func TestMergeScheduleConfigKeepsConfiguredShape(t *testing.T) {
+	t.Parallel()
+
+	prior := jsontypes.NewNormalizedValue(`{"target":[{"teamId":"team-1"}],"schedule":{"cronSpec":"0 12 * * *","timezone":"UTC"},"configV2":{"title":"Weekly","messageBody":"hello","exportAttachments":[{"formatOptions":{"type":"PDF"}}]}}`)
+	merged, diags := mergeScheduleConfig(prior, scheduleRefresh{
+		Schedule: json.RawMessage(`{"cronSpec":"0 12 * * *","timezone":"UTC"}`),
+		ConfigV2: json.RawMessage(`{"title":"Weekly","messageBody":"hello","includeLink":false,"runAsRecipient":false,"notificationAttachments":[{"formatOptions":{"type":"PDF"},"workbookExportSource":{"type":"all"}}],"workbookVariant":{}}`),
+	})
+	if diags.HasError() {
+		t.Fatalf("merge diagnostics: %v", diags)
+	}
+	var object map[string]any
+	if err := json.Unmarshal([]byte(merged.ValueString()), &object); err != nil {
+		t.Fatal(err)
+	}
+	config, _ := object["configV2"].(map[string]any)
+	if _, ok := config["includeLink"]; ok {
+		t.Fatalf("did not expect API default includeLink: %#v", config)
+	}
+	if _, ok := config["notificationAttachments"]; ok {
+		t.Fatalf("did not expect renamed notificationAttachments: %#v", config)
+	}
+	if _, ok := config["exportAttachments"]; !ok {
+		t.Fatalf("expected configured exportAttachments: %#v", config)
+	}
+	if _, ok := object["target"]; !ok {
+		t.Fatal("expected target to be retained")
+	}
+}
+
+func TestScheduleIsSuspendedKeepsConfiguredValue(t *testing.T) {
+	t.Parallel()
+	if got := scheduleIsSuspended(types.BoolValue(true), false); !got.ValueBool() {
+		t.Fatalf("configured true, api false = %v", got)
+	}
+	if got := scheduleIsSuspended(types.BoolNull(), true); !got.ValueBool() {
+		t.Fatalf("null plan, api true = %v", got)
+	}
+}
+
 func TestScheduleUpdateBodySendsPauseOnlyWhenChanged(t *testing.T) {
 	t.Parallel()
 
@@ -101,16 +141,17 @@ func TestCanonicalJSONIgnoresWhitespaceAndKeyOrder(t *testing.T) {
 
 func TestApplyScheduleCreateSuspension(t *testing.T) {
 	t.Parallel()
-	body, follow, err := applyScheduleCreateSuspension(types.BoolNull(), false)
-	if err != nil || follow || body != nil {
-		t.Fatalf("null plan = %s %v %v", body, follow, err)
+	config := jsontypes.NewNormalizedValue(`{"schedule":{"cronSpec":"0 9 * * 1"},"target":[]}`)
+	body, follow, diags := applyScheduleCreateSuspension(config, types.BoolNull(), false)
+	if diags.HasError() || follow || body != nil {
+		t.Fatalf("null plan = %s %v %v", body, follow, diags)
 	}
-	body, follow, err = applyScheduleCreateSuspension(types.BoolValue(false), false)
-	if err != nil || follow || body != nil {
-		t.Fatalf("matching = %s %v %v", body, follow, err)
+	body, follow, diags = applyScheduleCreateSuspension(config, types.BoolValue(false), false)
+	if diags.HasError() || follow || body != nil {
+		t.Fatalf("matching = %s %v %v", body, follow, diags)
 	}
-	body, follow, err = applyScheduleCreateSuspension(types.BoolValue(true), false)
-	if err != nil || !follow || !strings.Contains(string(body), "pause") {
-		t.Fatalf("mismatch = %s %v %v", body, follow, err)
+	body, follow, diags = applyScheduleCreateSuspension(config, types.BoolValue(true), false)
+	if diags.HasError() || !follow || !strings.Contains(string(body), "pause") || !strings.Contains(string(body), "cronSpec") {
+		t.Fatalf("mismatch = %s %v %v", body, follow, diags)
 	}
 }

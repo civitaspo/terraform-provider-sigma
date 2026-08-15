@@ -31,7 +31,7 @@ resource "sigma_account_type" "example" {
 
 ### Optional
 
-- `reassign_to_account_type_id` (String) Account type ID that receives users when this type is destroyed (`reassignToAccountTypeId` query parameter). Used only on delete; changing it updates state without recreating the account type. Sigma requires it when users are still assigned to this type.
+- `reassign_to_account_type_id` (String) Account type ID that receives users when this type is destroyed (`reassignToAccountTypeId` query parameter). Used only on delete; changing it updates state without recreating the account type. Live Sigma requires a UUID even when no users are assigned.
 
 ### Read-Only
 

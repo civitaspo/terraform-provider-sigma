@@ -67,4 +67,4 @@ resource "sigma_connection_path_grant" "test" {
 	}))
 }
 
-func TestAccConnectionPathGrantResource(t *testing.T) { requireAcceptance(t) }
+func TestAccConnectionPathGrantResource(t *testing.T) { runAccConnectionGrants(t) }

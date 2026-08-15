@@ -164,6 +164,10 @@ data "sigma_connections" "all" {
 	})
 }
 
+func TestAccConnectionPathsDataSource(t *testing.T) {
+	runAccConnectionPaths(t)
+}
+
 func TestConnectionPathsDataSource(t *testing.T) {
 	runListDataSourceCases(t, listDataSourceCase{
 		path: "/v2/connections/paths",

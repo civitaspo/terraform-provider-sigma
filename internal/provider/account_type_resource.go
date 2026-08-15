@@ -49,7 +49,7 @@ func (r *accountTypeResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"is_custom":   schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether this is a custom account type."},
 			"reassign_to_account_type_id": schema.StringAttribute{
 				Optional:            true,
-				MarkdownDescription: "Account type ID that receives users when this type is destroyed (`reassignToAccountTypeId` query parameter). Used only on delete; changing it updates state without recreating the account type. Sigma requires it when users are still assigned to this type.",
+				MarkdownDescription: "Account type ID that receives users when this type is destroyed (`reassignToAccountTypeId` query parameter). Used only on delete; changing it updates state without recreating the account type. Live Sigma requires a UUID even when no users are assigned.",
 			},
 		},
 	}

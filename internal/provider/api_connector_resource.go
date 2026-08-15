@@ -124,7 +124,7 @@ func setAPIConnector(state *apiConnectorResourceModel, value *sigma.APIConnector
 	priorVersion := state.SecretsWOVersion
 	state.ID = types.StringValue(value.APIConnectorID)
 	state.Name = types.StringValue(value.Name)
-	state.Description = types.StringValue(value.Description)
+	state.Description = optionalAPIString(state.Description, value.Description)
 	if preserveParams {
 		state.ParamsJSON = priorParams
 	} else {
@@ -180,7 +180,8 @@ func (r *apiConnectorResource) Read(ctx context.Context, req resource.ReadReques
 		resp.Diagnostics.AddError("Unable to read Sigma API connector", err.Error())
 		return
 	}
-	preserveParams := !state.SecretsWOVersion.IsNull() && !state.SecretsWOVersion.IsUnknown()
+	// Keep configured params on refresh. Import has no prior params, so populate from GET.
+	preserveParams := !state.ParamsJSON.IsNull() && !state.ParamsJSON.IsUnknown()
 	setAPIConnector(&state, value, preserveParams)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

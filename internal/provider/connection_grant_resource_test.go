@@ -104,7 +104,7 @@ resource "sigma_connection_grant" "test" {
 	}}))
 }
 
-func TestAccConnectionGrantResource(t *testing.T) { requireAcceptance(t) }
+func TestAccConnectionGrantResource(t *testing.T) { runAccConnectionGrants(t) }
 
 func TestConnectionGrantResourceInvalidImportID(t *testing.T) {
 	mock := testutil.NewMockSigma(t)

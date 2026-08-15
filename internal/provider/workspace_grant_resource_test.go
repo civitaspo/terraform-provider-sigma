@@ -79,4 +79,36 @@ resource "sigma_workspace_grant" "test" {
 	}}))
 }
 
+func TestWorkspaceGrantResourcePreservesConfiguredInodeID(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	workspaceGrant := map[string]any{
+		"grantId": "workspace-grant-1", "inodeId": "59pQDJltU54RD5kEvnkDmJ", "organizationId": "org-1",
+		"memberId": "member-1", "teamId": nil, "permission": "view", "inodeType": "workspace",
+		"createdBy": "member-admin", "updatedBy": "member-admin",
+		"createdAt": "2026-01-01T00:00:00Z", "updatedAt": "2026-01-01T00:00:00Z",
+	}
+	mock.Mux.HandleFunc("/v2/workspaces/a9465737-6ae7-4d9c-b4ca-7c162ab0b70d/grants", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method == http.MethodPost {
+			writeJSON(response, map[string]any{})
+			return
+		}
+		writeJSON(response, map[string]any{"entries": []any{workspaceGrant}, "nextPage": nil})
+	})
+	mock.Mux.HandleFunc("/v2/workspaces/a9465737-6ae7-4d9c-b4ca-7c162ab0b70d/grants/workspace-grant-1", func(response http.ResponseWriter, _ *http.Request) {
+		writeJSON(response, map[string]any{})
+	})
+	config := providerConfig(mock) + `
+resource "sigma_workspace_grant" "test" {
+  inode_id   = "a9465737-6ae7-4d9c-b4ca-7c162ab0b70d"
+  member_id  = "member-1"
+  permission = "view"
+}
+`
+	resource.UnitTest(t, providerTestCase([]resource.TestStep{{
+		Config: config,
+		Check:  resource.TestCheckResourceAttr("sigma_workspace_grant.test", "inode_id", "a9465737-6ae7-4d9c-b4ca-7c162ab0b70d"),
+	}}))
+}
+
 func TestAccWorkspaceGrantResource(t *testing.T) { runAccWorkspaceGrant(t) }

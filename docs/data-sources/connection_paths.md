@@ -3,12 +3,12 @@
 page_title: "sigma_connection_paths Data Source - terraform-provider-sigma"
 subcategory: ""
 description: |-
-  Lists Sigma connection paths using GET /v2/connections/paths. Results preserve Sigma API order; key collections by returned IDs rather than positional indices. Pagination cursors and page sizes are not exposed; this data source retrieves every page.
+  Lists Sigma connection paths using GET /v2/connections/paths. Warehouse catalogs can contain tens of thousands of paths; the provider requests 500 rows per page and paces pagination to avoid Cloudflare 429s.  Results preserve Sigma API order; key collections by returned IDs rather than positional indices. Pagination cursors and page sizes are not exposed; this data source retrieves every page.
 ---
 
 # sigma_connection_paths (Data Source)
 
-Lists Sigma connection paths using GET `/v2/connections/paths`. Results preserve Sigma API order; key collections by returned IDs rather than positional indices. Pagination cursors and page sizes are not exposed; this data source retrieves every page.
+Lists Sigma connection paths using GET `/v2/connections/paths`. Warehouse catalogs can contain tens of thousands of paths; the provider requests 500 rows per page and paces pagination to avoid Cloudflare 429s.  Results preserve Sigma API order; key collections by returned IDs rather than positional indices. Pagination cursors and page sizes are not exposed; this data source retrieves every page.
 
 ## Example Usage
 

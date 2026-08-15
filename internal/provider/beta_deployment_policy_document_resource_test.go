@@ -163,4 +163,6 @@ resource "sigma_deployment_policy_document" "b" {
 	}}))
 }
 
-func TestAccDeploymentPolicyDocumentResource(t *testing.T) { requireAcceptance(t) }
+func TestAccDeploymentPolicyDocumentResource(t *testing.T) {
+	runAccDeploymentPolicyDocument(t)
+}

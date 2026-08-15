@@ -25,7 +25,7 @@ resource "sigma_workspace_grant" "example" {
 
 ### Required
 
-- `inode_id` (String) Workspace ID.
+- `inode_id` (String) Workspace ID. List/get may return a URL id; Terraform keeps the configured UUID.
 - `permission` (String) Workspace permission: `view`, `explore`, `organize`, or `edit`.
 
 ### Optional

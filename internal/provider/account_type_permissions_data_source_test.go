@@ -60,4 +60,4 @@ data "sigma_account_type_permissions" "all" {
 	})
 }
 
-func TestAccAccountTypePermissionsDataSource(t *testing.T) { requireAcceptance(t) }
+func TestAccAccountTypePermissionsDataSource(t *testing.T) { runAccAccountType(t) }

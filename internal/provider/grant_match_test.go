@@ -63,6 +63,40 @@ func TestLookupGrantAmbiguityNeverSelectsFirstMatch(t *testing.T) {
 	}
 }
 
+func TestLookupGrantPrefersExactInodeOverInherited(t *testing.T) {
+	t.Parallel()
+
+	team := "team-1"
+	inherited := sigma.Grant{GrantID: "workspace-grant", InodeID: "workspace-1", Permission: "view", TeamID: &team}
+	direct := sigma.Grant{GrantID: "workbook-grant", InodeID: "workbook-1", Permission: "view", TeamID: &team}
+	model := &grantModel{
+		InodeID:    types.StringValue("workbook-1"),
+		Permission: types.StringValue("view"),
+		TeamID:     types.StringValue("team-1"),
+	}
+	got, err := lookupGrant([]sigma.Grant{inherited, direct}, model, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GrantID != "workbook-grant" {
+		t.Fatalf("grant = %#v, want workbook-grant", got)
+	}
+}
+
+func TestLookupConnectionGrantPrefersExactInodeOverInherited(t *testing.T) {
+	t.Parallel()
+	team := "team-1"
+	inherited := sigma.Grant{GrantID: "conn-grant", InodeID: "conn-1", Permission: "annotate", TeamID: &team}
+	direct := sigma.Grant{GrantID: "path-grant", InodeID: "path-1", Permission: "annotate", TeamID: &team}
+	got, err := lookupConnectionGrant([]sigma.Grant{inherited, direct}, "", "team-1", "annotate", "", "path-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GrantID != "path-grant" {
+		t.Fatalf("grant = %#v, want path-grant", got)
+	}
+}
+
 func TestLookupGrantZeroMatchesIsNotFound(t *testing.T) {
 	t.Parallel()
 

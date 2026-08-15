@@ -453,6 +453,15 @@ func TestWhoamiEmptyBodyIsError(t *testing.T) {
 	}
 }
 
+func TestRetryDelay429WithoutRetryAfterUsesMinimum(t *testing.T) {
+	t.Parallel()
+	response := &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{}}
+	delay := retryDelay(response, 100*time.Millisecond, 0, time.Now())
+	if delay < time.Second {
+		t.Fatalf("delay = %s, want at least 1s after Cloudflare 429 floor", delay)
+	}
+}
+
 func validTokenHandler(response http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(response).Encode(map[string]any{
 		"access_token": "token",

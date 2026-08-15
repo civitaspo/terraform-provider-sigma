@@ -81,4 +81,7 @@ resource "sigma_tenant" "test" {
 	}))
 }
 
-func TestAccTenantResource(t *testing.T) { requireAcceptance(t) }
+func TestAccTenantResource(t *testing.T) {
+	requireAcceptance(t)
+	t.Skip("tenant organization create is skipped in production")
+}

@@ -118,7 +118,7 @@ func setAPICredential(ctx context.Context, state *apiCredentialResourceModel, va
 	priorVersion := state.CredentialWOVersion
 	state.ID = types.StringValue(value.APICredentialID)
 	state.Name = types.StringValue(value.Name)
-	state.Description = types.StringValue(value.Description)
+	state.Description = optionalAPIString(state.Description, value.Description)
 	state.AuthMethod = types.StringValue(value.AuthMethod)
 	state.CredentialJSON = normalizedFromRaw(value.Credential)
 	state.CredentialWOVersion = priorVersion
