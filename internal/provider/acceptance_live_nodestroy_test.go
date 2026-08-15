@@ -274,7 +274,7 @@ func peekFirstConnectionPath(t *testing.T) (path []string, connectionID, urlID s
 		t.Logf("skip connection_path: token: %v", err)
 		return nil, "", "", false
 	}
-	defer tokenResp.Body.Close()
+	defer func() { _ = tokenResp.Body.Close() }()
 	var tokenBody struct {
 		AccessToken string `json:"access_token"`
 	}
@@ -292,7 +292,7 @@ func peekFirstConnectionPath(t *testing.T) (path []string, connectionID, urlID s
 		if err != nil {
 			return nil, err
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		var body map[string]any
 		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 			return nil, err
