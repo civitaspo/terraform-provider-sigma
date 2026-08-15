@@ -165,7 +165,6 @@ data "sigma_connections" "all" {
 }
 
 func TestAccConnectionPathsDataSource(t *testing.T) {
-	requireAcceptanceEnv(t, "SIGMA_ACC_CONNECTION_PATHS")
 	runAccConnectionPaths(t)
 }
 

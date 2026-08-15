@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-const scheduleConfigJSONDescription = "JSON body accepted by the Sigma schedule create/update API. Must be a JSON object. Do not set top-level `suspensionAction`; use `is_suspended` instead. List/get responses omit `target`, so Terraform retains the configured `target` (and other request-only fields) from prior state."
+const scheduleConfigJSONDescription = "JSON body accepted by the Sigma schedule create/update API. Must be a JSON object. Do not set top-level `suspensionAction`; use `is_suspended` instead. List/get responses omit `target` and echo extra `configV2` fields (for example `includeLink` or `notificationAttachments`), so Terraform retains the configured object shape from prior state and overlays API values only onto keys that were already set."
 
 type scheduleRefresh struct {
 	Schedule    json.RawMessage
@@ -120,10 +120,10 @@ func mergeScheduleConfig(prior jsontypes.Normalized, refresh scheduleRefresh) (j
 	}
 	delete(object, "suspensionAction")
 	if overlay, ok := rawJSONValue(refresh.Schedule); ok {
-		object["schedule"] = overlay
+		object["schedule"] = overlayConfiguredJSON(object["schedule"], overlay)
 	}
 	if overlay, ok := rawJSONValue(refresh.ConfigV2); ok {
-		object["configV2"] = overlay
+		object["configV2"] = overlayConfiguredJSON(object["configV2"], overlay)
 	}
 	encoded, err := json.Marshal(object)
 	if err != nil {
@@ -131,6 +131,37 @@ func mergeScheduleConfig(prior jsontypes.Normalized, refresh scheduleRefresh) (j
 		return jsontypes.NewNormalizedNull(), diags
 	}
 	return jsontypes.NewNormalizedValue(string(encoded)), diags
+}
+
+// overlayConfiguredJSON keeps the configured JSON shape. When both values are
+// objects, API keys that were not configured are dropped so live responses
+// (defaults, renamed attachment fields) do not rewrite config_json.
+func overlayConfiguredJSON(prior, api any) any {
+	priorObject, priorOK := prior.(map[string]any)
+	apiObject, apiOK := api.(map[string]any)
+	if !priorOK || len(priorObject) == 0 {
+		return api
+	}
+	if !apiOK {
+		return prior
+	}
+	merged := make(map[string]any, len(priorObject))
+	for key, priorValue := range priorObject {
+		apiValue, exists := apiObject[key]
+		if !exists {
+			merged[key] = priorValue
+			continue
+		}
+		merged[key] = overlayConfiguredJSON(priorValue, apiValue)
+	}
+	return merged
+}
+
+func scheduleIsSuspended(plan types.Bool, api bool) types.Bool {
+	if plan.IsNull() || plan.IsUnknown() {
+		return types.BoolValue(api)
+	}
+	return plan
 }
 
 func rawJSONValue(raw json.RawMessage) (any, bool) {
@@ -152,16 +183,18 @@ func suspensionMismatchBody(isSuspended bool) (json.RawMessage, error) {
 	return json.Marshal(map[string]any{"suspensionAction": action})
 }
 
-func applyScheduleCreateSuspension(planSuspended types.Bool, apiSuspended bool) (json.RawMessage, bool, error) {
+func applyScheduleCreateSuspension(config jsontypes.Normalized, planSuspended types.Bool, apiSuspended bool) (json.RawMessage, bool, diag.Diagnostics) {
+	var diags diag.Diagnostics
 	if planSuspended.IsNull() || planSuspended.IsUnknown() {
-		return nil, false, nil
+		return nil, false, diags
 	}
-	desired := planSuspended.ValueBool()
-	if desired == apiSuspended {
-		return nil, false, nil
+	if planSuspended.ValueBool() == apiSuspended {
+		return nil, false, diags
 	}
-	body, err := suspensionMismatchBody(desired)
-	return body, true, err
+	// Live PATCH ignores a bare suspensionAction; send the configured body with it.
+	body, bodyDiags := scheduleUpdateBody(config, planSuspended, types.BoolValue(apiSuspended))
+	diags.Append(bodyDiags...)
+	return body, !diags.HasError(), diags
 }
 
 func validateScheduleConfigJSON(value jsontypes.Normalized) diag.Diagnostics {

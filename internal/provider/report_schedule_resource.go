@@ -70,8 +70,8 @@ func (r *reportScheduleResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 	plan.ID = types.StringValue(value.ScheduledNotificationID)
-	if patch, needed, patchErr := applyScheduleCreateSuspension(plan.IsSuspended, value.IsSuspended); patchErr != nil {
-		resp.Diagnostics.AddError("Unable to pause or resume Sigma report schedule", patchErr.Error())
+	if patch, needed, patchDiags := applyScheduleCreateSuspension(plan.ConfigJSON, plan.IsSuspended, value.IsSuspended); patchDiags.HasError() {
+		resp.Diagnostics.Append(patchDiags...)
 		return
 	} else if needed {
 		value, err = r.client.UpdateReportSchedule(ctx, reportID, value.ScheduledNotificationID, patch)
@@ -88,7 +88,7 @@ func (r *reportScheduleResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 	plan.ConfigJSON = config
-	plan.IsSuspended = types.BoolValue(value.IsSuspended)
+	plan.IsSuspended = scheduleIsSuspended(plan.IsSuspended, value.IsSuspended)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -157,7 +157,7 @@ func (r *reportScheduleResource) Update(ctx context.Context, req resource.Update
 	}
 	plan.ID = types.StringValue(value.ScheduledNotificationID)
 	plan.ConfigJSON = config
-	plan.IsSuspended = types.BoolValue(value.IsSuspended)
+	plan.IsSuspended = scheduleIsSuspended(plan.IsSuspended, value.IsSuspended)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

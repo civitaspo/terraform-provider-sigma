@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/civitaspo/terraform-provider-sigma/internal/sigma/openapi"
 )
@@ -308,16 +309,37 @@ type ConnectionPath struct {
 
 type ListConnectionPathsOptions struct {
 	ConnectionID *string
+	Limit        *float64
 }
 
+const (
+	connectionPathPageSize = 500.0
+	connectionPathPageGap  = 250 * time.Millisecond
+)
+
 func (c *Client) ListConnectionPaths(ctx context.Context, opts ListConnectionPathsOptions) ([]ConnectionPath, error) {
-	base := &openapi.ListConnectionPathsParams{ConnectionId: opts.ConnectionID}
+	limit := connectionPathPageSize
+	if opts.Limit != nil && *opts.Limit > 0 {
+		limit = *opts.Limit
+	}
+	base := &openapi.ListConnectionPathsParams{ConnectionId: opts.ConnectionID, Limit: &limit}
 	return listAllByPage(ctx, func(ctx context.Context, page *string) ([]ConnectionPath, *string, error) {
 		params := *base
 		params.Page = page
-		return fetchPage[ConnectionPath](c, func() (*http.Response, error) {
+		entries, next, err := fetchPage[ConnectionPath](c, func() (*http.Response, error) {
 			return c.api.ListConnectionPaths(ctx, &params)
 		})
+		if err != nil {
+			return nil, nil, err
+		}
+		// Warehouse catalogs are large. Default page size 50 plus tight loops
+		// hit Cloudflare 429 (error 1015) and look like a hang.
+		if next != nil && *next != "" {
+			if err := c.sleep(ctx, connectionPathPageGap); err != nil {
+				return nil, nil, err
+			}
+		}
+		return entries, next, nil
 	})
 }
 

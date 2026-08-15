@@ -64,7 +64,7 @@ func validateConnectionGrant(plan *connectionGrantModel) error {
 	return nil
 }
 
-func lookupConnectionGrant(values []sigma.Grant, memberID, teamID, permission, grantID string) (*sigma.Grant, error) {
+func lookupConnectionGrant(values []sigma.Grant, memberID, teamID, permission, grantID, parentID string) (*sigma.Grant, error) {
 	if grantID != "" {
 		for i := range values {
 			if values[i].GrantID == grantID {
@@ -88,6 +88,17 @@ func lookupConnectionGrant(values []sigma.Grant, memberID, teamID, permission, g
 	case 0:
 		return nil, &sigma.APIError{StatusCode: 404, Message: "grant not found"}
 	default:
+		if parentID != "" {
+			var exact []sigma.Grant
+			for _, match := range matches {
+				if match.InodeID == parentID {
+					exact = append(exact, match)
+				}
+			}
+			if len(exact) == 1 {
+				return &exact[0], nil
+			}
+		}
 		return nil, fmt.Errorf("multiple grants matched grantee and permission; refusing to select the first match")
 	}
 }
@@ -111,7 +122,7 @@ func (r *connectionGrantResource) Create(ctx context.Context, req resource.Creat
 		resp.Diagnostics.AddError("Unable to locate created Sigma grant", err.Error())
 		return
 	}
-	value, err := lookupConnectionGrant(values, plan.MemberID.ValueString(), plan.TeamID.ValueString(), plan.Permission.ValueString(), "")
+	value, err := lookupConnectionGrant(values, plan.MemberID.ValueString(), plan.TeamID.ValueString(), plan.Permission.ValueString(), "", plan.ConnectionID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to locate created Sigma grant", err.Error())
 		return
@@ -136,7 +147,7 @@ func (r *connectionGrantResource) Read(ctx context.Context, req resource.ReadReq
 		resp.Diagnostics.AddError("Unable to read Sigma grant", err.Error())
 		return
 	}
-	value, err := lookupConnectionGrant(values, "", "", "", state.ID.ValueString())
+	value, err := lookupConnectionGrant(values, "", "", "", state.ID.ValueString(), "")
 	if sigma.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return

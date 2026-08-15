@@ -136,7 +136,4 @@ resource "sigma_deployment_policy_document" "test" {
 	}
 }
 
-func TestAccDeploymentPolicyResource(t *testing.T) {
-	requireAcceptance(t)
-	t.Skip("deployment policy create needs a version tag and is skipped without a disposable fixture")
-}
+func TestAccDeploymentPolicyResource(t *testing.T) { runAccDeploymentPolicy(t) }

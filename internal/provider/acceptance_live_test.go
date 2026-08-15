@@ -1,11 +1,13 @@
 package provider_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/civitaspo/terraform-provider-sigma/internal/sigma"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
@@ -236,6 +238,38 @@ data "sigma_connection_paths" "all" {
 	}}))
 }
 
+func runAccConnectionGrants(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	path, connID, urlID, ok := peekFirstConnectionPath(t)
+	if !ok {
+		t.Fatal("need at least one connection path to grant")
+	}
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + fmt.Sprintf(`
+data "sigma_teams" "all" {}
+data "sigma_connection_path" "first" {
+  connection_id = %q
+  path          = [%s]
+}
+resource "sigma_connection_grant" "test" {
+  connection_id = %q
+  team_id       = data.sigma_teams.all.teams[0].id
+  permission    = "annotate"
+}
+resource "sigma_connection_path_grant" "test" {
+  connection_path_id = %q
+  team_id            = data.sigma_teams.all.teams[0].id
+  permission         = "annotate"
+}
+`, connID, quotePath(path), connID, urlID),
+		Check: resource.ComposeAggregateTestCheckFunc(
+			resource.TestCheckResourceAttrSet("sigma_connection_grant.test", "id"),
+			resource.TestCheckResourceAttrSet("sigma_connection_path_grant.test", "id"),
+		),
+	}}))
+}
+
 func runAccOwnedWorkspaceFolderGrant(t *testing.T) {
 	t.Helper()
 	requireAcceptance(t)
@@ -290,6 +324,7 @@ func runAccUserAttributeAndAssignment(t *testing.T) {
 	resource.Test(t, providerTestCase([]resource.TestStep{{
 		Config: accProviderBlock() + `
 data "sigma_whoami" "me" {}
+data "sigma_teams" "all" {}
 resource "sigma_user_attribute" "test" {
   name          = "` + name + `"
   description   = "tf-acc disposable attribute"
@@ -300,6 +335,11 @@ resource "sigma_user_attribute_user_assignment" "test" {
   user_id           = data.sigma_whoami.me.user_id
   value             = "tf-acc"
 }
+resource "sigma_user_attribute_team_assignment" "test" {
+  user_attribute_id = sigma_user_attribute.test.id
+  team_id           = data.sigma_teams.all.teams[0].id
+  value             = "tf-acc-team"
+}
 data "sigma_user_attribute" "created" {
   id = sigma_user_attribute.test.id
 }
@@ -307,6 +347,7 @@ data "sigma_user_attribute" "created" {
 		Check: resource.ComposeAggregateTestCheckFunc(
 			resource.TestCheckResourceAttrSet("sigma_user_attribute.test", "id"),
 			resource.TestCheckResourceAttrSet("sigma_user_attribute_user_assignment.test", "id"),
+			resource.TestCheckResourceAttrSet("sigma_user_attribute_team_assignment.test", "id"),
 			resource.TestCheckResourceAttr("data.sigma_user_attribute.created", "name", name),
 		),
 	}}))
@@ -379,6 +420,106 @@ func TestAccWhoamiAndMemberDataSources(t *testing.T) { runAccWhoami(t) }
 func TestAccReadOnlyCatalogDataSources(t *testing.T) { runAccReadOnlyCatalog(t) }
 
 func TestAccConnectionReadOnlyDataSources(t *testing.T) { runAccConnectionReadOnly(t) }
+
+func runAccDeploymentPolicyDocument(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	ctx := context.Background()
+	client, err := sigma.NewClient(os.Getenv("SIGMA_BASE_URL"), os.Getenv("SIGMA_CLIENT_ID"), os.Getenv("SIGMA_CLIENT_SECRET"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stamp := time.Now().UnixNano()
+	workspace, err := client.CreateWorkspace(ctx, sigma.CreateWorkspaceInput{
+		Name: fmt.Sprintf("tf-acc-ws-%d", stamp), NoDuplicates: true,
+	})
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	workbook, err := client.CreateFile(ctx, sigma.CreateFileInput{
+		Type: "workbook", Name: fmt.Sprintf("tf-acc-wb-%d", stamp), ParentID: workspace.WorkspaceID,
+	})
+	if err != nil {
+		t.Fatalf("create workbook: %v", err)
+	}
+	t.Cleanup(func() {
+		cleanupDocumentTree(t, client, workspace.WorkspaceID, []string{workbook.ID})
+	})
+	tag := accName("tf-acc-dtag")
+	name := accName("tf-acc-dpol")
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + fmt.Sprintf(`
+resource "sigma_tag" "test" {
+  name  = %q
+  color = "cyan"
+}
+resource "sigma_deployment_policy" "test" {
+  name           = %q
+  version_tag_id = sigma_tag.test.id
+}
+resource "sigma_deployment_policy_document" "test" {
+  deployment_policy_id = sigma_deployment_policy.test.id
+  inode_id             = %q
+}
+`, tag, name, workbook.ID),
+		Check: resource.TestCheckResourceAttrSet("sigma_deployment_policy_document.test", "id"),
+	}}))
+}
+
+func runAccDeploymentPolicy(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	tag := accName("tf-acc-dtag")
+	name := accName("tf-acc-dpol")
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + `
+resource "sigma_tag" "test" {
+  name  = "` + tag + `"
+  color = "cyan"
+}
+resource "sigma_deployment_policy" "test" {
+  name           = "` + name + `"
+  version_tag_id = sigma_tag.test.id
+}
+data "sigma_deployment_policy" "created" {
+  id = sigma_deployment_policy.test.id
+}
+`,
+		Check: resource.ComposeAggregateTestCheckFunc(
+			resource.TestCheckResourceAttrSet("sigma_deployment_policy.test", "id"),
+			resource.TestCheckResourceAttr("data.sigma_deployment_policy.created", "name", name),
+		),
+	}}))
+}
+
+func runAccSourceSwapPolicy(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	name := accName("tf-acc-swap")
+	attr := accName("tf-acc-swap-attr")
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + `
+data "sigma_connections" "all" {}
+resource "sigma_user_attribute" "test" {
+  name          = "` + attr + `"
+  default_value = "unset"
+}
+resource "sigma_source_swap_policy" "test" {
+  type               = "deployment"
+  name               = "` + name + `"
+  from_connection_id = data.sigma_connections.all.connections[0].id
+  swaps_json = jsonencode({
+    toConnection = {
+      swapType        = "attribute"
+      userAttributeId = sigma_user_attribute.test.id
+    }
+    deploymentSwaps = []
+  })
+}
+`,
+		Check: resource.TestCheckResourceAttrSet("sigma_source_swap_policy.test", "id"),
+	}}))
+}
 
 func runAccTranslationVariant(t *testing.T) {
 	t.Helper()

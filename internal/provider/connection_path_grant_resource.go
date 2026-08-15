@@ -64,7 +64,7 @@ func (r *connectionPathGrantResource) Create(ctx context.Context, req resource.C
 		resp.Diagnostics.AddError("Unable to locate created Sigma grant", err.Error())
 		return
 	}
-	value, err := lookupConnectionGrant(values, plan.MemberID.ValueString(), plan.TeamID.ValueString(), plan.Permission.ValueString(), "")
+	value, err := lookupConnectionGrant(values, plan.MemberID.ValueString(), plan.TeamID.ValueString(), plan.Permission.ValueString(), "", plan.ConnectionPathID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to locate created Sigma grant", err.Error())
 		return
@@ -89,7 +89,7 @@ func (r *connectionPathGrantResource) Read(ctx context.Context, req resource.Rea
 		resp.Diagnostics.AddError("Unable to read Sigma grant", err.Error())
 		return
 	}
-	value, err := lookupConnectionGrant(values, "", "", "", state.ID.ValueString())
+	value, err := lookupConnectionGrant(values, "", "", "", state.ID.ValueString(), "")
 	if sigma.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return

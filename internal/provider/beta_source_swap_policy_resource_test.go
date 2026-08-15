@@ -90,7 +90,4 @@ resource "sigma_source_swap_policy" "test" {
 	}))
 }
 
-func TestAccSourceSwapPolicyResource(t *testing.T) {
-	requireAcceptance(t)
-	t.Skip("source swap policy create needs a production connection ID and is skipped")
-}
+func TestAccSourceSwapPolicyResource(t *testing.T) { runAccSourceSwapPolicy(t) }

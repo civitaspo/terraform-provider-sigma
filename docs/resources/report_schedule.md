@@ -35,7 +35,7 @@ resource "sigma_report_schedule" "example" {
 
 ### Required
 
-- `config_json` (String) JSON body accepted by the Sigma schedule create/update API. Must be a JSON object. Do not set top-level `suspensionAction`; use `is_suspended` instead. List/get responses omit `target`, so Terraform retains the configured `target` (and other request-only fields) from prior state.
+- `config_json` (String) JSON body accepted by the Sigma schedule create/update API. Must be a JSON object. Do not set top-level `suspensionAction`; use `is_suspended` instead. List/get responses omit `target` and echo extra `configV2` fields (for example `includeLink` or `notificationAttachments`), so Terraform retains the configured object shape from prior state and overlays API values only onto keys that were already set.
 - `report_id` (String) Report ID.
 
 ### Optional

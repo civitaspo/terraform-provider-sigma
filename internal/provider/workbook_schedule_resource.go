@@ -70,8 +70,8 @@ func (r *workbookScheduleResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 	plan.ID = types.StringValue(value.ScheduledNotificationID)
-	if patch, needed, patchErr := applyScheduleCreateSuspension(plan.IsSuspended, value.IsSuspended); patchErr != nil {
-		resp.Diagnostics.AddError("Unable to pause or resume Sigma workbook schedule", patchErr.Error())
+	if patch, needed, patchDiags := applyScheduleCreateSuspension(plan.ConfigJSON, plan.IsSuspended, value.IsSuspended); patchDiags.HasError() {
+		resp.Diagnostics.Append(patchDiags...)
 		return
 	} else if needed {
 		value, err = r.client.UpdateWorkbookSchedule(ctx, workbookID, value.ScheduledNotificationID, patch)
@@ -88,7 +88,7 @@ func (r *workbookScheduleResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 	plan.ConfigJSON = config
-	plan.IsSuspended = types.BoolValue(value.IsSuspended)
+	plan.IsSuspended = scheduleIsSuspended(plan.IsSuspended, value.IsSuspended)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -157,7 +157,7 @@ func (r *workbookScheduleResource) Update(ctx context.Context, req resource.Upda
 	}
 	plan.ID = types.StringValue(value.ScheduledNotificationID)
 	plan.ConfigJSON = config
-	plan.IsSuspended = types.BoolValue(value.IsSuspended)
+	plan.IsSuspended = scheduleIsSuspended(plan.IsSuspended, value.IsSuspended)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

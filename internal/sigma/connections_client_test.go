@@ -28,7 +28,7 @@ func TestConnectionsClientContract(t *testing.T) {
 		testutil.ExpectedRequest{Method: "POST", Path: "/v2/connections/conn-1/grants", JSONBody: map[string]any{"grants": []any{map[string]any{"grantee": map[string]any{"memberId": "member-1"}, "permission": "usage"}}}, Response: map[string]any{}},
 		testutil.ExpectedRequest{Method: "GET", Path: "/v2/connections/conn-1/grants", Response: page(grant)},
 		testutil.ExpectedRequest{Method: "DELETE", Path: "/v2/connections/conn-1/grants/grant-1", Response: map[string]any{}},
-		testutil.ExpectedRequest{Method: "GET", Path: "/v2/connections/paths", Query: map[string]string{"connectionId": "conn-1"}, Response: page(path)},
+		testutil.ExpectedRequest{Method: "GET", Path: "/v2/connections/paths", Query: map[string]string{"connectionId": "conn-1", "limit": "500"}, Response: page(path)},
 		testutil.ExpectedRequest{Method: "POST", Path: "/v2/connections/paths/path-1/grants", JSONBody: map[string]any{"grants": []any{map[string]any{"grantee": map[string]any{"teamId": "team-1"}, "permission": "usage"}}}, Response: map[string]any{}},
 		testutil.ExpectedRequest{Method: "GET", Path: "/v2/connections/paths/path-1/grants", Response: page(grant)},
 		testutil.ExpectedRequest{Method: "DELETE", Path: "/v2/connections/paths/path-1/grants/grant-1", Response: map[string]any{}},
