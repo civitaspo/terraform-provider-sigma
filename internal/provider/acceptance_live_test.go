@@ -219,6 +219,23 @@ data "sigma_connection" "first" {
 	}}))
 }
 
+func runAccConnectionPaths(t *testing.T) {
+	t.Helper()
+	requireAcceptance(t)
+	resource.Test(t, providerTestCase([]resource.TestStep{{
+		Config: accProviderBlock() + `
+data "sigma_connections" "all" {}
+data "sigma_connection_paths" "all" {
+  connection_id = data.sigma_connections.all.connections[0].id
+}
+`,
+		Check: resource.ComposeAggregateTestCheckFunc(
+			resource.TestCheckResourceAttrSet("data.sigma_connection_paths.all", "id"),
+			resource.TestCheckResourceAttrSet("data.sigma_connection_paths.all", "paths.#"),
+		),
+	}}))
+}
+
 func runAccOwnedWorkspaceFolderGrant(t *testing.T) {
 	t.Helper()
 	requireAcceptance(t)
