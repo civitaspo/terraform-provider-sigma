@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.2.1] - 2026-08-15
+## [0.2.1] - 2026-08-16
 
 
 ### Bug Fixes
 
+- update module github.com/oapi-codegen/runtime to v1.7.0 (#99)
 - keep configured state and finish live catalog pagination (#96)
 
 
