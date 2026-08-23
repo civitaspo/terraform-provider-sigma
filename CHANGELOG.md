@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency aqua:golangci/golangci-lint to v2.13.1 (#105)
 - lock file maintenance (#107)
 - update dependency go to v1.27.0 (#102)
 - update dependency aqua:golangci/golangci-lint to v2.13.0 (#104)
