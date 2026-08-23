@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency jdx/mise to v2026.8.10 (#106)
 - update dependency aqua:golangci/golangci-lint to v2.13.1 (#105)
 - lock file maintenance (#107)
 - update dependency go to v1.27.0 (#102)
