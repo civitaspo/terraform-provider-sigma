@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.2.1] - 2026-08-28
+
+
+### Bug Fixes
+
+- update module github.com/oapi-codegen/runtime to v1.7.0 (#99)
+- keep configured state and finish live catalog pagination (#96)
+
+
+### Maintenance
+
+- update dependency aqua:golangci/golangci-lint to v2.13.2 (#113)
+- update dependency aqua:hashicorp/terraform to v1.16.0 (#112)
+- update dependency jdx/mise to v2026.8.14 (#111)
+- update jdx/mise-action action to v4.3.0 (#110)
+- update dependency jdx/mise to v2026.8.12 (#109)
+- update dependency aqua:goreleaser/goreleaser to v2.18.0 (#108)
+- update dependency jdx/mise to v2026.8.10 (#106)
+- update dependency aqua:golangci/golangci-lint to v2.13.1 (#105)
+- lock file maintenance (#107)
+- update dependency go to v1.27.0 (#102)
+- update dependency aqua:golangci/golangci-lint to v2.13.0 (#104)
+- update dependency jdx/mise to v2026.8.9 (#103)
+- update dependency aqua:hashicorp/terraform to v1.15.9 (#101)
+- update dependency jdx/mise to v2026.8.8 (#100)
+- update dependency jdx/mise to v2026.8.6 (#97)
+
 ## [0.2.0] - 2026-08-14
 
 
