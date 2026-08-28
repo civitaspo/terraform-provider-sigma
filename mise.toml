@@ -1,6 +1,6 @@
 [tools]
 go = "1.27.0"
-"aqua:golangci/golangci-lint" = "2.13.1"
+"aqua:golangci/golangci-lint" = "2.13.2"
 "aqua:hashicorp/terraform" = "1.16.0"
 "aqua:goreleaser/goreleaser" = "2.18.0"
 "go:github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs" = "0.25.0"
