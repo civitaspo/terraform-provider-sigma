@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.2.1] - 2026-08-23
+## [0.2.1] - 2026-08-28
 
 
 ### Bug Fixes
@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency aqua:golangci/golangci-lint to v2.13.2 (#113)
+- update dependency aqua:hashicorp/terraform to v1.16.0 (#112)
+- update dependency jdx/mise to v2026.8.14 (#111)
+- update jdx/mise-action action to v4.3.0 (#110)
+- update dependency jdx/mise to v2026.8.12 (#109)
+- update dependency aqua:goreleaser/goreleaser to v2.18.0 (#108)
 - update dependency jdx/mise to v2026.8.10 (#106)
 - update dependency aqua:golangci/golangci-lint to v2.13.1 (#105)
 - lock file maintenance (#107)
