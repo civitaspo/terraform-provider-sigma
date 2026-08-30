@@ -66,6 +66,7 @@ provenance = "github-attestations"
 checksum = "sha256:41cdf49b653784b03a08013dd99e382cd5d463049e915c2d818eaed182ae6197"
 url = "https://github.com/goreleaser/goreleaser/releases/download/v2.18.0/goreleaser_Linux_x86_64.tar.gz"
 url_api = "https://api.github.com/repos/goreleaser/goreleaser/releases/assets/526873785"
+provenance = "github-attestations"
 
 [tools."aqua:goreleaser/goreleaser"."platforms.linux-x64-musl"]
 checksum = "sha256:41cdf49b653784b03a08013dd99e382cd5d463049e915c2d818eaed182ae6197"
@@ -96,24 +97,31 @@ version = "1.16.0"
 backend = "aqua:hashicorp/terraform"
 
 [tools."aqua:hashicorp/terraform"."platforms.linux-arm64"]
+checksum = "sha256:60f86cea49a653e22a93c000f16cbfa391ce41c6f6a11d36557c35da411f684c"
 url = "https://releases.hashicorp.com/terraform/1.16.0/terraform_1.16.0_linux_arm64.zip"
 
 [tools."aqua:hashicorp/terraform"."platforms.linux-arm64-musl"]
+checksum = "sha256:60f86cea49a653e22a93c000f16cbfa391ce41c6f6a11d36557c35da411f684c"
 url = "https://releases.hashicorp.com/terraform/1.16.0/terraform_1.16.0_linux_arm64.zip"
 
 [tools."aqua:hashicorp/terraform"."platforms.linux-x64"]
+checksum = "sha256:41d05b927aa174f15d1228c4eba832a323b716c68b415ef5a00179f46cc602d3"
 url = "https://releases.hashicorp.com/terraform/1.16.0/terraform_1.16.0_linux_amd64.zip"
 
 [tools."aqua:hashicorp/terraform"."platforms.linux-x64-musl"]
+checksum = "sha256:41d05b927aa174f15d1228c4eba832a323b716c68b415ef5a00179f46cc602d3"
 url = "https://releases.hashicorp.com/terraform/1.16.0/terraform_1.16.0_linux_amd64.zip"
 
 [tools."aqua:hashicorp/terraform"."platforms.macos-arm64"]
+checksum = "sha256:5dd692c6cc76b596029ff3c2b2b4c3a1710f92d3de6d2da3f66bd2e0c2daa92a"
 url = "https://releases.hashicorp.com/terraform/1.16.0/terraform_1.16.0_darwin_arm64.zip"
 
 [tools."aqua:hashicorp/terraform"."platforms.macos-x64"]
+checksum = "sha256:2b2b7d37f6893474fa3622fa96053e54949c4ddfca4aba105380718157936465"
 url = "https://releases.hashicorp.com/terraform/1.16.0/terraform_1.16.0_darwin_amd64.zip"
 
 [tools."aqua:hashicorp/terraform"."platforms.windows-x64"]
+checksum = "sha256:2a50a95205189c1c9fcefbd34eaa9e94ec905a32a4880bfea34ef9f97757c73f"
 url = "https://releases.hashicorp.com/terraform/1.16.0/terraform_1.16.0_windows_amd64.zip"
 
 [[tools."aqua:orhun/git-cliff"]]
