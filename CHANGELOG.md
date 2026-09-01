@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency aqua:orhun/git-cliff to v2.14.1 (#119)
 - update dependency jdx/mise to v2026.9.0 (#118)
 - update dependency jdx/mise to v2026.8.16 (#117)
 - update dependency jdx/mise to v2026.8.15 (#116)
