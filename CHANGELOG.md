@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency aqua:hashicorp/terraform to v1.16.1 (#122)
 - update dependency jdx/mise to v2026.9.1 (#123)
 - update dependency go to v1.27.1 (#120)
 - update dependency aqua:orhun/git-cliff to v2.14.1 (#119)
