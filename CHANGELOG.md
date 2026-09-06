@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.2.2] - 2026-09-02
+## [0.2.2] - 2026-09-06
 
 
 ### Maintenance
 
+- update dependency aqua:goreleaser/goreleaser to v2.18.1 (#124)
 - update dependency aqua:hashicorp/terraform to v1.16.1 (#122)
 - update dependency jdx/mise to v2026.9.1 (#123)
 - update dependency go to v1.27.1 (#120)
