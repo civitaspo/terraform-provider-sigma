@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency jdx/mise to v2026.9.3 (#126)
 - update dependency jdx/mise to v2026.9.2 (#125)
 - bump google.golang.org/grpc from 1.79.3 to 1.83.1 (#121)
 - update dependency aqua:goreleaser/goreleaser to v2.18.1 (#124)
