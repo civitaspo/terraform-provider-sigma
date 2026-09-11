@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update csm-actions/securefix-action action to v0.6.2 (#131)
 - update dependency jdx/mise to v2026.9.5 (#130)
 - update dependency jdx/mise to v2026.9.4 (#129)
 - update dependency aqua:hashicorp/terraform to v1.16.2 (#128)
