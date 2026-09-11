@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.2.2] - 2026-09-10
+## [0.2.2] - 2026-09-11
 
 
 ### Maintenance
 
+- update dependency jdx/mise to v2026.9.5 (#130)
 - update dependency jdx/mise to v2026.9.4 (#129)
 - update dependency aqua:hashicorp/terraform to v1.16.2 (#128)
 - update dependency jdx/mise to v2026.9.3 (#126)
