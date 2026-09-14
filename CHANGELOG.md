@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency jdx/mise to v2026.9.8 (#136)
 - update dependency jdx/mise to v2026.9.7 (#135)
 - update dependency jdx/mise to v2026.9.6 (#134)
 - update csm-actions/securefix-action action to v0.6.3 (#132)
