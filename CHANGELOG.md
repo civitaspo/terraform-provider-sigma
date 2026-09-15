@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.2.2] - 2026-09-15
+
+
+### Maintenance
+
+- update dependency jdx/mise to v2026.9.9 (#137)
+- update dependency jdx/mise to v2026.9.8 (#136)
+- update dependency jdx/mise to v2026.9.7 (#135)
+- update dependency jdx/mise to v2026.9.6 (#134)
+- update csm-actions/securefix-action action to v0.6.3 (#132)
+- update csm-actions/securefix-action action to v0.6.2 (#131)
+- update dependency jdx/mise to v2026.9.5 (#130)
+- update dependency jdx/mise to v2026.9.4 (#129)
+- update dependency aqua:hashicorp/terraform to v1.16.2 (#128)
+- update dependency jdx/mise to v2026.9.3 (#126)
+- update dependency jdx/mise to v2026.9.2 (#125)
+- bump google.golang.org/grpc from 1.79.3 to 1.83.1 (#121)
+- update dependency aqua:goreleaser/goreleaser to v2.18.1 (#124)
+- update dependency aqua:hashicorp/terraform to v1.16.1 (#122)
+- update dependency jdx/mise to v2026.9.1 (#123)
+- update dependency go to v1.27.1 (#120)
+- update dependency aqua:orhun/git-cliff to v2.14.1 (#119)
+- update dependency jdx/mise to v2026.9.0 (#118)
+- update dependency jdx/mise to v2026.8.16 (#117)
+- update dependency jdx/mise to v2026.8.15 (#116)
+- lock file maintenance (#114)
+
 ## [0.2.1] - 2026-08-28
 
 
