@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency jdx/mise to v2026.9.14 (#148)
 - update civitaspo/securefix-server action to v0.1.2 (#147)
 - update dependency aqua:golangci/golangci-lint to v2.14.0 (#146)
 - update dependency jdx/mise to v2026.9.13 (#145)
