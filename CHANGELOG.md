@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency aqua:golangci/golangci-lint to v2.14.0 (#146)
 - update dependency jdx/mise to v2026.9.13 (#145)
 - update dependency aqua:hashicorp/terraform to v1.16.4 (#144)
 - update dependency aqua:orhun/git-cliff to v2.14.2 (#142)
