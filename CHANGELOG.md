@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency aqua:suzuki-shunsuke/pinact to v5 (#133)
 - bump google.golang.org/grpc from 1.83.1 to 1.83.2 (#127)
 - update dependency jdx/mise to v2026.9.14 (#148)
 - update civitaspo/securefix-server action to v0.1.2 (#147)
