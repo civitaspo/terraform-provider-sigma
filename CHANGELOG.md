@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.2.2] - 2026-09-25
+## [0.2.2] - 2026-09-26
 
 
 ### Maintenance
 
+- bump google.golang.org/grpc from 1.83.1 to 1.83.2 (#127)
 - update dependency jdx/mise to v2026.9.14 (#148)
 - update civitaspo/securefix-server action to v0.1.2 (#147)
 - update dependency aqua:golangci/golangci-lint to v2.14.0 (#146)
