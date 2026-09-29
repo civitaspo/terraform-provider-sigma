@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.2.2] - 2026-09-27
+## [0.2.2] - 2026-09-29
 
 
 ### Maintenance
 
+- update dependency jdx/mise to v2026.9.16 (#150)
 - update dependency jdx/mise to v2026.9.15 (#149)
 - update dependency aqua:suzuki-shunsuke/pinact to v5 (#133)
 - bump google.golang.org/grpc from 1.83.1 to 1.83.2 (#127)
