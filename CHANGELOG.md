@@ -7,28 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.2.3] - 2026-10-10
+## [0.2.3] - 2026-10-11
 
 
 ### Maintenance
 
+- update Securefix caller workflows to v0.2.8 (#175)
+- update jdx/mise-action action to v5 (#151)
+- update dependency jdx/mise to v2026.10.7 (#160)
 - update Securefix caller workflows to v0.2.7 (#173)
 
-## [0.2.2] - 2026-10-10
+## [0.2.2] - 2026-10-08
 
 
 ### Maintenance
 
-- update Securefix caller workflows to v0.2.6 (#172)
-- update Securefix caller workflows (#171)
-- update Securefix caller workflows (#170)
-- update dependency go to v1.27.2 (#159)
-- update dependency aqua:goreleaser/goreleaser to v2.18.3 (#161)
-- update Securefix caller workflows (#169)
-- update Securefix caller workflows (#168)
-- update Securefix caller workflows (#167)
-- update Securefix caller workflows (#166)
-- update Securefix caller workflows (#163)
 - route human merge requests through Securefix (#157)
 - update dependency jdx/mise to v2026.10.4 (#158)
 - update dependency jdx/mise to v2026.10.3 (#156)
