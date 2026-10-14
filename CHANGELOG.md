@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.2.4] - 2026-10-13
+## [0.2.4] - 2026-10-14
 
 
 ### Maintenance
 
+- update Securefix caller workflows to v0.2.14 (#185)
 - update dependency jdx/mise to v2026.10.9 (#184)
 - update actions/create-github-app-token action to v3.3.0 (#183)
 - update jdx/mise-action action to v5.1.2 (#182)
