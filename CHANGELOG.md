@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.2.4] - 2026-10-14
+## [0.2.4] - 2026-10-15
 
 
 ### Maintenance
 
+- update Securefix caller workflows to v0.2.17 (#190)
 - update Securefix caller workflows to v0.2.16 (#189)
 - update dependency jdx/mise to v2026.10.10 (#188)
 - update dependency aqua:hashicorp/terraform to v1.16.6 (#187)
