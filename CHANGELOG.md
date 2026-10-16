@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.2.4] - 2026-10-16
+
+
+### Maintenance
+
+- update Securefix caller workflows to v0.2.20 (#194)
+- update Securefix caller workflows to v0.2.19 (#193)
+- update dependency jdx/mise to v2026.10.11 (#192)
+- update Securefix caller workflows to v0.2.18 (#191)
+- update Securefix caller workflows to v0.2.17 (#190)
+- update Securefix caller workflows to v0.2.16 (#189)
+- update dependency jdx/mise to v2026.10.10 (#188)
+- update dependency aqua:hashicorp/terraform to v1.16.6 (#187)
+- update Securefix caller workflows to v0.2.15 (#186)
+- update Securefix caller workflows to v0.2.14 (#185)
+- update dependency jdx/mise to v2026.10.9 (#184)
+- update actions/create-github-app-token action to v3.3.0 (#183)
+- update jdx/mise-action action to v5.1.2 (#182)
+- update dependency jdx/mise to v2026.10.8 (#180)
+- update Securefix caller workflows to v0.2.12 (#181)
+- update Securefix caller workflows to v0.2.11 (#179)
+- update Securefix caller workflows to v0.2.10 (#177)
+
 ## [0.2.3] - 2026-10-11
 
 
