@@ -1,6 +1,7 @@
 {
   automergeStrategy: 'squash',
-  automergeType: 'pr',
+  automergeType: 'pr-comment',
+  automergeComment: '/merge',
   platformAutomerge: false,
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: [
