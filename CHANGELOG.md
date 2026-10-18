@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.4] - 2026-10-18
 
 
+### Bug Fixes
+
+- request merges through Securefix comments (#199)
+
+
 ### Maintenance
 
 - update Securefix caller workflows to v0.2.32 (#200)
