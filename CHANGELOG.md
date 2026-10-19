@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.2.4] - 2026-10-18
+## [0.2.4] - 2026-10-19
 
 
 ### Bug Fixes
@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency jdx/mise to v2026.10.14 (#202)
 - update Securefix caller workflows to v0.2.33 (#201)
 - update dependency jdx/mise to v2026.10.13 (#197)
 - update dependency aqua:golangci/golangci-lint to v2.15.0 (#195)
