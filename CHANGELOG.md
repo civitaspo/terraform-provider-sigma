@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.2.4] - 2026-10-21
+## [0.2.4] - 2026-10-22
 
 
 ### Bug Fixes
@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Maintenance
 
+- update dependency aqua:suzuki-shunsuke/pinact to v5.0.1 (#208)
 - update dependency aqua:hashicorp/terraform to v1.17.0 (#207)
 - update Securefix caller workflows to v0.2.44 (#206)
 - update Securefix caller workflows to v0.2.36 (#204)
