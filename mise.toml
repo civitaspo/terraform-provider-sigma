@@ -10,6 +10,8 @@ go = "1.27.2"
 "aqua:suzuki-shunsuke/disable-checkout-persist-credentials" = "1.0.0"
 "aqua:orhun/git-cliff" = "2.14.2"
 
+"github:github/gh-actions-lock" = { version = "v0.4.0", bin = "gh-actions-lock" }
+
 [tasks.lint]
 description = "Run local lint checks"
 run = """
@@ -33,6 +35,7 @@ if [ -f internal/sigma/openapi/generate.sh ]; then
 fi
 if [ -d .github/workflows ]; then
   ghalint run
+  gh-actions-lock --verify-local
   pinact run --check
 fi
 """
@@ -97,3 +100,11 @@ if git status --porcelain -- internal/sigma/openapi/generated.go | grep -q '^[^?
   exit 1
 fi
 """
+
+[tasks.actions-lock]
+description = "Regenerate workflow dependencies without rewriting source pins"
+run = "gh-actions-lock --no-interactive --no-narrow --no-migrate-local-actions"
+
+[tasks.actions-lock-verify]
+description = "Verify workflow dependency coverage against GitHub"
+run = "gh-actions-lock --verify"

@@ -11,7 +11,7 @@ This repository contains the Terraform provider for [Sigma Computing](https://ww
 - Never push directly to `main`. Open a pull request and squash-merge after required checks pass.
 - Keep changes small, reviewable, and focused on one meaningful unit of work.
 - Sign commits (SSH signing is configured for maintainers and coding agents committing as `civitaspo`).
-- Do not store strong credentials in this repository. GPG keys, machine-user PATs, and `contents: write` app keys live only in `civitaspo/securefix-server`.
+- Keep GPG keys, Server and Approver App keys only in the `csm-ci` environment of `civitaspo/csm-ci-server`. This client holds only its Client App key. Credential and App permission changes belong to the owner.
 
 ## Tooling
 
@@ -41,8 +41,8 @@ Useful tasks:
 - Pin public GitHub Actions to immutable SHAs.
 - Use `persist-credentials: false` with `actions/checkout` unless a workflow explicitly needs push credentials.
 - Keep workflow permissions least-privilege.
-- Securefix applies machine fixes (pinact, gofmt, tidy, docs drift) via `civitaspo/securefix-server`.
-- Approvals for trusted authors are requested through `csm-actions/approve-pr-action`.
+- `actions/client/securefix` requests signed fixes for the exact PR head from `civitaspo/csm-ci-server`.
+- Managed csm-ci callers request policy and approval. The owner comments `/approve` for the current sensitive head and `/merge` after required checks and approval pass.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/securefix.md](docs/securefix.md), and [docs/releasing.md](docs/releasing.md).
 
