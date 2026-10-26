@@ -4,4 +4,4 @@ rules:
   - ignore: true
     conditions:
       - expr: |
-          ActionRepoFullName == "civitaspo/csm-ci-actions" && ActionVersion in ["85d8fc79ef0ca89ec4cc073d142dab75ebe09a66", "2b751e0f2e16bb8e7bdd57994a8d3e13cdb1879e", "82917b4c3a28e5ff4023991ed355b40081d650fb"]
+          ActionRepoFullName == "civitaspo/csm-ci-actions" && ActionVersion in ["85d8fc79ef0ca89ec4cc073d142dab75ebe09a66", "2b751e0f2e16bb8e7bdd57994a8d3e13cdb1879e", "82917b4c3a28e5ff4023991ed355b40081d650fb", "5e26d290f13f8db3d067aabc4d14030f95c40b8a"]
