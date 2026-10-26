@@ -8,9 +8,9 @@ The client uses variables `CSM_CI_CLIENT_APP_CLIENT_ID` and `CSM_CI_SERVER_REPOS
 
 ## Approval and merge
 
-The managed callers request policy checks and approval for signed commits by trusted committers. Sensitive changes, including workflows and dependency manifests, require the owner to comment `/approve` on the current head. A new commit dismisses the old approval. `/recheck` refreshes the policy and approval decision.
+The managed callers request policy checks and approval for signed commits by trusted committers. Sensitive changes, including workflows and dependency manifests, require the owner to comment `/approve` on the current head, except for Renovate PRs covered by the server's explicit sensitive-path exemption. That exemption removes the owner-comment requirement; the required server approval and checks still apply. A new commit dismisses the old approval. `/recheck` refreshes the policy and approval decision.
 
-After the required `status-check`, `csm-ci/policy`, and approval pass, the owner comments `/merge`. The Server App performs the squash merge. Repository settings disable other merge methods and automatic merging. Common caller workflows and the PR template are managed by the server.
+After the required `status-check`, `csm-ci/policy`, and approval pass, the owner comments `/merge`. A configured trusted Bot may request `/merge` only on its own PR when every commit is its own; the same current-head approval, policy and CI requirements apply. Renovate has an explicit sensitive-path exemption in the server policy. The Server App performs the squash merge. Repository settings disable other merge methods and automatic merging. Common caller workflows and the PR template are managed by the server.
 
 ## Workflow autofix
 
