@@ -70,9 +70,9 @@ Do not invent API field names; verify against `https://help.sigmacomputing.com/r
 
 ## Release flow (summary)
 
-1. Merges to `main` trigger the Release PR workflow, which runs git-cliff and opens or updates the changelog / version bump PR on `release/next`.
-2. Merging the release PR creates a tag and requests a server-side goreleaser run in `civitaspo/securefix-server`.
-3. Signed artifacts are published as a GitHub Release for Terraform Registry consumption.
+1. Merges to `main` trigger `csm-ci-release-pr`, which prepares `.release-version` and `CHANGELOG.md` on `release/next` through the server.
+2. The owner requests `/approve` and `/merge` after full CI passes on the current release PR head.
+3. The server builds all thirteen archives without credentials, validates and GPG-signs them in the trusted publisher, and publishes an immutable release with checksums and provenance for the Terraform Registry.
 
 See [docs/releasing.md](docs/releasing.md) and [docs/securefix.md](docs/securefix.md) for details.
 

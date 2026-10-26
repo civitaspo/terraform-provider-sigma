@@ -1,7 +1,7 @@
 # terraform-provider-sigma
 
 [![CI](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/pull_request.yml/badge.svg)](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/pull_request.yml)
-[![Release](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/release-tag.yml/badge.svg)](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/release-tag.yml)
+[![Release](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/csm-ci-release.yml/badge.svg)](https://github.com/civitaspo/terraform-provider-sigma/actions/workflows/csm-ci-release.yml)
 [![Terraform Registry](https://img.shields.io/badge/registry-civitaspo%2Fsigma-purple.svg)](https://registry.terraform.io/providers/civitaspo/sigma/latest)
 
 Terraform provider for [Sigma Computing](https://www.sigmacomputing.com/). Manage members, teams, workspaces, connections, grants, documents, and related Sigma resources with Terraform.
@@ -185,3 +185,7 @@ See [AGENTS.md](AGENTS.md) for coding-agent conventions, [docs/securefix.md](doc
 ## License
 
 [MIT](LICENSE) © civitaspo
+
+## Workflow dependencies
+
+Full SHA pins and `.github/workflows/actions.lock` cover workflow dependencies. After changing dependencies, run `mise run actions-lock`, review the generated lockfile, then run `mise run actions-lock-verify` using the ordinary GitHub login. The generator preserves immutable source pins.
