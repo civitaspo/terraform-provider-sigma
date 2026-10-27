@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.2.5] - 2026-10-27
+
+
+### Maintenance
+
+- sync managed files
+- enable native Renovate merge requests
+
 ## [0.2.4] - 2026-10-26
 
 
@@ -48,6 +56,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - update Securefix caller workflows to v0.2.12 (#181)
 - update Securefix caller workflows to v0.2.11 (#179)
 - update Securefix caller workflows to v0.2.10 (#177)
+
+
+### Miscellaneous
+
+- chore(release): v0.2.4
 
 ## [0.2.3] - 2026-10-11
 
