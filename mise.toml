@@ -10,7 +10,7 @@ go = "1.27.2"
 "aqua:suzuki-shunsuke/disable-checkout-persist-credentials" = "1.0.0"
 "aqua:orhun/git-cliff" = "2.14.2"
 
-"github:github/gh-actions-lock" = { version = "v0.4.0", bin = "gh-actions-lock" }
+"github:github/gh-actions-lock" = { version = "v0.4.1", bin = "gh-actions-lock" }
 
 [tasks.lint]
 description = "Run local lint checks"
