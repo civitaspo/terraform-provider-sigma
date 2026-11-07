@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.2.5] - 2026-11-07
+
+
+### Maintenance
+
+- update dependency aqua:goreleaser/goreleaser to v2.20.0 (#233)
+- update amannn/action-semantic-pull-request action to v6.1.2 (#232)
+- update dependency github:github/gh-actions-lock to v0.4.1 (#231)
+- update module go:github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen to v2.8.2 (#230)
+- update civitaspo/csm-ci-actions action to v0.6.0 (#229)
+- update civitaspo/csm-ci-actions action to v0.5.0 (#226)
+- sync managed files (#225)
+- update civitaspo/csm-ci-actions action to v0.3.1
+- sync managed files
+- sync managed files
+- sync managed files
+- enable native Renovate merge requests
+
 ## [0.2.4] - 2026-10-26
 
 
@@ -48,6 +66,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - update Securefix caller workflows to v0.2.12 (#181)
 - update Securefix caller workflows to v0.2.11 (#179)
 - update Securefix caller workflows to v0.2.10 (#177)
+
+
+### Miscellaneous
+
+- chore(release): v0.2.4
 
 ## [0.2.3] - 2026-10-11
 
