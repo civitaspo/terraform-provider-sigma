@@ -200,13 +200,13 @@ resource "sigma_connection" "test" {
 
 // Regression test for https://github.com/civitaspo/terraform-provider-sigma/issues/236.
 // Sigma omits optional fields such as description from responses and changes
-// server-derived fields such as updatedAt and warehouse on every PUT.
+// server-derived fields such as updatedAt and warehouse on every PUT. It also
+// omits friendlyName, which must not override a configured use_friendly_names.
 func TestConnectionResourceServerDerivedFieldsChangeOnUpdate(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
 	connection := map[string]any{
 		"connectionId": "connection-1", "name": "warehouse", "type": "snowflake",
 		"warehouse": "WH_1", "updatedAt": "2026-11-10T01:41:21.245Z", "updatedBy": "member-1",
-		"friendlyName": false,
 	}
 	mock.Mux.HandleFunc("/v2/connections", func(response http.ResponseWriter, request *http.Request) {
 		mock.AssertBearer(t, request)
@@ -251,6 +251,7 @@ resource "sigma_connection" "test" {
     warehouse = "` + warehouse + `"
     user      = "EXAMPLE_USER"
   })
+  use_friendly_names = true
 }
 `
 	}
@@ -261,6 +262,8 @@ resource "sigma_connection" "test" {
 				resource.TestCheckNoResourceAttr("sigma_connection.test", "description_json"),
 				resource.TestCheckNoResourceAttr("sigma_connection.test", "pool_sizes_json"),
 				resource.TestCheckNoResourceAttr("sigma_connection.test", "timeout_secs"),
+				resource.TestCheckResourceAttr("sigma_connection.test", "use_friendly_names", "true"),
+				resource.TestCheckNoResourceAttr("sigma_connection.test", "friendly_name"),
 				resource.TestCheckResourceAttr("sigma_connection.test", "updated_at", "2026-11-10T01:41:21.245Z"),
 			),
 		},
@@ -271,6 +274,7 @@ resource "sigma_connection" "test" {
 				resource.TestCheckResourceAttr("sigma_connection.test", "warehouse", "WH_2"),
 				resource.TestCheckResourceAttr("sigma_connection.test", "updated_at", "2026-11-10T01:49:11.706Z"),
 				resource.TestCheckResourceAttr("sigma_connection.test", "updated_by", "member-2"),
+				resource.TestCheckResourceAttr("sigma_connection.test", "use_friendly_names", "true"),
 			),
 		},
 	}))

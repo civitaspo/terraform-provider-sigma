@@ -41,7 +41,7 @@ func TestConnectionMapsTimeoutDefault(t *testing.T) {
 	if value.Timeout == nil || value.Timeout.Default != 45 || value.Timeout.Worksheet == nil || *value.Timeout.Worksheet != 10 {
 		t.Fatalf("timeout object = %#v", value.Timeout)
 	}
-	if !value.FriendlyName {
+	if value.FriendlyName == nil || !*value.FriendlyName {
 		t.Fatal("friendlyName = false")
 	}
 }

@@ -272,8 +272,12 @@ func setConnection(ctx context.Context, state *connectionResourceModel, value *s
 	} else if state.TimeoutSecs.IsUnknown() {
 		state.TimeoutSecs = types.Float64Null()
 	}
-	state.UseFriendlyNames = types.BoolValue(value.FriendlyName)
-	state.FriendlyName = types.BoolValue(value.FriendlyName)
+	if value.FriendlyName != nil {
+		state.UseFriendlyNames = types.BoolValue(*value.FriendlyName)
+	} else if state.UseFriendlyNames.IsUnknown() {
+		state.UseFriendlyNames = types.BoolNull()
+	}
+	state.FriendlyName = types.BoolPointerValue(value.FriendlyName)
 	if value.UseOauth != nil {
 		state.UseOauth = types.BoolValue(*value.UseOauth)
 	} else {
