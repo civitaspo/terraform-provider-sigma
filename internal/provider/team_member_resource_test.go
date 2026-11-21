@@ -26,11 +26,20 @@ func TestTeamMemberResource(t *testing.T) {
 			}
 			writeJSON(response, map[string]any{"entries": entries, "nextPage": nil})
 		case http.MethodPatch:
+			var raw map[string]json.RawMessage
+			_ = json.NewDecoder(request.Body).Decode(&raw)
+			// Sigma rejects null with "Expecting Array<UserID> at remove but instead got: null".
+			for _, key := range []string{"add", "remove"} {
+				if value, ok := raw[key]; !ok || string(value) == "null" {
+					t.Errorf("team member mutate body %q = %s; want a JSON array", key, value)
+				}
+			}
 			var body struct {
 				Add    []string `json:"add"`
 				Remove []string `json:"remove"`
 			}
-			_ = json.NewDecoder(request.Body).Decode(&body)
+			_ = json.Unmarshal(raw["add"], &body.Add)
+			_ = json.Unmarshal(raw["remove"], &body.Remove)
 			switch {
 			case len(body.Add) == 1 && body.Add[0] == "member-1" && len(body.Remove) == 0:
 				// create

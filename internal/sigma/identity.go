@@ -221,6 +221,13 @@ func (c *Client) ListTeamMembers(ctx context.Context, id string) ([]TeamMember, 
 	})
 }
 func (c *Client) UpdateTeamMembers(ctx context.Context, id string, add, remove []string) error {
+	// Sigma rejects null for either field, so always send JSON arrays.
+	if add == nil {
+		add = []string{}
+	}
+	if remove == nil {
+		remove = []string{}
+	}
 	payload := map[string]any{"add": add, "remove": remove}
 	body, err := encodeBody(payload)
 	if err != nil {
