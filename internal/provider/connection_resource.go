@@ -12,8 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -94,38 +92,35 @@ func (r *connectionResource) Schema(_ context.Context, _ resource.SchemaRequest,
 	preserveString := []planmodifier.String{stringplanmodifier.UseStateForUnknown()}
 	preserveBool := []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()}
 	preserveFloat := []planmodifier.Float64{float64planmodifier.UseStateForUnknown()}
-	preserveList := []planmodifier.List{listplanmodifier.UseStateForUnknown()}
-	preserveObject := []planmodifier.Object{objectplanmodifier.UseStateForUnknown()}
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Sigma warehouse connection. `details_json` is required and must contain the complete non-secret warehouse configuration for every create and PUT. Put write-only fields such as `password`, `serviceAccount`, and `clientSecret` in `credentials_wo`. Sigma's update connection API replaces warehouse details entirely, so any update after credentials were managed requires a strictly greater `credentials_wo_version` and a resupplied `credentials_wo`. Restore is not a Terraform attribute. GET does not return warehouse details, so import is ID-only: configuration must include complete `details_json` before Terraform can update.",
 		Attributes: map[string]schema.Attribute{
 			"id":                     schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Connection ID."},
 			"name":                   schema.StringAttribute{Required: true, MarkdownDescription: "Connection name."},
-			"type":                   schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Warehouse type returned by Sigma."},
+			"type":                   schema.StringAttribute{Computed: true, MarkdownDescription: "Warehouse type returned by Sigma."},
 			"details_json":           schema.StringAttribute{Required: true, CustomType: jsontypes.NormalizedType{}, MarkdownDescription: "Required JSON object containing non-secret warehouse-specific connection details. Every PUT sends this object plus any write-only credentials. GET does not return warehouse details; do not infer them from flattened GET metadata."},
 			"description_json":       schema.StringAttribute{Optional: true, Computed: true, CustomType: jsontypes.NormalizedType{}, PlanModifiers: preserveString, MarkdownDescription: "JSON object accepted by Sigma as the connection description."},
 			"pool_sizes_json":        schema.StringAttribute{Optional: true, Computed: true, CustomType: jsontypes.NormalizedType{}, PlanModifiers: preserveString, MarkdownDescription: "JSON object configuring connection pool sizes."},
 			"timeout_secs":           schema.Float64Attribute{Optional: true, Computed: true, PlanModifiers: preserveFloat, MarkdownDescription: "Request `timeoutSecs`. When GET returns `timeout.default`, Terraform maps that value here because the documented semantics match."},
 			"use_friendly_names":     schema.BoolAttribute{Optional: true, Computed: true, PlanModifiers: preserveBool, MarkdownDescription: "Request `useFriendlyNames`. GET reports this as `friendlyName`."},
-			"use_oauth":              schema.BoolAttribute{Computed: true, PlanModifiers: preserveBool, MarkdownDescription: "Whether the connection uses OAuth, as returned by Sigma GET `useOauth`. Not settable; warehouse OAuth configuration remains in `details_json`."},
+			"use_oauth":              schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the connection uses OAuth, as returned by Sigma GET `useOauth`. Not settable; warehouse OAuth configuration remains in `details_json`."},
 			"credentials_wo":         schema.StringAttribute{Optional: true, WriteOnly: true, Sensitive: true, MarkdownDescription: "Write-only JSON object merged into a copy of `details_json` for the outbound request only. Required together with `credentials_wo_version` on create/rotation. Never stored in state."},
 			"credentials_wo_version": schema.Int64Attribute{Optional: true, MarkdownDescription: "Must be supplied with `credentials_wo`. After credentials have been managed, every PUT requires a known strictly greater version and a known write-only payload from configuration."},
 			"organization_id":        schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Organization ID."},
 			"is_sample":              schema.BoolAttribute{Computed: true, PlanModifiers: preserveBool, MarkdownDescription: "Whether this is the Sigma sample data connection."},
-			"is_audit_log":           schema.BoolAttribute{Computed: true, PlanModifiers: preserveBool, MarkdownDescription: "Whether audit logging is enabled."},
-			"last_active_at":         schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Last activity timestamp."},
+			"is_audit_log":           schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether audit logging is enabled."},
+			"last_active_at":         schema.StringAttribute{Computed: true, MarkdownDescription: "Last activity timestamp."},
 			"created_by":             schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Member ID that created the connection."},
-			"updated_by":             schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Member or process that last updated the connection."},
+			"updated_by":             schema.StringAttribute{Computed: true, MarkdownDescription: "Member or process that last updated the connection."},
 			"created_at":             schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Creation timestamp."},
-			"updated_at":             schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Update timestamp."},
-			"is_archived":            schema.BoolAttribute{Computed: true, PlanModifiers: preserveBool, MarkdownDescription: "Whether the connection is archived."},
-			"account":                schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Account associated with the connection. Response-only; not copied into PUT details."},
-			"warehouse":              schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Warehouse associated with the connection. Response-only; not copied into PUT details."},
-			"user":                   schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "User associated with the connection. Response-only; not copied into PUT details."},
-			"role":                   schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Role used by the connection user. Response-only; not copied into PUT details."},
+			"updated_at":             schema.StringAttribute{Computed: true, MarkdownDescription: "Update timestamp."},
+			"is_archived":            schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the connection is archived."},
+			"account":                schema.StringAttribute{Computed: true, MarkdownDescription: "Account associated with the connection. Response-only; not copied into PUT details."},
+			"warehouse":              schema.StringAttribute{Computed: true, MarkdownDescription: "Warehouse associated with the connection. Response-only; not copied into PUT details."},
+			"user":                   schema.StringAttribute{Computed: true, MarkdownDescription: "User associated with the connection. Response-only; not copied into PUT details."},
+			"role":                   schema.StringAttribute{Computed: true, MarkdownDescription: "Role used by the connection user. Response-only; not copied into PUT details."},
 			"timeout": schema.SingleNestedAttribute{
 				Computed:            true,
-				PlanModifiers:       preserveObject,
 				MarkdownDescription: "Complete GET `timeout` object (`default`, `dashboard`, `download`, `worksheet`).",
 				Attributes: map[string]schema.Attribute{
 					"default":   schema.Float64Attribute{Computed: true, MarkdownDescription: "Default timeout in seconds."},
@@ -134,23 +129,23 @@ func (r *connectionResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					"worksheet": schema.Float64Attribute{Computed: true, MarkdownDescription: "Worksheet timeout in seconds."},
 				},
 			},
-			"write_access":                      schema.BoolAttribute{Computed: true, PlanModifiers: preserveBool, MarkdownDescription: "Whether write access is enabled."},
-			"friendly_name":                     schema.BoolAttribute{Computed: true, PlanModifiers: preserveBool, MarkdownDescription: "GET `friendlyName`."},
-			"writebacks_json":                   schema.StringAttribute{Computed: true, CustomType: jsontypes.NormalizedType{}, PlanModifiers: preserveString, MarkdownDescription: "Non-OAuth write-back configuration JSON."},
-			"writeback_schemas_json":            schema.StringAttribute{Computed: true, CustomType: jsontypes.NormalizedType{}, PlanModifiers: preserveString, MarkdownDescription: "OAuth write-back schema configuration JSON."},
-			"input_table_audit_log_schema_json": schema.StringAttribute{Computed: true, CustomType: jsontypes.NormalizedType{}, PlanModifiers: preserveString, MarkdownDescription: "Input table write-ahead log schema JSON."},
-			"materialization_warehouse":         schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Warehouse used for materialization jobs."},
-			"exports_warehouse":                 schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Warehouse used for export jobs."},
-			"oauth_metadata_url":                schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Connection-level OAuth metadata URL."},
-			"oauth_client_id":                   schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Connection-level OAuth client ID."},
-			"oauth_scopes":                      schema.ListAttribute{Computed: true, ElementType: types.StringType, PlanModifiers: preserveList, MarkdownDescription: "Connection-level OAuth scopes."},
-			"oauth_idp_type":                    schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "OAuth provider type."},
-			"oauth_use_pkce":                    schema.BoolAttribute{Computed: true, PlanModifiers: preserveBool, MarkdownDescription: "Whether connection-level OAuth uses PKCE."},
-			"oauth_use_jwt":                     schema.BoolAttribute{Computed: true, PlanModifiers: preserveBool, MarkdownDescription: "Whether connection-level OAuth uses JWT bearer tokens."},
-			"oauth_audience":                    schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "OAuth federation audience."},
-			"is_independent_oauth":              schema.BoolAttribute{Computed: true, PlanModifiers: preserveBool, MarkdownDescription: "Whether the connection uses connection-level OAuth."},
-			"user_attributes_json":              schema.StringAttribute{Computed: true, CustomType: jsontypes.NormalizedType{}, PlanModifiers: preserveString, MarkdownDescription: "User attributes JSON associated with the connection."},
-			"role_switching":                    schema.StringAttribute{Computed: true, PlanModifiers: preserveString, MarkdownDescription: "Snowflake OAuth role-switching setting."},
+			"write_access":                      schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether write access is enabled."},
+			"friendly_name":                     schema.BoolAttribute{Computed: true, MarkdownDescription: "GET `friendlyName`."},
+			"writebacks_json":                   schema.StringAttribute{Computed: true, CustomType: jsontypes.NormalizedType{}, MarkdownDescription: "Non-OAuth write-back configuration JSON."},
+			"writeback_schemas_json":            schema.StringAttribute{Computed: true, CustomType: jsontypes.NormalizedType{}, MarkdownDescription: "OAuth write-back schema configuration JSON."},
+			"input_table_audit_log_schema_json": schema.StringAttribute{Computed: true, CustomType: jsontypes.NormalizedType{}, MarkdownDescription: "Input table write-ahead log schema JSON."},
+			"materialization_warehouse":         schema.StringAttribute{Computed: true, MarkdownDescription: "Warehouse used for materialization jobs."},
+			"exports_warehouse":                 schema.StringAttribute{Computed: true, MarkdownDescription: "Warehouse used for export jobs."},
+			"oauth_metadata_url":                schema.StringAttribute{Computed: true, MarkdownDescription: "Connection-level OAuth metadata URL."},
+			"oauth_client_id":                   schema.StringAttribute{Computed: true, MarkdownDescription: "Connection-level OAuth client ID."},
+			"oauth_scopes":                      schema.ListAttribute{Computed: true, ElementType: types.StringType, MarkdownDescription: "Connection-level OAuth scopes."},
+			"oauth_idp_type":                    schema.StringAttribute{Computed: true, MarkdownDescription: "OAuth provider type."},
+			"oauth_use_pkce":                    schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether connection-level OAuth uses PKCE."},
+			"oauth_use_jwt":                     schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether connection-level OAuth uses JWT bearer tokens."},
+			"oauth_audience":                    schema.StringAttribute{Computed: true, MarkdownDescription: "OAuth federation audience."},
+			"is_independent_oauth":              schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the connection uses connection-level OAuth."},
+			"user_attributes_json":              schema.StringAttribute{Computed: true, CustomType: jsontypes.NormalizedType{}, MarkdownDescription: "User attributes JSON associated with the connection."},
+			"role_switching":                    schema.StringAttribute{Computed: true, MarkdownDescription: "Snowflake OAuth role-switching setting."},
 		},
 	}
 }
@@ -260,17 +255,29 @@ func setConnection(ctx context.Context, state *connectionResourceModel, value *s
 	state.Type = types.StringValue(value.Type)
 	state.DetailsJSON = priorDetails
 	state.CredentialsWOVersion = priorVersion
+	// Sigma may omit optional fields from responses. Keep a known planned or
+	// prior value in that case, but never leave an unknown value after apply.
 	if len(value.Description) > 0 && string(value.Description) != "null" {
 		state.DescriptionJSON = normalizedFromRaw(value.Description)
+	} else if state.DescriptionJSON.IsUnknown() {
+		state.DescriptionJSON = jsontypes.NewNormalizedNull()
 	}
 	if len(value.PoolSizes) > 0 && string(value.PoolSizes) != "null" {
 		state.PoolSizesJSON = normalizedFromRaw(value.PoolSizes)
+	} else if state.PoolSizesJSON.IsUnknown() {
+		state.PoolSizesJSON = jsontypes.NewNormalizedNull()
 	}
 	if value.TimeoutSecs != nil {
 		state.TimeoutSecs = types.Float64Value(*value.TimeoutSecs)
+	} else if state.TimeoutSecs.IsUnknown() {
+		state.TimeoutSecs = types.Float64Null()
 	}
-	state.UseFriendlyNames = types.BoolValue(value.FriendlyName)
-	state.FriendlyName = types.BoolValue(value.FriendlyName)
+	if value.FriendlyName != nil {
+		state.UseFriendlyNames = types.BoolValue(*value.FriendlyName)
+	} else if state.UseFriendlyNames.IsUnknown() {
+		state.UseFriendlyNames = types.BoolNull()
+	}
+	state.FriendlyName = types.BoolPointerValue(value.FriendlyName)
 	if value.UseOauth != nil {
 		state.UseOauth = types.BoolValue(*value.UseOauth)
 	} else {

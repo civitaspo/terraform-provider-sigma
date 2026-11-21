@@ -23,7 +23,8 @@ type ConnectionTimeout struct {
 // Details field because the get endpoint does not return that configuration.
 // UseOauth is returned by GET as useOauth and is not a request field on PUT.
 // TimeoutSecs is mapped from response timeout.default (and still accepted from
-// legacy timeoutSecs JSON). FriendlyName comes from response friendlyName.
+// legacy timeoutSecs JSON). FriendlyName comes from response friendlyName and is
+// nil when Sigma omits it.
 type Connection struct {
 	ConnectionID             string             `json:"connectionId"`
 	Name                     string             `json:"name"`
@@ -31,7 +32,7 @@ type Connection struct {
 	Description              json.RawMessage    `json:"description"`
 	PoolSizes                json.RawMessage    `json:"poolSizes"`
 	TimeoutSecs              *float64           `json:"timeoutSecs"`
-	FriendlyName             bool               `json:"friendlyName"`
+	FriendlyName             *bool              `json:"friendlyName"`
 	UseOauth                 *bool              `json:"useOauth"`
 	Timeout                  *ConnectionTimeout `json:"timeout,omitempty"`
 	OrganizationID           string             `json:"organizationId"`
@@ -155,9 +156,9 @@ func (value *Connection) UnmarshalJSON(data []byte) error {
 	}
 	switch {
 	case raw.FriendlyName != nil:
-		value.FriendlyName = *raw.FriendlyName
+		value.FriendlyName = raw.FriendlyName
 	case raw.UseFriendlyNames != nil:
-		value.FriendlyName = *raw.UseFriendlyNames
+		value.FriendlyName = raw.UseFriendlyNames
 	}
 	return nil
 }

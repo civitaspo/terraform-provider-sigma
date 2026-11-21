@@ -154,10 +154,11 @@ func connectionDataAttributes(requireID bool) map[string]schema.Attribute {
 
 func connectionData(ctx context.Context, value *sigma.Connection) (connectionDataModel, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	friendlyName := value.FriendlyName != nil && *value.FriendlyName
 	state := connectionDataModel{
 		ID: types.StringValue(value.ConnectionID), Name: types.StringValue(value.Name), Type: types.StringValue(value.Type),
 		DescriptionJSON: normalizedFromRaw(value.Description), PoolSizesJSON: normalizedFromRaw(value.PoolSizes),
-		UseFriendlyNames: types.BoolValue(value.FriendlyName), FriendlyName: types.BoolValue(value.FriendlyName),
+		UseFriendlyNames: types.BoolValue(friendlyName), FriendlyName: types.BoolValue(friendlyName),
 		OrganizationID: types.StringValue(value.OrganizationID), IsSample: types.BoolPointerValue(value.IsSample),
 		IsAuditLog: types.BoolPointerValue(value.IsAuditLog), LastActiveAt: types.StringValue(value.LastActiveAt),
 		CreatedBy: types.StringValue(value.CreatedBy), UpdatedBy: types.StringValue(value.UpdatedBy),
