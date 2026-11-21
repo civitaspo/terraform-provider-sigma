@@ -198,6 +198,84 @@ resource "sigma_connection" "test" {
 	}
 }
 
+// Regression test for https://github.com/civitaspo/terraform-provider-sigma/issues/236.
+// Sigma omits optional fields such as description from responses and changes
+// server-derived fields such as updatedAt and warehouse on every PUT.
+func TestConnectionResourceServerDerivedFieldsChangeOnUpdate(t *testing.T) {
+	mock := testutil.NewMockSigma(t)
+	connection := map[string]any{
+		"connectionId": "connection-1", "name": "warehouse", "type": "snowflake",
+		"warehouse": "WH_1", "updatedAt": "2026-11-10T01:41:21.245Z", "updatedBy": "member-1",
+		"friendlyName": false,
+	}
+	mock.Mux.HandleFunc("/v2/connections", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		if request.Method != http.MethodPost {
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSON(response, connection)
+	})
+	mock.Mux.HandleFunc("/v2/connections/connection-1", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		switch request.Method {
+		case http.MethodGet:
+			writeJSON(response, connection)
+		case http.MethodPut:
+			var body map[string]any
+			_ = json.NewDecoder(request.Body).Decode(&body)
+			details, _ := body["details"].(map[string]any)
+			connection["name"] = body["name"]
+			connection["warehouse"] = details["warehouse"]
+			connection["updatedAt"] = "2026-11-10T01:49:11.706Z"
+			connection["updatedBy"] = "member-2"
+			writeJSON(response, connection)
+		case http.MethodDelete:
+			writeJSON(response, map[string]any{})
+		default:
+			http.Error(response, "unexpected method", http.StatusMethodNotAllowed)
+		}
+	})
+	mock.Mux.HandleFunc("/v2/connections/connection-1/test", func(response http.ResponseWriter, request *http.Request) {
+		mock.AssertBearer(t, request)
+		writeJSON(response, map[string]string{"read": "SUCCESS", "write": "SUCCESS"})
+	})
+
+	configFor := func(name, warehouse string) string {
+		return connectionProviderConfig(mock) + `
+resource "sigma_connection" "test" {
+  name = "` + name + `"
+  details_json = jsonencode({
+    type      = "snowflake"
+    account   = "EXAMPLE_ACCOUNT"
+    warehouse = "` + warehouse + `"
+    user      = "EXAMPLE_USER"
+  })
+}
+`
+	}
+	resource.UnitTest(t, connectionTestCase([]resource.TestStep{
+		{
+			Config: configFor("warehouse", "WH_1"),
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckNoResourceAttr("sigma_connection.test", "description_json"),
+				resource.TestCheckNoResourceAttr("sigma_connection.test", "pool_sizes_json"),
+				resource.TestCheckNoResourceAttr("sigma_connection.test", "timeout_secs"),
+				resource.TestCheckResourceAttr("sigma_connection.test", "updated_at", "2026-11-10T01:41:21.245Z"),
+			),
+		},
+		{
+			Config: configFor("renamed", "WH_2"),
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("sigma_connection.test", "name", "renamed"),
+				resource.TestCheckResourceAttr("sigma_connection.test", "warehouse", "WH_2"),
+				resource.TestCheckResourceAttr("sigma_connection.test", "updated_at", "2026-11-10T01:49:11.706Z"),
+				resource.TestCheckResourceAttr("sigma_connection.test", "updated_by", "member-2"),
+			),
+		},
+	}))
+}
+
 func TestConnectionResourceRejectsCredentialsWithoutDetails(t *testing.T) {
 	mock := testutil.NewMockSigma(t)
 	config := connectionProviderConfig(mock) + `
