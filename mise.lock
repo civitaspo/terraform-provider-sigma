@@ -412,5 +412,5 @@ version = "0.25.0"
 backend = "go:github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs"
 
 [[tools."go:github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen"]]
-version = "2.8.2"
+version = "2.9.0"
 backend = "go:github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen"
