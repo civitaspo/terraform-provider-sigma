@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.2.6] - 2026-11-26
+
+
+### Bug Fixes
+
+- update module github.com/oapi-codegen/runtime to v1.9.1 (#210)
+
+
+### Maintenance
+
+- sync managed files (#257)
+- update civitaspo/csm-ci-actions action to v0.11.0 (#256)
+- update dependency jdx/mise to v2026.11.14 (#255)
+- update amannn/action-semantic-pull-request action to v6.1.4 (#254)
+- sync managed files (#253)
+- update dependency jdx/mise to v2026.11.13 (#252)
+- update civitaspo/csm-ci-actions action to v0.10.0 (#251)
+- update module go:github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen to v2.9.0 (#250)
+- migrate Renovate config (#242)
+- update dependency aqua:hashicorp/terraform to v1.17.2 (#227)
+- update dependency aqua:suzuki-shunsuke/pinact to v5.0.2 (#213)
+- update dependency go to v1.27.4 (#205)
+- update dependency jdx/mise to v2026.11.12 (#203)
+- update jdx/mise-action action to v5.3.0 (#196)
+- update amannn/action-semantic-pull-request action to v6.1.3 (#248)
+
 ## [0.2.5] - 2026-11-21
 
 
